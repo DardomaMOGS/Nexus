@@ -1,1218 +1,1569 @@
 /* =========================================================
-   NEXUS OS v1.1
-========================================================= */
+   NEXUS v1.2
+   MULTI-USER SYSTEM
+   ========================================================= */
+
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 
 /* =========================================================
-   PASSWORD SYSTEM
-========================================================= */
-
-const passwordScreen =
-    document.getElementById("passwordScreen");
-
-const passwordSetup =
-    document.getElementById("passwordSetup");
-
-const passwordLogin =
-    document.getElementById("passwordLogin");
-
-const passwordTitle =
-    document.getElementById("passwordTitle");
-
-const passwordError =
-    document.getElementById("passwordError");
-
-
-function hasPassword() {
-
-    return localStorage.getItem("nexus_password") !== null;
-
-}
-
-
-function setupPasswordScreen() {
-
-    if (hasPassword()) {
-
-        passwordSetup.style.display = "none";
-        passwordLogin.style.display = "flex";
-
-        passwordTitle.textContent =
-            "Enter your password to continue";
-
-    } else {
-
-        passwordSetup.style.display = "flex";
-        passwordLogin.style.display = "none";
-
-        passwordTitle.textContent =
-            "Create your NEXUS password";
-
-    }
-
-}
-
-
-function createPassword() {
-
-    const password =
-        document.getElementById("newPassword").value;
-
-    const confirm =
-        document.getElementById("confirmPassword").value;
-
-
-    passwordError.textContent = "";
-
-
-    if (password.length < 4) {
-
-        passwordError.textContent =
-            "Password must be at least 4 characters.";
-
-        return;
-
-    }
-
-
-    if (password !== confirm) {
-
-        passwordError.textContent =
-            "Passwords do not match.";
-
-        return;
-
-    }
-
-
-    localStorage.setItem(
-        "nexus_password",
-        password
-    );
-
-
-    document.getElementById("newPassword").value = "";
-    document.getElementById("confirmPassword").value = "";
-
-    startNexus();
-
-}
-
-
-function unlockNexus() {
-
-    const entered =
-        document.getElementById("passwordInput").value;
-
-    const saved =
-        localStorage.getItem("nexus_password");
-
-
-    if (entered === saved) {
-
-        document.getElementById("passwordInput").value = "";
-
-        passwordError.textContent = "";
-
-        startNexus();
-
-    } else {
-
-        passwordError.textContent =
-            "❌ Incorrect password.";
-
-    }
-
-}
-
-
-function passwordEnter(event) {
-
-    if (event.key === "Enter") {
-
-        unlockNexus();
-
-    }
-
-}
-
-
-function changePassword() {
-
-    const current =
-        prompt("Enter your current password:");
-
-    const saved =
-        localStorage.getItem("nexus_password");
-
-
-    if (current !== saved) {
-
-        showNotification(
-            "🔐 Security",
-            "Current password is incorrect.",
-            "❌"
-        );
-
-        return;
-
-    }
-
-
-    const newPassword =
-        prompt("Enter your new password:");
-
-    if (!newPassword || newPassword.length < 4) {
-
-        showNotification(
-            "🔐 Security",
-            "Password must be at least 4 characters.",
-            "❌"
-        );
-
-        return;
-
-    }
-
-
-    localStorage.setItem(
-        "nexus_password",
-        newPassword
-    );
-
-
-    showNotification(
-        "🔐 Security",
-        "Password changed successfully.",
-        "✅"
-    );
-
-}
-
-
-function lockNexus() {
-
-    closeAllApps();
-
-    document.getElementById("startMenu").style.display =
-        "none";
-
-    passwordScreen.style.display = "flex";
-
-    passwordSetup.style.display = "none";
-    passwordLogin.style.display = "flex";
-
-    passwordTitle.textContent =
-        "Enter your password to continue";
-
-    passwordError.textContent = "";
-
-}
-
-
-function startNexus() {
-
-    passwordScreen.style.display = "none";
-
-    bootScreen.style.display = "flex";
-
-    let progress = 0;
-
-    const interval = setInterval(() => {
-
-        progress += 5;
-
-        loadingProgress.style.width =
-            progress + "%";
-
-
-        if (progress >= 100) {
-
-            clearInterval(interval);
-
-            setTimeout(() => {
-
-                bootScreen.style.display = "none";
-
-            }, 300);
-
-        }
-
-    }, 50);
-
-}
-
-
-setupPasswordScreen();
-
-
-/* =========================================================
-   WINDOWS
-========================================================= */
-
-let highestZ = 20;
-
-const appNames = {
-
-    notepad: "📝 Notepad",
-    calculator: "🧮 Calculator",
-    files: "📁 Files",
-    paint: "🎨 Paint",
-    game: "🎮 Game",
-    settings: "⚙️ Settings",
-    about: "💻 About"
-
+   FIREBASE CONFIG
+   ========================================================= */
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "dardomamogs.firebaseapp.com",
+  projectId: "dardomamogs",
+  storageBucket: "dardomamogs.firebasestorage.app",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID",
+  measurementId: "G-67XLGPBFNT"
 };
 
 
-function openApp(appId) {
+/* =========================================================
+   FIREBASE INITIALIZATION
+   ========================================================= */
 
-    const app =
-        document.getElementById(appId);
+const firebaseApp = initializeApp(firebaseConfig);
 
-    if (!app) return;
+const auth = getAuth(firebaseApp);
 
-
-    app.style.display = "block";
-
-    highestZ++;
-
-    app.style.zIndex = highestZ;
+const db = getFirestore(firebaseApp);
 
 
-    document.getElementById("startMenu").style.display =
-        "none";
+/* =========================================================
+   GLOBAL STATE
+   ========================================================= */
+
+let currentUser = null;
+let currentProfile = null;
+
+let selectedFile = null;
+
+let calculatorValue = "";
+
+let gameScore = 0;
+let gameRunning = false;
+
+let saveNotesTimer = null;
 
 
-    updateTaskbar();
+/* =========================================================
+   DOM HELPERS
+   ========================================================= */
+
+const $ = id => document.getElementById(id);
+
+const qs = selector => document.querySelector(selector);
+
+const qsa = selector => document.querySelectorAll(selector);
+
+
+/* =========================================================
+   AUTH ERROR TRANSLATION
+   ========================================================= */
+
+function readableAuthError(error) {
+
+  const code = error.code || "";
+
+  const messages = {
+
+    "auth/invalid-email":
+      "That email address is not valid.",
+
+    "auth/user-not-found":
+      "No account was found with that email.",
+
+    "auth/wrong-password":
+      "The password is incorrect.",
+
+    "auth/invalid-credential":
+      "The email or password is incorrect.",
+
+    "auth/email-already-in-use":
+      "An account with this email already exists.",
+
+    "auth/weak-password":
+      "Please choose a stronger password.",
+
+    "auth/too-many-requests":
+      "Too many attempts. Please try again later.",
+
+    "auth/network-request-failed":
+      "Network error. Check your internet connection."
+
+  };
+
+  return messages[code] || error.message || "Something went wrong.";
 
 }
 
 
-function closeApp(appId) {
+/* =========================================================
+   AUTH UI
+   ========================================================= */
 
-    const app =
-        document.getElementById(appId);
+function showLogin() {
 
-    if (!app) return;
+  $("loginPanel").classList.remove("hidden");
+  $("signupPanel").classList.add("hidden");
 
-    app.style.display = "none";
-
-    updateTaskbar();
-
-}
-
-
-function closeAllApps() {
-
-    document.querySelectorAll(".window").forEach(app => {
-
-        app.style.display = "none";
-
-    });
-
-    updateTaskbar();
+  $("loginError").textContent = "";
+  $("signupError").textContent = "";
 
 }
 
 
-function minimizeApp(appId) {
+function showSignup() {
 
-    closeApp(appId);
+  $("loginPanel").classList.add("hidden");
+  $("signupPanel").classList.remove("hidden");
+
+  $("loginError").textContent = "";
+  $("signupError").textContent = "";
 
 }
 
 
-function maximizeApp(appId) {
+/* =========================================================
+   SIGN UP
+   ========================================================= */
 
-    const app =
-        document.getElementById(appId);
+async function signup() {
 
-    if (!app) return;
+  const username = $("signupUsername").value.trim();
+  const email = $("signupEmail").value.trim();
+  const password = $("signupPassword").value;
+  const confirm = $("signupPasswordConfirm").value;
+
+  $("signupError").textContent = "";
+
+  if (!username) {
+    $("signupError").textContent = "Please choose a username.";
+    return;
+  }
+
+  if (username.length < 2) {
+    $("signupError").textContent = "Username must be at least 2 characters.";
+    return;
+  }
+
+  if (!email) {
+    $("signupError").textContent = "Please enter your email.";
+    return;
+  }
+
+  if (password.length < 6) {
+    $("signupError").textContent =
+      "Password must be at least 6 characters.";
+    return;
+  }
+
+  if (password !== confirm) {
+    $("signupError").textContent =
+      "The passwords do not match.";
+    return;
+  }
+
+  $("signupButton").disabled = true;
+  $("signupButton").textContent = "Creating...";
+
+  try {
+
+    const credential =
+      await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+    const user = credential.user;
+
+    const profile = {
+
+      username: username,
+
+      email: user.email,
+
+      createdAt: Date.now(),
+
+      theme: "dark",
+
+      wallpaper: "default",
+
+      notes: "",
+
+      files: {
+
+        "Welcome.txt":
+          "Welcome to NEXUS v1.2!\n\nThis file belongs to your account."
+
+      }
+
+    };
+
+    await setDoc(
+      doc(db, "users", user.uid),
+      profile
+    );
+
+    showNotification(
+      "Account Created",
+      `Welcome to NEXUS, ${username}!`
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("signupError").textContent =
+      readableAuthError(error);
+
+  }
+
+  $("signupButton").disabled = false;
+  $("signupButton").textContent = "🚀 Create Account";
+
+}
 
 
-    if (app.classList.contains("maximized")) {
+/* =========================================================
+   LOGIN
+   ========================================================= */
 
-        app.classList.remove("maximized");
+async function login() {
 
-        app.style.width = "560px";
-        app.style.height = "";
-        app.style.left = "250px";
-        app.style.top = "100px";
+  const email = $("loginEmail").value.trim();
+  const password = $("loginPassword").value;
+
+  $("loginError").textContent = "";
+
+  if (!email || !password) {
+
+    $("loginError").textContent =
+      "Please enter your email and password.";
+
+    return;
+
+  }
+
+  $("loginButton").disabled = true;
+  $("loginButton").textContent = "Logging in...";
+
+  try {
+
+    await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("loginError").textContent =
+      readableAuthError(error);
+
+  }
+
+  $("loginButton").disabled = false;
+  $("loginButton").textContent = "🔐 Login";
+
+}
+
+
+/* =========================================================
+   PASSWORD RESET
+   ========================================================= */
+
+async function resetPassword() {
+
+  const email = prompt(
+    "Enter the email address for your NEXUS account:"
+  );
+
+  if (!email) return;
+
+  try {
+
+    await sendPasswordResetEmail(
+      auth,
+      email.trim()
+    );
+
+    showNotification(
+      "Password Reset",
+      "Check your email for the password reset message."
+    );
+
+  } catch (error) {
+
+    alert(readableAuthError(error));
+
+  }
+
+}
+
+
+/* =========================================================
+   LOGOUT
+   ========================================================= */
+
+async function logout() {
+
+  try {
+
+    await signOut(auth);
+
+  } catch (error) {
+
+    console.error(error);
+
+  }
+
+}
+
+
+/* =========================================================
+   USER PROFILE
+   ========================================================= */
+
+async function loadProfile(user) {
+
+  const profileRef =
+    doc(db, "users", user.uid);
+
+  const profileSnapshot =
+    await getDoc(profileRef);
+
+  if (!profileSnapshot.exists()) {
+
+    const fallbackProfile = {
+
+      username:
+        user.email
+          ? user.email.split("@")[0]
+          : "User",
+
+      email: user.email || "",
+
+      createdAt: Date.now(),
+
+      theme: "dark",
+
+      wallpaper: "default",
+
+      notes: "",
+
+      files: {}
+
+    };
+
+    await setDoc(
+      profileRef,
+      fallbackProfile
+    );
+
+    currentProfile = fallbackProfile;
+
+  } else {
+
+    currentProfile =
+      profileSnapshot.data();
+
+  }
+
+  currentUser = user;
+
+  applyProfile();
+
+}
+
+
+/* =========================================================
+   APPLY PROFILE
+   ========================================================= */
+
+function applyProfile() {
+
+  if (!currentUser || !currentProfile) return;
+
+  const username =
+    currentProfile.username || "User";
+
+  $("settingsUsername").textContent =
+    username;
+
+  $("settingsEmail").textContent =
+    currentUser.email || "";
+
+  $("startUsername").textContent =
+    username;
+
+  $("startEmail").textContent =
+    currentUser.email || "";
+
+  $("notesArea").value =
+    currentProfile.notes || "";
+
+  applyTheme(
+    currentProfile.theme || "dark"
+  );
+
+  applyWallpaper(
+    currentProfile.wallpaper || "default"
+  );
+
+  renderFiles();
+
+}
+
+
+/* =========================================================
+   SAVE USER PROFILE
+   ========================================================= */
+
+async function saveProfile(changes) {
+
+  if (!currentUser) return;
+
+  try {
+
+    await updateDoc(
+      doc(db, "users", currentUser.uid),
+      changes
+    );
+
+    Object.assign(
+      currentProfile,
+      changes
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Could not save profile:",
+      error
+    );
+
+    showNotification(
+      "Save Error",
+      "Your changes could not be saved."
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   NEXUS STARTUP
+   ========================================================= */
+
+async function startNexus() {
+
+  $("authScreen").classList.add("hidden");
+
+  $("loadingScreen").classList.remove("hidden");
+
+  $("loadingText").textContent =
+    "Loading your NEXUS...";
+
+  let progress = 0;
+
+  const loadingInterval =
+    setInterval(() => {
+
+      progress += 10;
+
+      $("loadingProgress").style.width =
+        `${progress}%`;
+
+      if (progress >= 100) {
+
+        clearInterval(loadingInterval);
+
+        $("loadingScreen").classList.add("hidden");
+
+        $("desktop").classList.remove("hidden");
+
+        showNotification(
+          "NEXUS Ready",
+          `Welcome back, ${currentProfile.username}!`
+        );
+
+      }
+
+    }, 60);
+
+}
+
+
+/* =========================================================
+   AUTH STATE
+   ========================================================= */
+
+onAuthStateChanged(
+  auth,
+  async user => {
+
+    if (user) {
+
+      try {
+
+        await loadProfile(user);
+
+        await startNexus();
+
+      } catch (error) {
+
+        console.error(error);
+
+        $("authScreen").classList.remove("hidden");
+
+        alert(
+          "NEXUS could not load your account data."
+        );
+
+      }
 
     } else {
 
-        app.classList.add("maximized");
+      currentUser = null;
+      currentProfile = null;
 
-        app.style.left = "0";
-        app.style.top = "0";
-        app.style.width = "100vw";
-        app.style.height = "calc(100vh - 60px)";
+      $("desktop").classList.add("hidden");
+
+      $("loadingScreen").classList.add("hidden");
+
+      $("authScreen").classList.remove("hidden");
+
+      showLogin();
 
     }
+
+  }
+);
+
+
+/* =========================================================
+   OPEN APP
+   ========================================================= */
+
+function openApp(appName) {
+
+  const windowElement =
+    $(`${appName}Window`);
+
+  if (!windowElement) return;
+
+  qsa(".app-window").forEach(win => {
+
+    win.classList.remove("open");
+
+  });
+
+  windowElement.classList.add("open");
+
+  updateTaskbar();
 
 }
 
 
-document.querySelectorAll(".window").forEach(app => {
+/* =========================================================
+   CLOSE APP
+   ========================================================= */
 
-    app.addEventListener("mousedown", () => {
+function closeApp(windowElement) {
 
-        highestZ++;
+  if (!windowElement) return;
 
-        app.style.zIndex = highestZ;
+  windowElement.classList.remove("open");
 
-    });
+  updateTaskbar();
+
+}
+
+
+/* =========================================================
+   TASKBAR
+   ========================================================= */
+
+function updateTaskbar() {
+
+  const container =
+    $("taskbarApps");
+
+  container.innerHTML = "";
+
+  qsa(".app-window.open").forEach(win => {
+
+    const button =
+      document.createElement("button");
+
+    button.className =
+      "taskbar-app active";
+
+    const title =
+      win.querySelector(".window-header span");
+
+    button.textContent =
+      title
+        ? title.textContent
+        : "App";
+
+    button.onclick = () => {
+
+      win.classList.toggle("hidden");
+
+    };
+
+    container.appendChild(button);
+
+  });
+
+}
+
+
+/* =========================================================
+   WINDOW BUTTONS
+   ========================================================= */
+
+qsa(".close-button").forEach(button => {
+
+  button.addEventListener(
+    "click",
+    () => {
+
+      closeApp(
+        button.closest(".app-window")
+      );
+
+    }
+  );
+
+});
+
+
+qsa(".minimize-button").forEach(button => {
+
+  button.addEventListener(
+    "click",
+    () => {
+
+      const win =
+        button.closest(".app-window");
+
+      win.classList.remove("open");
+
+      updateTaskbar();
+
+    }
+  );
 
 });
 
 
 /* =========================================================
-   TASKBAR
-========================================================= */
+   DESKTOP APP BUTTONS
+   ========================================================= */
 
-function updateTaskbar() {
+qsa("[data-app]").forEach(button => {
 
-    const taskbar =
-        document.getElementById("taskbarApps");
+  button.addEventListener(
+    "click",
+    () => {
 
-    taskbar.innerHTML = "";
+      openApp(
+        button.dataset.app
+      );
 
+      $("startMenu").classList.add("hidden");
 
-    document.querySelectorAll(".window").forEach(app => {
+    }
+  );
 
-        if (app.style.display === "block") {
-
-            const button =
-                document.createElement("button");
-
-            button.className = "taskbar-app";
-
-            button.textContent =
-                appNames[app.id] || app.id;
-
-
-            button.onclick = () => {
-
-                openApp(app.id);
-
-            };
-
-
-            taskbar.appendChild(button);
-
-        }
-
-    });
-
-}
+});
 
 
 /* =========================================================
    START MENU
-========================================================= */
+   ========================================================= */
 
-function toggleStartMenu() {
+$("startButton").addEventListener(
+  "click",
+  () => {
 
-    const menu =
-        document.getElementById("startMenu");
+    $("startMenu").classList.toggle("hidden");
 
-
-    menu.style.display =
-        menu.style.display === "block"
-            ? "none"
-            : "block";
-
-}
-
-
-function searchApps() {
-
-    const search =
-        document.getElementById("appSearch")
-        .value
-        .toLowerCase();
-
-
-    document
-        .querySelectorAll("#appList button")
-        .forEach(button => {
-
-            const text =
-                button.textContent.toLowerCase();
-
-            button.style.display =
-                text.includes(search)
-                    ? "block"
-                    : "none";
-
-        });
-
-}
+  }
+);
 
 
 /* =========================================================
    CLOCK
-========================================================= */
+   ========================================================= */
 
 function updateClock() {
 
-    const now = new Date();
+  const now = new Date();
 
-    let hours =
-        now.getHours()
-        .toString()
-        .padStart(2, "0");
+  let hours =
+    now.getHours();
 
-    let minutes =
-        now.getMinutes()
-        .toString()
-        .padStart(2, "0");
+  let minutes =
+    now.getMinutes();
 
+  hours =
+    String(hours).padStart(2, "0");
 
-    document.getElementById("clock").textContent =
-        `${hours}:${minutes}`;
+  minutes =
+    String(minutes).padStart(2, "0");
 
-
-    document.getElementById("lockTime").textContent =
-        `${hours}:${minutes}`;
-
+  $("clock").textContent =
+    `${hours}:${minutes}`;
 
 }
 
-
-setInterval(updateClock, 1000);
+setInterval(
+  updateClock,
+  1000
+);
 
 updateClock();
 
 
 /* =========================================================
    NOTEPAD
-========================================================= */
+   ========================================================= */
 
-const notes =
-    document.getElementById("notes");
+$("notesArea").addEventListener(
+  "input",
+  () => {
 
+    $("notesStatus").textContent =
+      "Saving...";
 
-notes.value =
-    localStorage.getItem("nexus_notes") || "";
-
-
-function updateNoteCount() {
-
-    document.getElementById("noteCount").textContent =
-        `${notes.value.length} characters`;
-
-}
-
-
-notes.addEventListener("input", () => {
-
-    localStorage.setItem(
-        "nexus_notes",
-        notes.value
+    clearTimeout(
+      saveNotesTimer
     );
 
-    updateNoteCount();
+    saveNotesTimer =
+      setTimeout(
+        async () => {
 
-});
+          await saveProfile({
+            notes:
+              $("notesArea").value
+          });
+
+          $("notesStatus").textContent =
+            "Saved";
+
+        },
+        700
+      );
+
+  }
+);
 
 
-function clearNotes() {
+$("clearNotesButton").addEventListener(
+  "click",
+  async () => {
 
-    notes.value = "";
+    $("notesArea").value = "";
 
-    localStorage.removeItem("nexus_notes");
+    await saveProfile({
+      notes: ""
+    });
 
-    updateNoteCount();
+    $("notesStatus").textContent =
+      "Saved";
 
-}
-
-
-updateNoteCount();
+  }
+);
 
 
 /* =========================================================
    CALCULATOR
-========================================================= */
+   ========================================================= */
 
-let calculatorExpression = "";
+qsa("[data-calc]").forEach(button => {
 
-const calcDisplay =
-    document.getElementById("calcDisplay");
+  button.addEventListener(
+    "click",
+    () => {
 
+      const value =
+        button.dataset.calc;
 
-function calc(value) {
+      if (value === "clear") {
 
-    calculatorExpression += value;
+        calculatorValue = "";
 
-    calcDisplay.value =
-        calculatorExpression;
+      } else if (value === "backspace") {
 
-}
+        calculatorValue =
+          calculatorValue.slice(0, -1);
 
+      } else if (value === "=") {
 
-function clearCalc() {
+        try {
 
-    calculatorExpression = "";
-
-    calcDisplay.value = "";
-
-}
-
-
-function deleteCalc() {
-
-    calculatorExpression =
-        calculatorExpression.slice(0, -1);
-
-    calcDisplay.value =
-        calculatorExpression;
-
-}
-
-
-function calculate() {
-
-    if (!calculatorExpression) return;
-
-
-    try {
-
-        if (
-            !/^[0-9+\-*/%.() ]+$/
-            .test(calculatorExpression)
-        ) {
+          if (
+            !/^[0-9+\-*/().\s]+$/
+              .test(calculatorValue)
+          ) {
 
             throw new Error();
 
-        }
+          }
 
+          calculatorValue =
+            String(
+              Function(
+                `"use strict"; return (${calculatorValue})`
+              )()
+            );
 
-        const result =
-            Function(
-                `"use strict"; return (${calculatorExpression})`
-            )();
+        } catch {
 
-
-        calculatorExpression =
-            String(result);
-
-        calcDisplay.value =
-            calculatorExpression;
-
-    } catch {
-
-        calculatorExpression = "";
-
-        calcDisplay.value = "Error";
-
-    }
-
-}
-
-
-document.addEventListener("keydown", event => {
-
-    if (
-        document.activeElement.tagName === "INPUT" ||
-        document.activeElement.tagName === "TEXTAREA"
-    ) return;
-
-
-    if ("0123456789+-*/.%".includes(event.key)) {
-
-        calc(event.key);
-
-    }
-
-
-    if (event.key === "Enter") {
-
-        calculate();
-
-    }
-
-
-    if (event.key === "Escape") {
-
-        clearCalc();
-
-    }
-
-});
-
-
-/* =========================================================
-   PAINT
-========================================================= */
-
-const canvas =
-    document.getElementById("paintCanvas");
-
-const ctx =
-    canvas.getContext("2d");
-
-
-let painting = false;
-
-
-function getCanvasPosition(event) {
-
-    const rect =
-        canvas.getBoundingClientRect();
-
-
-    return {
-
-        x:
-            (event.clientX - rect.left)
-            * (canvas.width / rect.width),
-
-        y:
-            (event.clientY - rect.top)
-            * (canvas.height / rect.height)
-
-    };
-
-}
-
-
-canvas.addEventListener("mousedown", event => {
-
-    painting = true;
-
-    const position =
-        getCanvasPosition(event);
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-        position.x,
-        position.y
-    );
-
-});
-
-
-canvas.addEventListener("mousemove", event => {
-
-    if (!painting) return;
-
-
-    const position =
-        getCanvasPosition(event);
-
-
-    ctx.lineWidth =
-        document.getElementById("brushSize").value;
-
-
-    ctx.lineCap = "round";
-
-
-    ctx.strokeStyle =
-        document.getElementById("paintColor").value;
-
-
-    ctx.lineTo(
-        position.x,
-        position.y
-    );
-
-    ctx.stroke();
-
-});
-
-
-document.addEventListener("mouseup", () => {
-
-    painting = false;
-
-});
-
-
-function clearCanvas() {
-
-    ctx.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-}
-
-
-/* =========================================================
-   GAME
-========================================================= */
-
-let score = 0;
-let gameTime = 30;
-let gameRunning = false;
-let gameTimer = null;
-
-
-function startGame() {
-
-    score = 0;
-
-    gameTime = 30;
-
-    gameRunning = true;
-
-
-    document.getElementById("score").textContent =
-        score;
-
-    document.getElementById("gameTime").textContent =
-        gameTime;
-
-
-    clearInterval(gameTimer);
-
-
-    moveTarget();
-
-
-    gameTimer = setInterval(() => {
-
-        gameTime--;
-
-        document.getElementById("gameTime").textContent =
-            gameTime;
-
-
-        if (gameTime <= 0) {
-
-            endGame();
+          calculatorValue = "Error";
 
         }
 
-    }, 1000);
+      } else {
 
-}
+        if (calculatorValue === "Error") {
+          calculatorValue = "";
+        }
 
+        calculatorValue += value;
 
-function hitTarget() {
+      }
 
-    if (!gameRunning) return;
+      $("calculatorDisplay").value =
+        calculatorValue;
 
-    score++;
+    }
+  );
 
-    document.getElementById("score").textContent =
-        score;
-
-    moveTarget();
-
-}
-
-
-function moveTarget() {
-
-    const board =
-        document.getElementById("gameBoard");
-
-    const target =
-        document.getElementById("gameTarget");
-
-
-    const maxX =
-        board.clientWidth - target.offsetWidth;
-
-    const maxY =
-        board.clientHeight - target.offsetHeight;
-
-
-    target.style.left =
-        Math.max(
-            0,
-            Math.random() * maxX
-        ) + "px";
-
-
-    target.style.top =
-        Math.max(
-            0,
-            Math.random() * maxY
-        ) + "px";
-
-
-    target.style.transform =
-        "none";
-
-}
-
-
-function endGame() {
-
-    gameRunning = false;
-
-    clearInterval(gameTimer);
-
-
-    showNotification(
-        "Game Over",
-        `Your score was ${score}!`,
-        "🎮"
-    );
-
-}
+});
 
 
 /* =========================================================
    FILE MANAGER
-========================================================= */
-
-let userFiles =
-    JSON.parse(
-        localStorage.getItem("nexus_files") || "[]"
-    );
-
+   ========================================================= */
 
 function renderFiles() {
 
-    const area =
-        document.getElementById("fileArea");
+  const list =
+    $("fileList");
 
+  list.innerHTML = "";
 
-    area.innerHTML = "";
+  const files =
+    currentProfile?.files || {};
 
+  Object.keys(files).forEach(filename => {
 
-    const defaultFiles = [
+    const item =
+      document.createElement("div");
 
-        {
-            name: "My Notes.txt",
-            icon: "📄"
-        },
+    item.className =
+      "file-item";
 
-        {
-            name: "My Drawing.png",
-            icon: "🎨"
-        },
+    item.textContent =
+      `📄 ${filename}`;
 
-        {
-            name: "Game Data",
-            icon: "🎮"
-        }
+    item.addEventListener(
+      "click",
+      () => {
 
-    ];
+        selectedFile =
+          filename;
 
+        $("fileEditor").value =
+          files[filename];
 
-    [...defaultFiles, ...userFiles]
-        .forEach(file => {
+        qsa(".file-item").forEach(
+          element =>
+            element.classList.remove("selected")
+        );
 
-            const element =
-                document.createElement("div");
+        item.classList.add("selected");
 
-            element.className = "fake-file";
+      }
+    );
 
+    list.appendChild(item);
 
-            const icon =
-                document.createElement("div");
-
-            icon.className = "fake-file-icon";
-
-            icon.textContent =
-                file.icon || "📄";
-
-
-            const name =
-                document.createElement("span");
-
-            name.textContent =
-                file.name;
-
-
-            element.appendChild(icon);
-
-            element.appendChild(name);
-
-            area.appendChild(element);
-
-        });
+  });
 
 }
 
 
-function createFile() {
+$("newFileButton").addEventListener(
+  "click",
+  async () => {
 
-    const name =
-        prompt("Enter a file name:");
+    const filename =
+      prompt(
+        "Enter a name for the new file:"
+      );
 
-    if (!name) return;
+    if (!filename) return;
 
+    const cleanName =
+      filename.trim();
 
-    userFiles.push({
+    if (!cleanName) return;
 
-        name: name,
+    if (!currentProfile.files) {
+      currentProfile.files = {};
+    }
 
-        icon: "📄"
+    currentProfile.files[cleanName] = "";
 
+    selectedFile =
+      cleanName;
+
+    $("fileEditor").value = "";
+
+    await saveProfile({
+      files:
+        currentProfile.files
     });
 
-
-    localStorage.setItem(
-        "nexus_files",
-        JSON.stringify(userFiles)
-    );
-
-
-    renderFiles();
-
-
-    showNotification(
-        "File Manager",
-        `${name} was created.`,
-        "📄"
-    );
-
-}
-
-
-function refreshFiles() {
-
     renderFiles();
 
     showNotification(
-        "File Manager",
-        "Files refreshed.",
-        "🔄"
+      "File Created",
+      cleanName
     );
 
-}
+  }
+);
 
 
-renderFiles();
+$("saveFileButton").addEventListener(
+  "click",
+  async () => {
+
+    if (!selectedFile) {
+
+      showNotification(
+        "No File Selected",
+        "Choose a file first."
+      );
+
+      return;
+
+    }
+
+    currentProfile.files[selectedFile] =
+      $("fileEditor").value;
+
+    await saveProfile({
+      files:
+        currentProfile.files
+    });
+
+    showNotification(
+      "File Saved",
+      selectedFile
+    );
+
+  }
+);
+
+
+$("deleteFileButton").addEventListener(
+  "click",
+  async () => {
+
+    if (!selectedFile) {
+
+      showNotification(
+        "No File Selected",
+        "Choose a file first."
+      );
+
+      return;
+
+    }
+
+    const confirmed =
+      confirm(
+        `Delete "${selectedFile}"?`
+      );
+
+    if (!confirmed) return;
+
+    delete currentProfile.files[
+      selectedFile
+    ];
+
+    await saveProfile({
+      files:
+        currentProfile.files
+    });
+
+    selectedFile = null;
+
+    $("fileEditor").value = "";
+
+    renderFiles();
+
+    showNotification(
+      "File Deleted",
+      "The file was removed."
+    );
+
+  }
+);
 
 
 /* =========================================================
-   USERNAME
-========================================================= */
+   PAINT
+   ========================================================= */
 
-function loadUsername() {
+const canvas =
+  $("paintCanvas");
 
-    const username =
-        localStorage.getItem("nexus_username") ||
-        "User";
+const ctx =
+  canvas.getContext("2d");
 
+let drawing = false;
 
-    document.getElementById("usernameInput").value =
-        username;
+function canvasPosition(event) {
 
+  const rect =
+    canvas.getBoundingClientRect();
 
-    document.getElementById("startUsername").textContent =
-        username;
+  return {
 
+    x:
+      (event.clientX - rect.left)
+      * (canvas.width / rect.width),
 
-    document.getElementById("taskbarUsername").textContent =
-        username;
+    y:
+      (event.clientY - rect.top)
+      * (canvas.height / rect.height)
+
+  };
 
 }
 
 
-function saveUsername() {
+canvas.addEventListener(
+  "pointerdown",
+  event => {
 
-    const input =
-        document.getElementById("usernameInput");
+    drawing = true;
 
-    const username =
-        input.value.trim();
+    const pos =
+      canvasPosition(event);
 
+    ctx.beginPath();
 
-    if (!username) return;
-
-
-    localStorage.setItem(
-        "nexus_username",
-        username
+    ctx.moveTo(
+      pos.x,
+      pos.y
     );
 
+  }
+);
 
-    loadUsername();
 
+canvas.addEventListener(
+  "pointermove",
+  event => {
+
+    if (!drawing) return;
+
+    const pos =
+      canvasPosition(event);
+
+    ctx.lineWidth =
+      Number(
+        $("brushSize").value
+      );
+
+    ctx.lineCap =
+      "round";
+
+    ctx.strokeStyle =
+      "#000000";
+
+    ctx.lineTo(
+      pos.x,
+      pos.y
+    );
+
+    ctx.stroke();
+
+  }
+);
+
+
+canvas.addEventListener(
+  "pointerup",
+  () => {
+
+    drawing = false;
+
+  }
+);
+
+
+canvas.addEventListener(
+  "pointerleave",
+  () => {
+
+    drawing = false;
+
+  }
+);
+
+
+$("clearCanvasButton").addEventListener(
+  "click",
+  () => {
+
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+  }
+);
+
+
+$("saveDrawingButton").addEventListener(
+  "click",
+  () => {
+
+    const image =
+      canvas.toDataURL("image/png");
+
+    const link =
+      document.createElement("a");
+
+    link.href =
+      image;
+
+    link.download =
+      "nexus-drawing.png";
+
+    link.click();
+
+  }
+);
+
+
+/* =========================================================
+   GAME
+   ========================================================= */
+
+function moveGameTarget() {
+
+  const area =
+    $("gameArea");
+
+  const target =
+    $("gameTarget");
+
+  const maxX =
+    area.clientWidth -
+    target.offsetWidth;
+
+  const maxY =
+    area.clientHeight -
+    target.offsetHeight;
+
+  target.style.left =
+    `${Math.random() * maxX}px`;
+
+  target.style.top =
+    `${Math.random() * maxY}px`;
+
+}
+
+
+$("gameTarget").addEventListener(
+  "click",
+  () => {
+
+    if (!gameRunning) return;
+
+    gameScore++;
+
+    $("gameScore").textContent =
+      gameScore;
+
+    moveGameTarget();
+
+  }
+);
+
+
+$("startGameButton").addEventListener(
+  "click",
+  () => {
+
+    gameScore = 0;
+
+    gameRunning = true;
+
+    $("gameScore").textContent =
+      "0";
+
+    $("gameTarget").style.display =
+      "block";
+
+    moveGameTarget();
 
     showNotification(
-        "Profile",
-        `Welcome, ${username}!`,
-        "👤"
+      "Game Started",
+      "Catch the N!"
     );
 
-}
-
-
-loadUsername();
+  }
+);
 
 
 /* =========================================================
    THEME
-========================================================= */
+   ========================================================= */
 
-function toggleTheme() {
+async function applyTheme(theme) {
 
-    document.body.classList.toggle("light");
+  if (theme === "light") {
 
-
-    localStorage.setItem(
-        "nexus_theme",
-        document.body.classList.contains("light")
-            ? "light"
-            : "dark"
+    document.body.classList.add(
+      "light-theme"
     );
 
+  } else {
+
+    document.body.classList.remove(
+      "light-theme"
+    );
+
+  }
+
 }
 
 
-if (
-    localStorage.getItem("nexus_theme") === "light"
-) {
+$("darkThemeButton").addEventListener(
+  "click",
+  async () => {
 
-    document.body.classList.add("light");
+    applyTheme("dark");
 
-}
+    await saveProfile({
+      theme: "dark"
+    });
+
+  }
+);
+
+
+$("lightThemeButton").addEventListener(
+  "click",
+  async () => {
+
+    applyTheme("light");
+
+    await saveProfile({
+      theme: "light"
+    });
+
+  }
+);
 
 
 /* =========================================================
    WALLPAPERS
-========================================================= */
+   ========================================================= */
 
-const wallpapers = [
+async function applyWallpaper(name) {
 
-    `
-    radial-gradient(circle at 30% 20%, #5531a8, transparent 35%),
-    radial-gradient(circle at 80% 70%, #1c64b8, transparent 35%),
-    linear-gradient(135deg,#090014,#071b32)
-    `,
+  const wallpaper =
+    $("wallpaper");
 
-    `
-    radial-gradient(circle at 20% 30%, #be185d, transparent 35%),
-    radial-gradient(circle at 80% 70%, #7c3aed, transparent 35%),
-    linear-gradient(135deg,#160016,#090014)
-    `,
+  wallpaper.className =
+    "wallpaper";
 
-    `
-    radial-gradient(circle at 70% 20%, #0369a1, transparent 35%),
-    radial-gradient(circle at 20% 80%, #0f766e, transparent 35%),
-    linear-gradient(135deg,#00111c,#001f2b)
-    `,
+  if (name !== "default") {
 
-    `
-    radial-gradient(circle at 50% 50%, #4c1d95, transparent 40%),
-    linear-gradient(135deg,#050008,#18002e)
-    `
-
-];
-
-
-let wallpaperIndex =
-    Number(
-        localStorage.getItem("nexus_wallpaper") || 0
+    wallpaper.classList.add(
+      name
     );
 
-
-function applyWallpaper() {
-
-    document.getElementById("desktop").style.background =
-        wallpapers[wallpaperIndex];
+  }
 
 }
 
 
-function changeWallpaper() {
+qsa("[data-wallpaper]").forEach(
+  button => {
 
-    wallpaperIndex++;
+    button.addEventListener(
+      "click",
+      async () => {
 
-    if (wallpaperIndex >= wallpapers.length) {
+        const wallpaper =
+          button.dataset.wallpaper;
 
-        wallpaperIndex = 0;
+        applyWallpaper(
+          wallpaper
+        );
+
+        await saveProfile({
+          wallpaper:
+            wallpaper
+        });
+
+      }
+    );
+
+  }
+);
+
+
+/* =========================================================
+   CHANGE PASSWORD
+   ========================================================= */
+
+$("changePasswordButton").addEventListener(
+  "click",
+  async () => {
+
+    if (!currentUser) return;
+
+    const oldPassword =
+      prompt(
+        "Enter your current password:"
+      );
+
+    if (!oldPassword) return;
+
+    const newPassword =
+      prompt(
+        "Enter your new password:"
+      );
+
+    if (!newPassword) return;
+
+    if (newPassword.length < 6) {
+
+      alert(
+        "Your new password must be at least 6 characters."
+      );
+
+      return;
 
     }
 
+    try {
 
-    localStorage.setItem(
-        "nexus_wallpaper",
-        wallpaperIndex
-    );
+      const credential =
+        EmailAuthProvider.credential(
+          currentUser.email,
+          oldPassword
+        );
+
+      await reauthenticateWithCredential(
+        currentUser,
+        credential
+      );
+
+      await updatePassword(
+        currentUser,
+        newPassword
+      );
+
+      showNotification(
+        "Password Changed",
+        "Your password was successfully changed."
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        readableAuthError(error)
+      );
+
+    }
+
+  }
+);
 
 
-    applyWallpaper();
+/* =========================================================
+   LOGOUT BUTTONS
+   ========================================================= */
 
-}
+$("logoutButton").addEventListener(
+  "click",
+  logout
+);
 
-
-applyWallpaper();
+$("startLogoutButton").addEventListener(
+  "click",
+  logout
+);
 
 
 /* =========================================================
    NOTIFICATIONS
-========================================================= */
+   ========================================================= */
 
-let notificationTimer;
-
+let notificationTimer = null;
 
 function showNotification(
-    title,
-    message,
-    icon = "🔔"
+  title,
+  message
 ) {
 
-    const notification =
-        document.getElementById("notification");
+  $("notificationTitle").textContent =
+    title;
 
+  $("notificationMessage").textContent =
+    message;
 
-    document.getElementById("notificationTitle").textContent =
-        title;
+  $("notification").classList.remove(
+    "hidden"
+  );
 
+  clearTimeout(
+    notificationTimer
+  );
 
-    document.getElementById("notificationMessage").textContent =
-        message;
+  notificationTimer =
+    setTimeout(
+      () => {
 
+        $("notification").classList.add(
+          "hidden"
+        );
 
-    document.getElementById("notificationIcon").textContent =
-        icon;
-
-
-    notification.style.display =
-        "flex";
-
-
-    clearTimeout(notificationTimer);
-
-
-    notificationTimer =
-        setTimeout(() => {
-
-            hideNotification();
-
-        }, 4000);
-
-}
-
-
-function hideNotification() {
-
-    document.getElementById("notification").style.display =
-        "none";
-
-}
-
-
-function testNotification() {
-
-    showNotification(
-        "NEXUS",
-        "Everything is working!",
-        "🟣"
+      },
+      3500
     );
 
 }
 
 
 /* =========================================================
-   FINISH
-========================================================= */
+   LOGIN / SIGNUP BUTTONS
+   ========================================================= */
+
+$("loginButton").addEventListener(
+  "click",
+  login
+);
+
+$("signupButton").addEventListener(
+  "click",
+  signup
+);
+
+$("showSignupButton").addEventListener(
+  "click",
+  showSignup
+);
+
+$("showLoginButton").addEventListener(
+  "click",
+  showLogin
+);
+
+$("forgotPasswordButton").addEventListener(
+  "click",
+  resetPassword
+);
+
+
+/* =========================================================
+   ENTER KEY LOGIN
+   ========================================================= */
+
+$("loginPassword").addEventListener(
+  "keydown",
+  event => {
+
+    if (event.key === "Enter") {
+      login();
+    }
+
+  }
+);
+
+
+$("signupPasswordConfirm").addEventListener(
+  "keydown",
+  event => {
+
+    if (event.key === "Enter") {
+      signup();
+    }
+
+  }
+);
+
+
+/* =========================================================
+   PREVENT CONTEXT MENU ON PAINT
+   ========================================================= */
+
+canvas.addEventListener(
+  "contextmenu",
+  event => event.preventDefault()
+);
+
+
+/* =========================================================
+   INITIAL STATE
+   ========================================================= */
 
 console.log(
-    "NEXUS OS v1.1 loaded successfully."
+  "NEXUS v1.2 loaded."
+);
+
+console.log(
+  "Firebase multi-user system initialized."
 );
