@@ -1,916 +1,1033 @@
+/* =========================================================
+   NEXUS v1.2
+   STYLE
+   ========================================================= */
+
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 body {
-    overflow: hidden;
-    background: #09090f;
-    color: white;
+  background: #080812;
+  color: white;
 }
 
 
-/* ================= PASSWORD SCREEN ================= */
+/* =========================================================
+   GENERAL
+   ========================================================= */
 
-#passwordScreen {
-    position: fixed;
-    inset: 0;
-    background:
-        radial-gradient(circle at 30% 30%, #5531a8, transparent 35%),
-        radial-gradient(circle at 75% 70%, #1c64b8, transparent 35%),
-        linear-gradient(135deg, #050008, #071b32);
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    z-index: 10000;
+button,
+input,
+textarea {
+  font-family: inherit;
 }
 
-.password-box {
-    width: 360px;
-    padding: 35px;
-
-    background: rgba(20, 20, 30, 0.92);
-
-    border: 1px solid rgba(255,255,255,.15);
-
-    border-radius: 20px;
-
-    text-align: center;
-
-    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+button {
+  cursor: pointer;
 }
 
-.password-logo {
-    font-size: 60px;
-    margin-bottom: 10px;
-}
-
-.password-box h1 {
-    letter-spacing: 5px;
-    margin-bottom: 8px;
-}
-
-.password-box > p {
-    color: #aaa;
-    margin-bottom: 20px;
-}
-
-#passwordSetup,
-#passwordLogin {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-#passwordLogin {
-    display: none;
-}
-
-.password-box input {
-    width: 100%;
-    padding: 13px;
-
-    border: 1px solid #444;
-    border-radius: 10px;
-
-    outline: none;
-
-    background: #101018;
-    color: white;
-}
-
-.password-box button {
-    padding: 13px;
-
-    border: none;
-    border-radius: 10px;
-
-    background: #7c3aed;
-    color: white;
-
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.password-box button:hover {
-    background: #8b5cf6;
-}
-
-#passwordError {
-    min-height: 20px;
-    margin-top: 12px;
-    color: #ff7070;
+.hidden {
+  display: none !important;
 }
 
 
-/* ================= BOOT ================= */
+/* =========================================================
+   SCREENS
+   ========================================================= */
 
-#bootScreen {
-    position: fixed;
-    inset: 0;
-
-    background: #090909;
-
-    display: none;
-    flex-direction: column;
-
-    justify-content: center;
-    align-items: center;
-
-    z-index: 9999;
+.screen {
+  position: fixed;
+  inset: 0;
 }
 
-.boot-logo {
-    font-size: 60px;
-    font-weight: bold;
-    letter-spacing: 8px;
 
-    margin-bottom: 30px;
+/* =========================================================
+   AUTH SCREEN
+   ========================================================= */
+
+.auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background:
+    radial-gradient(circle at top left, #693cff55, transparent 35%),
+    radial-gradient(circle at bottom right, #00b7ff33, transparent 35%),
+    #070712;
 }
 
-.loading-bar {
-    width: 280px;
-    height: 8px;
+.auth-box {
+  width: min(420px, 92vw);
+  padding: 38px;
 
-    background: #333;
+  border-radius: 24px;
 
-    border-radius: 20px;
+  background: rgba(20, 20, 38, 0.9);
+  border: 1px solid rgba(255,255,255,0.12);
 
-    overflow: hidden;
+  box-shadow:
+    0 30px 100px rgba(0,0,0,0.55),
+    0 0 60px rgba(105,60,255,0.15);
+
+  text-align: center;
+}
+
+.nexus-logo,
+.loading-logo,
+.about-logo {
+  width: 80px;
+  height: 80px;
+
+  margin: 0 auto 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 22px;
+
+  font-size: 48px;
+  font-weight: 900;
+
+  background: linear-gradient(135deg, #8d5cff, #00c6ff);
+
+  box-shadow: 0 0 40px rgba(100,100,255,0.35);
+}
+
+.auth-box h1 {
+  font-size: 38px;
+  letter-spacing: 5px;
+}
+
+.auth-subtitle {
+  color: #aaaac5;
+  margin: 8px 0 28px;
+}
+
+.auth-box h2 {
+  margin-bottom: 20px;
+}
+
+.auth-box input {
+  width: 100%;
+  padding: 14px 16px;
+
+  margin-bottom: 12px;
+
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+
+  background: rgba(255,255,255,0.06);
+  color: white;
+
+  outline: none;
+}
+
+.auth-box input:focus {
+  border-color: #8d5cff;
+  box-shadow: 0 0 15px rgba(141,92,255,0.2);
+}
+
+.primary-button {
+  width: 100%;
+  padding: 14px;
+
+  border: none;
+  border-radius: 12px;
+
+  color: white;
+  font-weight: bold;
+
+  background: linear-gradient(135deg, #7955ff, #00aeea);
+
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.primary-button:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+
+.text-button,
+.link-button {
+  border: none;
+  background: none;
+  color: #8d78ff;
+  margin-top: 12px;
+}
+
+.link-button {
+  margin-top: 0;
+}
+
+.auth-box p {
+  color: #aaaac5;
+  margin-top: 20px;
+}
+
+.auth-error {
+  min-height: 20px;
+  margin-top: 15px;
+  color: #ff7c91;
+  font-size: 14px;
+}
+
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #080812;
+}
+
+.loading-content {
+  text-align: center;
+}
+
+.loading-content h1 {
+  letter-spacing: 8px;
+  margin-bottom: 10px;
+}
+
+.loading-content p {
+  color: #aaaac5;
+}
+
+.progress-container {
+  width: 300px;
+  height: 7px;
+
+  margin-top: 25px;
+
+  overflow: hidden;
+  border-radius: 20px;
+
+  background: #202033;
 }
 
 #loadingProgress {
-    width: 0%;
-    height: 100%;
+  width: 0;
+  height: 100%;
 
-    background: #8b5cf6;
+  background: linear-gradient(90deg, #8d5cff, #00c6ff);
+
+  transition: width 0.2s;
 }
 
 
-/* ================= DESKTOP ================= */
+/* =========================================================
+   DESKTOP
+   ========================================================= */
 
-#desktop {
-    position: fixed;
-    inset: 0;
+.desktop {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
 
-    background:
-        radial-gradient(circle at 30% 20%, #5531a8, transparent 35%),
-        radial-gradient(circle at 80% 70%, #1c64b8, transparent 35%),
-        linear-gradient(135deg, #090014, #071b32);
+.wallpaper {
+  position: absolute;
+  inset: 0;
+
+  background:
+    radial-gradient(circle at 20% 20%, #7b4dff55, transparent 30%),
+    radial-gradient(circle at 80% 70%, #00bfff44, transparent 30%),
+    linear-gradient(135deg, #0b0920, #17102e);
+
+  transition: 0.3s;
+}
+
+.wallpaper.blue {
+  background:
+    radial-gradient(circle at 20% 20%, #00aaff66, transparent 30%),
+    linear-gradient(135deg, #07152a, #082e4c);
+}
+
+.wallpaper.green {
+  background:
+    radial-gradient(circle at 80% 20%, #00ff9966, transparent 30%),
+    linear-gradient(135deg, #071d18, #073b2e);
+}
+
+.wallpaper.sunset {
+  background:
+    radial-gradient(circle at 30% 20%, #ff7b5566, transparent 30%),
+    linear-gradient(135deg, #29101b, #4b1d12);
 }
 
 
-/* ================= DESKTOP ICONS ================= */
+/* =========================================================
+   DESKTOP ICONS
+   ========================================================= */
 
 .desktop-icons {
-    display: flex;
-    flex-direction: column;
+  position: relative;
+  z-index: 2;
 
-    gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, 90px);
 
-    padding: 18px;
+  gap: 20px;
 
-    width: 120px;
+  padding: 25px;
 }
 
 .desktop-icon {
-    border: none;
-    background: transparent;
+  width: 80px;
 
-    color: white;
+  border: none;
+  background: transparent;
 
-    padding: 8px;
+  color: white;
 
-    border-radius: 10px;
+  text-shadow: 0 2px 4px black;
 
-    cursor: pointer;
+  padding: 8px;
+  border-radius: 12px;
 
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-
-    gap: 5px;
+  transition: background 0.15s;
 }
 
 .desktop-icon:hover {
-    background: rgba(255,255,255,.12);
+  background: rgba(255,255,255,0.12);
 }
 
 .desktop-icon span {
-    font-size: 38px;
+  display: block;
+  font-size: 34px;
+  margin-bottom: 7px;
 }
 
 .desktop-icon label {
-    font-size: 12px;
+  font-size: 12px;
 }
 
 
-/* ================= WINDOWS ================= */
+/* =========================================================
+   WINDOWS
+   ========================================================= */
 
-.window {
-    position: absolute;
+.app-window {
+  position: absolute;
 
-    width: 560px;
-    min-height: 300px;
+  z-index: 10;
 
-    top: 100px;
-    left: 250px;
+  width: 650px;
+  max-width: calc(100vw - 30px);
 
-    background: rgba(25,25,35,.97);
+  height: 480px;
+  max-height: calc(100vh - 90px);
 
-    border: 1px solid rgba(255,255,255,.15);
+  left: 50%;
+  top: 50%;
 
-    border-radius: 14px;
+  transform: translate(-50%, -50%);
 
-    box-shadow: 0 25px 70px rgba(0,0,0,.55);
+  display: none;
 
-    display: none;
+  border-radius: 16px;
 
-    overflow: hidden;
+  overflow: hidden;
+
+  background: rgba(20,20,35,0.96);
+
+  border: 1px solid rgba(255,255,255,0.12);
+
+  box-shadow:
+    0 25px 80px rgba(0,0,0,0.5),
+    0 0 40px rgba(80,70,255,0.08);
 }
+
+.app-window.open {
+  display: block;
+}
+
+.app-window.maximized {
+  inset: 20px;
+  width: auto;
+  height: auto;
+  transform: none;
+}
+
+
+/* =========================================================
+   WINDOW HEADER
+   ========================================================= */
 
 .window-header {
-    height: 48px;
+  height: 48px;
 
-    padding: 0 12px 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  padding: 0 15px;
 
-    background: rgba(255,255,255,.08);
+  background: rgba(255,255,255,0.06);
 
-    cursor: grab;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+
+  font-weight: bold;
 }
 
-.window-header:active {
-    cursor: grabbing;
+.window-button {
+  width: 32px;
+  height: 30px;
+
+  border: none;
+  border-radius: 7px;
+
+  background: rgba(255,255,255,0.08);
+  color: white;
+
+  font-size: 18px;
 }
 
-.window-buttons {
-    display: flex;
-    gap: 4px;
+.window-button:hover {
+  background: rgba(255,255,255,0.18);
 }
 
-.window-buttons button {
-    width: 32px;
-    height: 30px;
+.window-body {
+  height: calc(100% - 48px);
+  padding: 18px;
 
-    border: none;
-    border-radius: 7px;
-
-    background: transparent;
-    color: white;
-
-    cursor: pointer;
-}
-
-.window-buttons button:hover {
-    background: rgba(255,255,255,.12);
-}
-
-.window-content {
-    padding: 18px;
+  overflow: auto;
 }
 
 
-/* ================= NOTEPAD ================= */
+/* =========================================================
+   NOTEPAD
+   ========================================================= */
 
-.notepad-content {
-    padding: 0;
+.notepad-body {
+  display: flex;
+  flex-direction: column;
 }
 
-#notes {
-    width: 100%;
-    height: 350px;
+#notesArea {
+  flex: 1;
 
-    border: none;
-    outline: none;
+  width: 100%;
 
-    resize: none;
+  resize: none;
 
-    padding: 18px;
+  border: none;
+  outline: none;
 
-    background: #15151d;
-    color: white;
+  border-radius: 10px;
 
-    font-size: 16px;
+  padding: 15px;
+
+  background: rgba(0,0,0,0.22);
+  color: white;
+
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-.notepad-footer {
-    height: 42px;
+.app-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 
-    padding: 0 12px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    background: #101018;
+  margin-top: 10px;
 }
 
-.notepad-footer button {
-    border: none;
-    border-radius: 7px;
+.app-footer button {
+  padding: 8px 15px;
 
-    padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
 
-    cursor: pointer;
-}
-
-
-/* ================= CALCULATOR ================= */
-
-#calcDisplay {
-    width: 100%;
-    height: 55px;
-
-    border: none;
-    border-radius: 10px;
-
-    background: #09090d;
-    color: white;
-
-    font-size: 25px;
-
-    text-align: right;
-
-    padding: 10px;
-
-    margin-bottom: 12px;
-}
-
-.calculator-buttons {
-    display: grid;
-
-    grid-template-columns: repeat(4, 1fr);
-
-    gap: 8px;
-}
-
-.calculator-buttons button {
-    padding: 15px;
-
-    border: none;
-    border-radius: 9px;
-
-    background: #29293a;
-    color: white;
-
-    font-size: 17px;
-
-    cursor: pointer;
-}
-
-.calculator-buttons button:hover {
-    background: #41415b;
-}
-
-.zero-button {
-    grid-column: span 2;
-}
-
-.equals-button {
-    background: #7c3aed !important;
+  background: #33334d;
+  color: white;
 }
 
 
-/* ================= FILE MANAGER ================= */
+/* =========================================================
+   CALCULATOR
+   ========================================================= */
+
+.calculator-body {
+  max-width: 420px;
+  margin: auto;
+}
+
+#calculatorDisplay {
+  width: 100%;
+
+  padding: 18px;
+
+  margin-bottom: 15px;
+
+  border: none;
+  border-radius: 12px;
+
+  background: #080812;
+  color: white;
+
+  font-size: 25px;
+  text-align: right;
+}
+
+.calculator-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+
+  gap: 8px;
+}
+
+.calculator-grid button {
+  min-height: 55px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #2a2941;
+  color: white;
+
+  font-size: 18px;
+}
+
+.calculator-grid button:hover {
+  background: #3a3858;
+}
+
+.calculator-grid .equals {
+  grid-row: span 2;
+
+  background: linear-gradient(135deg, #7655ff, #00aeea);
+}
+
+.calculator-grid .zero {
+  grid-column: span 2;
+}
+
+
+/* =========================================================
+   FILE MANAGER
+   ========================================================= */
 
 .file-toolbar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+
+  margin-bottom: 12px;
 }
 
-.file-toolbar button {
-    padding: 9px 13px;
+.file-toolbar button,
+.settings-body button,
+.wallpaper-buttons button {
+  padding: 9px 12px;
 
-    border: none;
-    border-radius: 8px;
+  border: none;
+  border-radius: 9px;
 
-    cursor: pointer;
+  background: #302f49;
+  color: white;
 }
 
-.file-area {
-    display: grid;
+.file-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 
-    grid-template-columns: repeat(3, 1fr);
-
-    gap: 15px;
+  margin-bottom: 15px;
 }
 
-.fake-file {
-    min-height: 110px;
+.file-item {
+  padding: 10px 14px;
 
-    display: flex;
-    flex-direction: column;
+  border-radius: 10px;
 
-    align-items: center;
-    justify-content: center;
+  background: #27263d;
 
-    gap: 8px;
-
-    background: rgba(255,255,255,.07);
-
-    border-radius: 12px;
-
-    cursor: pointer;
+  cursor: pointer;
 }
 
-.fake-file:hover {
-    background: rgba(255,255,255,.14);
+.file-item.selected {
+  background: #6f53dc;
 }
 
-.fake-file-icon {
-    font-size: 40px;
+.file-editor {
+  width: 100%;
+  height: 180px;
+
+  resize: vertical;
+
+  padding: 12px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: rgba(0,0,0,0.25);
+  color: white;
+
+  outline: none;
+}
+
+#saveFileButton {
+  margin-top: 10px;
 }
 
 
-/* ================= PAINT ================= */
+/* =========================================================
+   PAINT
+   ========================================================= */
 
-.paint-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-
-    margin-bottom: 15px;
-
-    flex-wrap: wrap;
+.paint-body {
+  display: flex;
+  flex-direction: column;
 }
 
-.paint-toolbar label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+.paint-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-bottom: 12px;
+
+  flex-wrap: wrap;
 }
 
-.paint-toolbar button {
-    padding: 8px 13px;
+.paint-tools button {
+  padding: 8px 12px;
 
-    border: none;
-    border-radius: 8px;
+  border: none;
+  border-radius: 8px;
 
-    cursor: pointer;
+  background: #302f49;
+  color: white;
 }
 
 #paintCanvas {
-    display: block;
+  width: 100%;
+  max-height: 100%;
 
-    width: 100%;
-    height: auto;
+  background: white;
 
-    background: white;
+  border-radius: 10px;
 
-    border-radius: 8px;
-
-    cursor: crosshair;
+  cursor: crosshair;
 }
 
 
-/* ================= GAME ================= */
+/* =========================================================
+   GAME
+   ========================================================= */
 
-.game-content {
-    text-align: center;
+.game-body {
+  text-align: center;
 }
 
-.game-content h2 {
-    margin-bottom: 8px;
-}
+#gameArea {
+  position: relative;
 
-.game-board {
-    position: relative;
+  width: 100%;
+  height: 300px;
 
-    width: 100%;
-    height: 250px;
+  margin: 15px 0;
 
-    margin: 15px 0;
+  overflow: hidden;
 
-    background: rgba(0,0,0,.25);
+  border-radius: 15px;
 
-    border-radius: 12px;
-
-    overflow: hidden;
+  background:
+    radial-gradient(circle, #20204c, #0a0a16);
 }
 
 #gameTarget {
-    position: absolute;
+  position: absolute;
 
-    border: none;
-    background: transparent;
+  width: 55px;
+  height: 55px;
 
-    font-size: 50px;
+  border: none;
+  border-radius: 50%;
 
-    cursor: pointer;
+  background: linear-gradient(135deg, #8d5cff, #00c6ff);
 
-    left: 50%;
-    top: 50%;
+  color: white;
 
-    transform: translate(-50%,-50%);
-}
+  font-weight: bold;
+  font-size: 20px;
 
-.game-stats {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-
-    margin: 10px;
-}
-
-.game-start {
-    padding: 10px 20px;
-
-    border: none;
-    border-radius: 9px;
-
-    background: #7c3aed;
-    color: white;
-
-    cursor: pointer;
+  display: none;
 }
 
 
-/* ================= SETTINGS ================= */
+/* =========================================================
+   SETTINGS
+   ========================================================= */
 
-.settings-area {
-    max-height: 500px;
-    overflow-y: auto;
+.settings-body h3 {
+  margin: 20px 0 10px;
 }
 
-.setting-card {
-    background: rgba(255,255,255,.06);
-
-    padding: 16px;
-
-    border-radius: 12px;
-
-    margin-top: 15px;
+.settings-body h3:first-child {
+  margin-top: 0;
 }
 
-.setting-card h3 {
-    margin-bottom: 12px;
+.settings-body p {
+  color: #c2c2d4;
+  margin-bottom: 7px;
 }
 
-.setting-card input {
-    width: 100%;
-
-    padding: 10px;
-
-    border: 1px solid #444;
-    border-radius: 8px;
-
-    background: #111118;
-    color: white;
-
-    margin-bottom: 10px;
+.settings-body button {
+  margin: 5px 5px 5px 0;
 }
 
-.setting-card button {
-    width: 100%;
-
-    padding: 10px;
-
-    margin-top: 7px;
-
-    border: none;
-    border-radius: 8px;
-
-    background: #29293a;
-    color: white;
-
-    cursor: pointer;
-}
-
-.setting-card button:hover {
-    background: #41415b;
+.wallpaper-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 
-/* ================= ABOUT ================= */
+/* =========================================================
+   ABOUT
+   ========================================================= */
 
-.about-content {
-    text-align: center;
-    line-height: 1.7;
+.about-body {
+  text-align: center;
 }
 
 .about-logo {
-    font-size: 65px;
+  width: 70px;
+  height: 70px;
+
+  font-size: 40px;
 }
 
-.about-content hr {
-    border: none;
-
-    border-top: 1px solid #444;
-
-    margin: 18px 0;
-}
-
-
-/* ================= NOTIFICATION ================= */
-
-.notification {
-    position: absolute;
-
-    right: 20px;
-    bottom: 80px;
-
-    width: 320px;
-
-    padding: 15px;
-
-    border-radius: 13px;
-
-    background: rgba(20,20,30,.96);
-
-    box-shadow: 0 20px 50px rgba(0,0,0,.5);
-
-    display: none;
-
-    align-items: center;
-
-    gap: 12px;
-
-    z-index: 9000;
-}
-
-.notification button {
-    margin-left: auto;
-
-    border: none;
-    background: transparent;
-
-    color: white;
-
-    cursor: pointer;
+.about-body p {
+  margin: 10px 0;
+  color: #c0bfd0;
 }
 
 
-/* ================= START MENU ================= */
+/* =========================================================
+   START MENU
+   ========================================================= */
 
-#startMenu {
-    position: absolute;
+.start-menu {
+  position: absolute;
 
-    left: 15px;
-    bottom: 70px;
+  z-index: 100;
 
-    width: 300px;
+  left: 10px;
+  bottom: 62px;
 
-    padding: 16px;
+  width: 290px;
 
-    border-radius: 15px;
+  padding: 15px;
 
-    background: rgba(20,20,30,.97);
+  border-radius: 15px;
 
-    box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  background: rgba(20,20,35,0.97);
 
-    display: none;
+  border: 1px solid rgba(255,255,255,0.1);
 
-    z-index: 8000;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 
-.start-header {
-    display: flex;
+.start-user {
+  display: flex;
+  align-items: center;
 
-    align-items: center;
+  gap: 12px;
 
-    gap: 10px;
-
-    margin-bottom: 15px;
+  padding-bottom: 10px;
 }
 
-.start-avatar {
-    font-size: 35px;
+.user-avatar {
+  width: 45px;
+  height: 45px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #373456;
 }
 
-.start-header small {
-    display: block;
-    color: #aaa;
-    margin-top: 3px;
+.start-user small {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #9999b0;
+
+  max-width: 200px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.search-box {
-    display: flex;
+.start-menu hr {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.08);
 
-    align-items: center;
-
-    gap: 7px;
-
-    background: rgba(255,255,255,.08);
-
-    padding: 8px 10px;
-
-    border-radius: 9px;
-
-    margin-bottom: 12px;
+  margin: 10px 0;
 }
 
-.search-box input {
-    flex: 1;
+.start-menu button {
+  display: block;
 
-    border: none;
-    outline: none;
+  width: 100%;
 
-    background: transparent;
+  padding: 11px;
 
-    color: white;
+  text-align: left;
+
+  border: none;
+  border-radius: 8px;
+
+  background: transparent;
+  color: white;
 }
 
-#appList {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-#appList button {
-    border: none;
-
-    background: transparent;
-
-    color: white;
-
-    text-align: left;
-
-    padding: 10px;
-
-    border-radius: 8px;
-
-    cursor: pointer;
-}
-
-#appList button:hover {
-    background: rgba(255,255,255,.1);
-}
-
-.start-footer {
-    border-top: 1px solid #444;
-
-    margin-top: 12px;
-    padding-top: 10px;
-
-    display: flex;
-    gap: 7px;
-}
-
-.start-footer button {
-    flex: 1;
-
-    padding: 8px;
-
-    border: none;
-    border-radius: 8px;
-
-    background: #29293a;
-    color: white;
-
-    cursor: pointer;
+.start-menu button:hover {
+  background: rgba(255,255,255,0.1);
 }
 
 
-/* ================= TASKBAR ================= */
+/* =========================================================
+   TASKBAR
+   ========================================================= */
 
 .taskbar {
-    position: absolute;
+  position: absolute;
 
-    left: 0;
-    right: 0;
-    bottom: 0;
+  z-index: 200;
 
-    height: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
 
-    padding: 8px 12px;
+  height: 55px;
 
-    background: rgba(10,10,18,.88);
+  display: flex;
+  align-items: center;
 
-    backdrop-filter: blur(15px);
+  padding: 7px;
 
-    display: flex;
-    align-items: center;
+  background: rgba(10,10,20,0.85);
 
-    z-index: 7000;
+  border-top: 1px solid rgba(255,255,255,0.1);
+
+  backdrop-filter: blur(15px);
 }
 
 .start-button {
-    width: 45px;
-    height: 42px;
+  width: 43px;
+  height: 41px;
 
-    border: none;
-    border-radius: 10px;
+  border: none;
+  border-radius: 10px;
 
-    background: #29293a;
+  background: linear-gradient(135deg, #7655ff, #00aeea);
 
-    color: white;
+  color: white;
 
-    font-size: 20px;
-
-    cursor: pointer;
+  font-size: 23px;
 }
 
 .taskbar-apps {
-    display: flex;
+  display: flex;
 
-    gap: 6px;
+  gap: 5px;
 
-    margin-left: 10px;
+  margin-left: 8px;
 }
 
 .taskbar-app {
-    padding: 9px 12px;
+  height: 40px;
 
-    border: none;
-    border-radius: 8px;
+  padding: 0 13px;
 
-    background: #29293a;
+  border: none;
+  border-radius: 9px;
 
-    color: white;
+  background: rgba(255,255,255,0.08);
 
-    cursor: pointer;
+  color: white;
+}
+
+.taskbar-app.active {
+  background: rgba(130,100,255,0.35);
 }
 
 .taskbar-right {
-    margin-left: auto;
+  margin-left: auto;
 
-    display: flex;
+  display: flex;
+  align-items: center;
 
-    align-items: center;
+  gap: 15px;
 
-    gap: 15px;
+  padding-right: 8px;
 
-    font-size: 14px;
+  color: #c7c7d6;
+
+  font-size: 13px;
+}
+
+#onlineStatus {
+  color: #6cff9a;
 }
 
 
-/* ================= LIGHT MODE ================= */
+/* =========================================================
+   NOTIFICATION
+   ========================================================= */
 
-body.light #desktop {
-    background:
-        radial-gradient(circle at 30% 20%, #c4b5fd, transparent 35%),
-        radial-gradient(circle at 80% 70%, #93c5fd, transparent 35%),
-        linear-gradient(135deg, #eef2ff, #dbeafe);
+.notification {
+  position: absolute;
+
+  z-index: 500;
+
+  right: 20px;
+  bottom: 75px;
+
+  width: 300px;
+
+  padding: 15px;
+
+  border-radius: 14px;
+
+  background: rgba(25,25,40,0.97);
+
+  border: 1px solid rgba(255,255,255,0.1);
+
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+
+  animation: notificationIn 0.25s ease;
 }
 
-body.light .window {
-    background: rgba(245,245,250,.97);
-    color: #111;
+.notification strong {
+  display: block;
+  margin-bottom: 5px;
 }
 
-body.light .window-header {
-    background: rgba(0,0,0,.07);
+.notification p {
+  color: #aaaac0;
+  font-size: 14px;
 }
 
-body.light .window-buttons button {
-    color: #111;
-}
+@keyframes notificationIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
 
-body.light #notes {
-    background: white;
-    color: #111;
-}
-
-body.light .taskbar,
-body.light #startMenu {
-    background: rgba(245,245,250,.95);
-    color: #111;
-}
-
-body.light #appList button,
-body.light .start-footer button {
-    color: #111;
-}
-
-body.light #calcDisplay {
-    background: white;
-    color: #111;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 
-/* ================= MOBILE ================= */
+/* =========================================================
+   LIGHT THEME
+   ========================================================= */
+
+body.light-theme {
+  color: #151522;
+}
+
+body.light-theme .app-window,
+body.light-theme .start-menu {
+  background: rgba(245,245,250,0.96);
+  color: #151522;
+}
+
+body.light-theme .window-header {
+  background: rgba(0,0,0,0.05);
+}
+
+body.light-theme .window-button,
+body.light-theme .start-menu button {
+  color: #151522;
+}
+
+body.light-theme #notesArea,
+body.light-theme .file-editor {
+  background: #eeeeF5;
+  color: #151522;
+}
+
+body.light-theme .desktop-icon {
+  color: white;
+}
+
+body.light-theme .taskbar {
+  background: rgba(245,245,250,0.85);
+}
+
+body.light-theme .taskbar-app {
+  color: #151522;
+}
+
+body.light-theme .notification {
+  background: rgba(245,245,250,0.98);
+  color: #151522;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
 
 @media (max-width: 700px) {
 
-    .window {
-        width: calc(100% - 20px);
+  .auth-box {
+    padding: 25px;
+  }
 
-        left: 10px;
+  .desktop-icons {
+    grid-template-columns: repeat(3, 80px);
+    gap: 10px;
+  }
 
-        top: 70px;
-    }
+  .app-window {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 85px);
 
-    .desktop-icons {
-        transform: scale(.9);
-        transform-origin: top left;
-    }
+    left: 10px;
+    top: 10px;
 
-    .file-area {
-        grid-template-columns: 1fr 1fr;
-    }
+    transform: none;
+  }
 
-    .taskbar-right span:nth-child(1),
-    .taskbar-right span:nth-child(2) {
-        display: none;
-    }
+  .taskbar-app {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .taskbar-right #onlineStatus {
+    display: none;
+  }
+
+  .start-menu {
+    width: calc(100vw - 20px);
+  }
 
 }
