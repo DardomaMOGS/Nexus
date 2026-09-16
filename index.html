@@ -1,1569 +1,638 @@
-/* =========================================================
-   NEXUS v1.2
-   MULTI-USER SYSTEM
-   ========================================================= */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS v1.2</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- =========================
+       BOOT SCREEN
+  ========================== -->
+  <div id="bootScreen" class="screen boot-screen">
+    <div class="boot-logo">N</div>
+    <h1>NEXUS</h1>
+    <p>Starting NEXUS v1.2...</p>
+
+    <div class="boot-bar">
+      <div id="bootProgress"></div>
+    </div>
+
+    <span id="bootStatus">Initializing...</span>
+  </div>
 
-import {
-  initializeApp
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
 
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+  <!-- =========================
+       AUTH SCREEN
+  ========================== -->
+  <div id="authScreen" class="screen auth-screen hidden">
 
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+    <div class="auth-box">
 
+      <div class="auth-logo">N</div>
 
-/* =========================================================
-   FIREBASE CONFIG
-   ========================================================= */
+      <h1>NEXUS</h1>
+      <p class="auth-version">v1.2</p>
 
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "dardomamogs.firebaseapp.com",
-  projectId: "dardomamogs",
-  storageBucket: "dardomamogs.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "G-67XLGPBFNT"
-};
+      <!-- LOGIN -->
+      <div id="loginPanel">
 
+        <h2>Welcome Back</h2>
+        <p class="auth-subtitle">Log in to your NEXUS account.</p>
 
-/* =========================================================
-   FIREBASE INITIALIZATION
-   ========================================================= */
+        <input
+          id="loginUsername"
+          type="text"
+          placeholder="Username"
+          autocomplete="username"
+        >
 
-const firebaseApp = initializeApp(firebaseConfig);
+        <input
+          id="loginPassword"
+          type="password"
+          placeholder="Password"
+          autocomplete="current-password"
+        >
 
-const auth = getAuth(firebaseApp);
+        <button id="loginButton" class="primary-button">
+          🔐 Login
+        </button>
+
+        <button id="forgotPasswordButton" class="text-button">
+          Forgot password?
+        </button>
+
+        <p id="loginError" class="error-message"></p>
 
-const db = getFirestore(firebaseApp);
+        <div class="auth-switch">
+          Don't have an account?
+          <button id="showSignupButton">Create one</button>
+        </div>
+
+      </div>
 
 
-/* =========================================================
-   GLOBAL STATE
-   ========================================================= */
+      <!-- SIGN UP -->
+      <div id="signupPanel" class="hidden">
 
-let currentUser = null;
-let currentProfile = null;
+        <h2>Create Account</h2>
+        <p class="auth-subtitle">Create your own NEXUS profile.</p>
 
-let selectedFile = null;
+        <input
+          id="signupUsername"
+          type="text"
+          placeholder="Username"
+          autocomplete="username"
+        >
 
-let calculatorValue = "";
+        <input
+          id="signupPassword"
+          type="password"
+          placeholder="Password"
+          autocomplete="new-password"
+        >
 
-let gameScore = 0;
-let gameRunning = false;
+        <input
+          id="signupPasswordConfirm"
+          type="password"
+          placeholder="Confirm password"
+          autocomplete="new-password"
+        >
 
-let saveNotesTimer = null;
+        <button id="signupButton" class="primary-button">
+          🚀 Create Account
+        </button>
 
+        <p id="signupError" class="error-message"></p>
 
-/* =========================================================
-   DOM HELPERS
-   ========================================================= */
+        <div class="auth-switch">
+          Already have an account?
+          <button id="showLoginButton">Log in</button>
+        </div>
 
-const $ = id => document.getElementById(id);
+      </div>
 
-const qs = selector => document.querySelector(selector);
+      <p class="local-warning">
+        🔒 Your account is stored locally in this browser.
+      </p>
 
-const qsa = selector => document.querySelectorAll(selector);
+    </div>
+  </div>
 
 
-/* =========================================================
-   AUTH ERROR TRANSLATION
-   ========================================================= */
+  <!-- =========================
+       DESKTOP
+  ========================== -->
+  <div id="desktop" class="desktop hidden">
 
-function readableAuthError(error) {
+    <div id="wallpaper" class="wallpaper"></div>
 
-  const code = error.code || "";
 
-  const messages = {
+    <!-- =========================
+         DESKTOP ICONS
+    ========================== -->
+    <div class="desktop-icons">
 
-    "auth/invalid-email":
-      "That email address is not valid.",
+      <button class="desktop-icon" data-app="notepadWindow">
+        <span>📝</span>
+        <label>Notepad</label>
+      </button>
 
-    "auth/user-not-found":
-      "No account was found with that email.",
+      <button class="desktop-icon" data-app="calculatorWindow">
+        <span>🧮</span>
+        <label>Calculator</label>
+      </button>
 
-    "auth/wrong-password":
-      "The password is incorrect.",
+      <button class="desktop-icon" data-app="filesWindow">
+        <span>📁</span>
+        <label>Files</label>
+      </button>
 
-    "auth/invalid-credential":
-      "The email or password is incorrect.",
+      <button class="desktop-icon" data-app="paintWindow">
+        <span>🎨</span>
+        <label>Paint</label>
+      </button>
 
-    "auth/email-already-in-use":
-      "An account with this email already exists.",
+      <button class="desktop-icon" data-app="gameWindow">
+        <span>🎮</span>
+        <label>Catch NEXUS</label>
+      </button>
 
-    "auth/weak-password":
-      "Please choose a stronger password.",
+      <button class="desktop-icon" data-app="settingsWindow">
+        <span>⚙️</span>
+        <label>Settings</label>
+      </button>
 
-    "auth/too-many-requests":
-      "Too many attempts. Please try again later.",
+      <button class="desktop-icon" data-app="aboutWindow">
+        <span>💠</span>
+        <label>About</label>
+      </button>
 
-    "auth/network-request-failed":
-      "Network error. Check your internet connection."
+    </div>
 
-  };
 
-  return messages[code] || error.message || "Something went wrong.";
+    <!-- =========================
+         WINDOWS
+    ========================== -->
 
-}
+    <!-- NOTEPAD -->
+    <section id="notepadWindow" class="app-window">
 
+      <div class="window-header">
+        <span>📝 Notepad</span>
 
-/* =========================================================
-   AUTH UI
-   ========================================================= */
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
+      </div>
 
-function showLogin() {
+      <div class="window-body notepad-body">
 
-  $("loginPanel").classList.remove("hidden");
-  $("signupPanel").classList.add("hidden");
+        <textarea
+          id="notesArea"
+          placeholder="Start writing..."
+        ></textarea>
 
-  $("loginError").textContent = "";
-  $("signupError").textContent = "";
+        <div class="notepad-footer">
+          <span id="notesStatus">Ready</span>
 
-}
+          <button id="clearNotesButton" class="small-button">
+            Clear
+          </button>
+        </div>
 
+      </div>
 
-function showSignup() {
+    </section>
 
-  $("loginPanel").classList.add("hidden");
-  $("signupPanel").classList.remove("hidden");
 
-  $("loginError").textContent = "";
-  $("signupError").textContent = "";
+    <!-- CALCULATOR -->
+    <section id="calculatorWindow" class="app-window">
 
-}
+      <div class="window-header">
+        <span>🧮 Calculator</span>
 
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
+      </div>
 
-/* =========================================================
-   SIGN UP
-   ========================================================= */
+      <div class="window-body calculator-body">
 
-async function signup() {
+        <input
+          id="calculatorDisplay"
+          class="calculator-display"
+          type="text"
+          readonly
+        >
 
-  const username = $("signupUsername").value.trim();
-  const email = $("signupEmail").value.trim();
-  const password = $("signupPassword").value;
-  const confirm = $("signupPasswordConfirm").value;
+        <div class="calculator-grid">
 
-  $("signupError").textContent = "";
+          <button data-calc="clear">C</button>
+          <button data-calc="backspace">⌫</button>
+          <button data-calc="/">÷</button>
+          <button data-calc="*">×</button>
 
-  if (!username) {
-    $("signupError").textContent = "Please choose a username.";
-    return;
-  }
+          <button data-calc="7">7</button>
+          <button data-calc="8">8</button>
+          <button data-calc="9">9</button>
+          <button data-calc="-">−</button>
 
-  if (username.length < 2) {
-    $("signupError").textContent = "Username must be at least 2 characters.";
-    return;
-  }
+          <button data-calc="4">4</button>
+          <button data-calc="5">5</button>
+          <button data-calc="6">6</button>
+          <button data-calc="+">+</button>
 
-  if (!email) {
-    $("signupError").textContent = "Please enter your email.";
-    return;
-  }
+          <button data-calc="1">1</button>
+          <button data-calc="2">2</button>
+          <button data-calc="3">3</button>
+          <button data-calc="(">(</button>
 
-  if (password.length < 6) {
-    $("signupError").textContent =
-      "Password must be at least 6 characters.";
-    return;
-  }
+          <button data-calc="0">0</button>
+          <button data-calc=".">.</button>
+          <button data-calc=")">)</button>
+          <button data-calc="=" class="equals-button">=</button>
 
-  if (password !== confirm) {
-    $("signupError").textContent =
-      "The passwords do not match.";
-    return;
-  }
+        </div>
 
-  $("signupButton").disabled = true;
-  $("signupButton").textContent = "Creating...";
+      </div>
 
-  try {
+    </section>
 
-    const credential =
-      await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
 
-    const user = credential.user;
+    <!-- FILE MANAGER -->
+    <section id="filesWindow" class="app-window files-window">
 
-    const profile = {
+      <div class="window-header">
+        <span>📁 File Manager</span>
 
-      username: username,
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
+      </div>
 
-      email: user.email,
+      <div class="files-layout">
 
-      createdAt: Date.now(),
+        <div class="file-sidebar">
 
-      theme: "dark",
+          <h3>Your Files</h3>
 
-      wallpaper: "default",
+          <div id="fileList"></div>
 
-      notes: "",
+          <button id="newFileButton" class="small-button">
+            ➕ New File
+          </button>
 
-      files: {
+        </div>
 
-        "Welcome.txt":
-          "Welcome to NEXUS v1.2!\n\nThis file belongs to your account."
+        <div class="file-editor">
 
-      }
+          <textarea
+            id="fileEditor"
+            placeholder="Select a file..."
+          ></textarea>
 
-    };
+          <div class="file-buttons">
 
-    await setDoc(
-      doc(db, "users", user.uid),
-      profile
-    );
+            <button id="saveFileButton" class="small-button">
+              💾 Save
+            </button>
 
-    showNotification(
-      "Account Created",
-      `Welcome to NEXUS, ${username}!`
-    );
+            <button id="deleteFileButton" class="danger-button">
+              🗑️ Delete
+            </button>
 
-  } catch (error) {
+          </div>
 
-    console.error(error);
+        </div>
 
-    $("signupError").textContent =
-      readableAuthError(error);
+      </div>
 
-  }
+    </section>
 
-  $("signupButton").disabled = false;
-  $("signupButton").textContent = "🚀 Create Account";
 
-}
+    <!-- PAINT -->
+    <section id="paintWindow" class="app-window paint-window">
 
+      <div class="window-header">
+        <span>🎨 NEXUS Paint</span>
 
-/* =========================================================
-   LOGIN
-   ========================================================= */
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
+      </div>
 
-async function login() {
+      <div class="paint-toolbar">
 
-  const email = $("loginEmail").value.trim();
-  const password = $("loginPassword").value;
+        <label>
+          Brush
+          <input
+            id="brushSize"
+            type="range"
+            min="1"
+            max="40"
+            value="5"
+          >
+        </label>
 
-  $("loginError").textContent = "";
+        <button id="clearCanvasButton" class="small-button">
+          🧹 Clear
+        </button>
 
-  if (!email || !password) {
+        <button id="saveDrawingButton" class="small-button">
+          💾 Save PNG
+        </button>
 
-    $("loginError").textContent =
-      "Please enter your email and password.";
+      </div>
 
-    return;
+      <div class="canvas-container">
+        <canvas id="paintCanvas" width="900" height="500"></canvas>
+      </div>
 
-  }
+    </section>
 
-  $("loginButton").disabled = true;
-  $("loginButton").textContent = "Logging in...";
 
-  try {
+    <!-- GAME -->
+    <section id="gameWindow" class="app-window game-window">
 
-    await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+      <div class="window-header">
+        <span>🎮 Catch NEXUS</span>
 
-  } catch (error) {
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
+      </div>
 
-    console.error(error);
+      <div class="game-info">
 
-    $("loginError").textContent =
-      readableAuthError(error);
+        <span>
+          Score:
+          <strong id="gameScore">0</strong>
+        </span>
 
-  }
+        <button id="startGameButton" class="primary-button">
+          ▶ Start Game
+        </button>
 
-  $("loginButton").disabled = false;
-  $("loginButton").textContent = "🔐 Login";
+      </div>
 
-}
+      <div id="gameArea">
 
+        <button id="gameTarget">
+          N
+        </button>
 
-/* =========================================================
-   PASSWORD RESET
-   ========================================================= */
+        <div id="gameMessage">
+          Press Start Game!
+        </div>
 
-async function resetPassword() {
+      </div>
 
-  const email = prompt(
-    "Enter the email address for your NEXUS account:"
-  );
+    </section>
 
-  if (!email) return;
 
-  try {
+    <!-- SETTINGS -->
+    <section id="settingsWindow" class="app-window settings-window">
 
-    await sendPasswordResetEmail(
-      auth,
-      email.trim()
-    );
+      <div class="window-header">
+        <span>⚙️ Settings</span>
 
-    showNotification(
-      "Password Reset",
-      "Check your email for the password reset message."
-    );
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
+      </div>
 
-  } catch (error) {
+      <div class="window-body settings-body">
 
-    alert(readableAuthError(error));
+        <div class="profile-card">
 
-  }
+          <div class="profile-avatar">
+            👤
+          </div>
 
-}
+          <div>
+            <h2 id="settingsUsername">User</h2>
+            <p id="settingsAccountInfo">
+              Local NEXUS account
+            </p>
+          </div>
 
+        </div>
 
-/* =========================================================
-   LOGOUT
-   ========================================================= */
 
-async function logout() {
+        <h3>Appearance</h3>
 
-  try {
+        <div class="settings-buttons">
 
-    await signOut(auth);
+          <button id="darkThemeButton">
+            🌙 Dark Theme
+          </button>
 
-  } catch (error) {
+          <button id="lightThemeButton">
+            ☀️ Light Theme
+          </button>
 
-    console.error(error);
+        </div>
 
-  }
 
-}
+        <h3>Wallpaper</h3>
 
+        <div class="settings-buttons">
 
-/* =========================================================
-   USER PROFILE
-   ========================================================= */
+          <button data-wallpaper="default">
+            🌌 NEXUS
+          </button>
 
-async function loadProfile(user) {
+          <button data-wallpaper="purple">
+            🟣 Purple
+          </button>
 
-  const profileRef =
-    doc(db, "users", user.uid);
+          <button data-wallpaper="blue">
+            🔵 Blue
+          </button>
 
-  const profileSnapshot =
-    await getDoc(profileRef);
+          <button data-wallpaper="green">
+            🟢 Green
+          </button>
 
-  if (!profileSnapshot.exists()) {
+        </div>
 
-    const fallbackProfile = {
 
-      username:
-        user.email
-          ? user.email.split("@")[0]
-          : "User",
+        <h3>Account</h3>
 
-      email: user.email || "",
+        <div class="settings-buttons">
 
-      createdAt: Date.now(),
+          <button id="logoutButton" class="danger-button">
+            🚪 Log Out
+          </button>
 
-      theme: "dark",
+          <button id="deleteAccountButton" class="danger-button">
+            🗑️ Delete Account
+          </button>
 
-      wallpaper: "default",
+        </div>
 
-      notes: "",
+      </div>
 
-      files: {}
+    </section>
 
-    };
 
-    await setDoc(
-      profileRef,
-      fallbackProfile
-    );
+    <!-- ABOUT -->
+    <section id="aboutWindow" class="app-window about-window">
 
-    currentProfile = fallbackProfile;
+      <div class="window-header">
+        <span>💠 About NEXUS</span>
 
-  } else {
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
+      </div>
 
-    currentProfile =
-      profileSnapshot.data();
+      <div class="window-body about-body">
 
-  }
+        <div class="about-logo">
+          N
+        </div>
 
-  currentUser = user;
+        <h1>NEXUS</h1>
 
-  applyProfile();
+        <p class="version">Version 1.2</p>
 
-}
+        <p>
+          A browser-based mini operating system.
+        </p>
 
+        <div class="feature-list">
 
-/* =========================================================
-   APPLY PROFILE
-   ========================================================= */
+          <div>🔐 Local multi-account system</div>
+          <div>📝 Notepad</div>
+          <div>🧮 Calculator</div>
+          <div>📁 File Manager</div>
+          <div>🎨 Paint</div>
+          <div>🎮 Catch NEXUS</div>
+          <div>⚙️ Settings</div>
 
-function applyProfile() {
+        </div>
 
-  if (!currentUser || !currentProfile) return;
+        <p class="about-note">
+          Built with HTML, CSS and JavaScript.
+        </p>
 
-  const username =
-    currentProfile.username || "User";
+      </div>
 
-  $("settingsUsername").textContent =
-    username;
+    </section>
 
-  $("settingsEmail").textContent =
-    currentUser.email || "";
 
-  $("startUsername").textContent =
-    username;
+    <!-- =========================
+         START MENU
+    ========================== -->
+    <div id="startMenu" class="start-menu hidden">
 
-  $("startEmail").textContent =
-    currentUser.email || "";
+      <div class="start-profile">
 
-  $("notesArea").value =
-    currentProfile.notes || "";
+        <div class="start-avatar">
+          👤
+        </div>
 
-  applyTheme(
-    currentProfile.theme || "dark"
-  );
+        <div>
+          <strong id="startUsername">User</strong>
+          <span>Local account</span>
+        </div>
 
-  applyWallpaper(
-    currentProfile.wallpaper || "default"
-  );
+      </div>
 
-  renderFiles();
 
-}
+      <div class="start-apps">
 
+        <button data-app="notepadWindow">
+          📝 Notepad
+        </button>
 
-/* =========================================================
-   SAVE USER PROFILE
-   ========================================================= */
+        <button data-app="calculatorWindow">
+          🧮 Calculator
+        </button>
 
-async function saveProfile(changes) {
+        <button data-app="filesWindow">
+          📁 Files
+        </button>
 
-  if (!currentUser) return;
+        <button data-app="paintWindow">
+          🎨 Paint
+        </button>
 
-  try {
+        <button data-app="gameWindow">
+          🎮 Catch NEXUS
+        </button>
 
-    await updateDoc(
-      doc(db, "users", currentUser.uid),
-      changes
-    );
+        <button data-app="settingsWindow">
+          ⚙️ Settings
+        </button>
 
-    Object.assign(
-      currentProfile,
-      changes
-    );
+        <button data-app="aboutWindow">
+          💠 About
+        </button>
 
-  } catch (error) {
+      </div>
 
-    console.error(
-      "Could not save profile:",
-      error
-    );
 
-    showNotification(
-      "Save Error",
-      "Your changes could not be saved."
-    );
+      <div class="start-bottom">
 
-  }
+        <button id="startLogoutButton">
+          🚪 Log Out
+        </button>
 
-}
+      </div>
 
+    </div>
 
-/* =========================================================
-   NEXUS STARTUP
-   ========================================================= */
 
-async function startNexus() {
+    <!-- =========================
+         TASKBAR
+    ========================== -->
+    <div class="taskbar">
 
-  $("authScreen").classList.add("hidden");
+      <button id="startButton" class="start-button">
+        ◈ NEXUS
+      </button>
 
-  $("loadingScreen").classList.remove("hidden");
+      <div id="taskbarApps" class="taskbar-apps"></div>
 
-  $("loadingText").textContent =
-    "Loading your NEXUS...";
+      <div class="taskbar-clock">
+        <span id="clock">00:00</span>
+      </div>
 
-  let progress = 0;
+    </div>
 
-  const loadingInterval =
-    setInterval(() => {
 
-      progress += 10;
+    <!-- =========================
+         NOTIFICATION
+    ========================== -->
+    <div id="notification" class="notification hidden">
 
-      $("loadingProgress").style.width =
-        `${progress}%`;
+      <strong id="notificationTitle">
+        NEXUS
+      </strong>
 
-      if (progress >= 100) {
+      <p id="notificationMessage">
+        Notification
+      </p>
 
-        clearInterval(loadingInterval);
+    </div>
 
-        $("loadingScreen").classList.add("hidden");
+  </div>
 
-        $("desktop").classList.remove("hidden");
 
-        showNotification(
-          "NEXUS Ready",
-          `Welcome back, ${currentProfile.username}!`
-        );
+  <script src="script.js"></script>
 
-      }
-
-    }, 60);
-
-}
-
-
-/* =========================================================
-   AUTH STATE
-   ========================================================= */
-
-onAuthStateChanged(
-  auth,
-  async user => {
-
-    if (user) {
-
-      try {
-
-        await loadProfile(user);
-
-        await startNexus();
-
-      } catch (error) {
-
-        console.error(error);
-
-        $("authScreen").classList.remove("hidden");
-
-        alert(
-          "NEXUS could not load your account data."
-        );
-
-      }
-
-    } else {
-
-      currentUser = null;
-      currentProfile = null;
-
-      $("desktop").classList.add("hidden");
-
-      $("loadingScreen").classList.add("hidden");
-
-      $("authScreen").classList.remove("hidden");
-
-      showLogin();
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   OPEN APP
-   ========================================================= */
-
-function openApp(appName) {
-
-  const windowElement =
-    $(`${appName}Window`);
-
-  if (!windowElement) return;
-
-  qsa(".app-window").forEach(win => {
-
-    win.classList.remove("open");
-
-  });
-
-  windowElement.classList.add("open");
-
-  updateTaskbar();
-
-}
-
-
-/* =========================================================
-   CLOSE APP
-   ========================================================= */
-
-function closeApp(windowElement) {
-
-  if (!windowElement) return;
-
-  windowElement.classList.remove("open");
-
-  updateTaskbar();
-
-}
-
-
-/* =========================================================
-   TASKBAR
-   ========================================================= */
-
-function updateTaskbar() {
-
-  const container =
-    $("taskbarApps");
-
-  container.innerHTML = "";
-
-  qsa(".app-window.open").forEach(win => {
-
-    const button =
-      document.createElement("button");
-
-    button.className =
-      "taskbar-app active";
-
-    const title =
-      win.querySelector(".window-header span");
-
-    button.textContent =
-      title
-        ? title.textContent
-        : "App";
-
-    button.onclick = () => {
-
-      win.classList.toggle("hidden");
-
-    };
-
-    container.appendChild(button);
-
-  });
-
-}
-
-
-/* =========================================================
-   WINDOW BUTTONS
-   ========================================================= */
-
-qsa(".close-button").forEach(button => {
-
-  button.addEventListener(
-    "click",
-    () => {
-
-      closeApp(
-        button.closest(".app-window")
-      );
-
-    }
-  );
-
-});
-
-
-qsa(".minimize-button").forEach(button => {
-
-  button.addEventListener(
-    "click",
-    () => {
-
-      const win =
-        button.closest(".app-window");
-
-      win.classList.remove("open");
-
-      updateTaskbar();
-
-    }
-  );
-
-});
-
-
-/* =========================================================
-   DESKTOP APP BUTTONS
-   ========================================================= */
-
-qsa("[data-app]").forEach(button => {
-
-  button.addEventListener(
-    "click",
-    () => {
-
-      openApp(
-        button.dataset.app
-      );
-
-      $("startMenu").classList.add("hidden");
-
-    }
-  );
-
-});
-
-
-/* =========================================================
-   START MENU
-   ========================================================= */
-
-$("startButton").addEventListener(
-  "click",
-  () => {
-
-    $("startMenu").classList.toggle("hidden");
-
-  }
-);
-
-
-/* =========================================================
-   CLOCK
-   ========================================================= */
-
-function updateClock() {
-
-  const now = new Date();
-
-  let hours =
-    now.getHours();
-
-  let minutes =
-    now.getMinutes();
-
-  hours =
-    String(hours).padStart(2, "0");
-
-  minutes =
-    String(minutes).padStart(2, "0");
-
-  $("clock").textContent =
-    `${hours}:${minutes}`;
-
-}
-
-setInterval(
-  updateClock,
-  1000
-);
-
-updateClock();
-
-
-/* =========================================================
-   NOTEPAD
-   ========================================================= */
-
-$("notesArea").addEventListener(
-  "input",
-  () => {
-
-    $("notesStatus").textContent =
-      "Saving...";
-
-    clearTimeout(
-      saveNotesTimer
-    );
-
-    saveNotesTimer =
-      setTimeout(
-        async () => {
-
-          await saveProfile({
-            notes:
-              $("notesArea").value
-          });
-
-          $("notesStatus").textContent =
-            "Saved";
-
-        },
-        700
-      );
-
-  }
-);
-
-
-$("clearNotesButton").addEventListener(
-  "click",
-  async () => {
-
-    $("notesArea").value = "";
-
-    await saveProfile({
-      notes: ""
-    });
-
-    $("notesStatus").textContent =
-      "Saved";
-
-  }
-);
-
-
-/* =========================================================
-   CALCULATOR
-   ========================================================= */
-
-qsa("[data-calc]").forEach(button => {
-
-  button.addEventListener(
-    "click",
-    () => {
-
-      const value =
-        button.dataset.calc;
-
-      if (value === "clear") {
-
-        calculatorValue = "";
-
-      } else if (value === "backspace") {
-
-        calculatorValue =
-          calculatorValue.slice(0, -1);
-
-      } else if (value === "=") {
-
-        try {
-
-          if (
-            !/^[0-9+\-*/().\s]+$/
-              .test(calculatorValue)
-          ) {
-
-            throw new Error();
-
-          }
-
-          calculatorValue =
-            String(
-              Function(
-                `"use strict"; return (${calculatorValue})`
-              )()
-            );
-
-        } catch {
-
-          calculatorValue = "Error";
-
-        }
-
-      } else {
-
-        if (calculatorValue === "Error") {
-          calculatorValue = "";
-        }
-
-        calculatorValue += value;
-
-      }
-
-      $("calculatorDisplay").value =
-        calculatorValue;
-
-    }
-  );
-
-});
-
-
-/* =========================================================
-   FILE MANAGER
-   ========================================================= */
-
-function renderFiles() {
-
-  const list =
-    $("fileList");
-
-  list.innerHTML = "";
-
-  const files =
-    currentProfile?.files || {};
-
-  Object.keys(files).forEach(filename => {
-
-    const item =
-      document.createElement("div");
-
-    item.className =
-      "file-item";
-
-    item.textContent =
-      `📄 ${filename}`;
-
-    item.addEventListener(
-      "click",
-      () => {
-
-        selectedFile =
-          filename;
-
-        $("fileEditor").value =
-          files[filename];
-
-        qsa(".file-item").forEach(
-          element =>
-            element.classList.remove("selected")
-        );
-
-        item.classList.add("selected");
-
-      }
-    );
-
-    list.appendChild(item);
-
-  });
-
-}
-
-
-$("newFileButton").addEventListener(
-  "click",
-  async () => {
-
-    const filename =
-      prompt(
-        "Enter a name for the new file:"
-      );
-
-    if (!filename) return;
-
-    const cleanName =
-      filename.trim();
-
-    if (!cleanName) return;
-
-    if (!currentProfile.files) {
-      currentProfile.files = {};
-    }
-
-    currentProfile.files[cleanName] = "";
-
-    selectedFile =
-      cleanName;
-
-    $("fileEditor").value = "";
-
-    await saveProfile({
-      files:
-        currentProfile.files
-    });
-
-    renderFiles();
-
-    showNotification(
-      "File Created",
-      cleanName
-    );
-
-  }
-);
-
-
-$("saveFileButton").addEventListener(
-  "click",
-  async () => {
-
-    if (!selectedFile) {
-
-      showNotification(
-        "No File Selected",
-        "Choose a file first."
-      );
-
-      return;
-
-    }
-
-    currentProfile.files[selectedFile] =
-      $("fileEditor").value;
-
-    await saveProfile({
-      files:
-        currentProfile.files
-    });
-
-    showNotification(
-      "File Saved",
-      selectedFile
-    );
-
-  }
-);
-
-
-$("deleteFileButton").addEventListener(
-  "click",
-  async () => {
-
-    if (!selectedFile) {
-
-      showNotification(
-        "No File Selected",
-        "Choose a file first."
-      );
-
-      return;
-
-    }
-
-    const confirmed =
-      confirm(
-        `Delete "${selectedFile}"?`
-      );
-
-    if (!confirmed) return;
-
-    delete currentProfile.files[
-      selectedFile
-    ];
-
-    await saveProfile({
-      files:
-        currentProfile.files
-    });
-
-    selectedFile = null;
-
-    $("fileEditor").value = "";
-
-    renderFiles();
-
-    showNotification(
-      "File Deleted",
-      "The file was removed."
-    );
-
-  }
-);
-
-
-/* =========================================================
-   PAINT
-   ========================================================= */
-
-const canvas =
-  $("paintCanvas");
-
-const ctx =
-  canvas.getContext("2d");
-
-let drawing = false;
-
-function canvasPosition(event) {
-
-  const rect =
-    canvas.getBoundingClientRect();
-
-  return {
-
-    x:
-      (event.clientX - rect.left)
-      * (canvas.width / rect.width),
-
-    y:
-      (event.clientY - rect.top)
-      * (canvas.height / rect.height)
-
-  };
-
-}
-
-
-canvas.addEventListener(
-  "pointerdown",
-  event => {
-
-    drawing = true;
-
-    const pos =
-      canvasPosition(event);
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      pos.x,
-      pos.y
-    );
-
-  }
-);
-
-
-canvas.addEventListener(
-  "pointermove",
-  event => {
-
-    if (!drawing) return;
-
-    const pos =
-      canvasPosition(event);
-
-    ctx.lineWidth =
-      Number(
-        $("brushSize").value
-      );
-
-    ctx.lineCap =
-      "round";
-
-    ctx.strokeStyle =
-      "#000000";
-
-    ctx.lineTo(
-      pos.x,
-      pos.y
-    );
-
-    ctx.stroke();
-
-  }
-);
-
-
-canvas.addEventListener(
-  "pointerup",
-  () => {
-
-    drawing = false;
-
-  }
-);
-
-
-canvas.addEventListener(
-  "pointerleave",
-  () => {
-
-    drawing = false;
-
-  }
-);
-
-
-$("clearCanvasButton").addEventListener(
-  "click",
-  () => {
-
-    ctx.clearRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-  }
-);
-
-
-$("saveDrawingButton").addEventListener(
-  "click",
-  () => {
-
-    const image =
-      canvas.toDataURL("image/png");
-
-    const link =
-      document.createElement("a");
-
-    link.href =
-      image;
-
-    link.download =
-      "nexus-drawing.png";
-
-    link.click();
-
-  }
-);
-
-
-/* =========================================================
-   GAME
-   ========================================================= */
-
-function moveGameTarget() {
-
-  const area =
-    $("gameArea");
-
-  const target =
-    $("gameTarget");
-
-  const maxX =
-    area.clientWidth -
-    target.offsetWidth;
-
-  const maxY =
-    area.clientHeight -
-    target.offsetHeight;
-
-  target.style.left =
-    `${Math.random() * maxX}px`;
-
-  target.style.top =
-    `${Math.random() * maxY}px`;
-
-}
-
-
-$("gameTarget").addEventListener(
-  "click",
-  () => {
-
-    if (!gameRunning) return;
-
-    gameScore++;
-
-    $("gameScore").textContent =
-      gameScore;
-
-    moveGameTarget();
-
-  }
-);
-
-
-$("startGameButton").addEventListener(
-  "click",
-  () => {
-
-    gameScore = 0;
-
-    gameRunning = true;
-
-    $("gameScore").textContent =
-      "0";
-
-    $("gameTarget").style.display =
-      "block";
-
-    moveGameTarget();
-
-    showNotification(
-      "Game Started",
-      "Catch the N!"
-    );
-
-  }
-);
-
-
-/* =========================================================
-   THEME
-   ========================================================= */
-
-async function applyTheme(theme) {
-
-  if (theme === "light") {
-
-    document.body.classList.add(
-      "light-theme"
-    );
-
-  } else {
-
-    document.body.classList.remove(
-      "light-theme"
-    );
-
-  }
-
-}
-
-
-$("darkThemeButton").addEventListener(
-  "click",
-  async () => {
-
-    applyTheme("dark");
-
-    await saveProfile({
-      theme: "dark"
-    });
-
-  }
-);
-
-
-$("lightThemeButton").addEventListener(
-  "click",
-  async () => {
-
-    applyTheme("light");
-
-    await saveProfile({
-      theme: "light"
-    });
-
-  }
-);
-
-
-/* =========================================================
-   WALLPAPERS
-   ========================================================= */
-
-async function applyWallpaper(name) {
-
-  const wallpaper =
-    $("wallpaper");
-
-  wallpaper.className =
-    "wallpaper";
-
-  if (name !== "default") {
-
-    wallpaper.classList.add(
-      name
-    );
-
-  }
-
-}
-
-
-qsa("[data-wallpaper]").forEach(
-  button => {
-
-    button.addEventListener(
-      "click",
-      async () => {
-
-        const wallpaper =
-          button.dataset.wallpaper;
-
-        applyWallpaper(
-          wallpaper
-        );
-
-        await saveProfile({
-          wallpaper:
-            wallpaper
-        });
-
-      }
-    );
-
-  }
-);
-
-
-/* =========================================================
-   CHANGE PASSWORD
-   ========================================================= */
-
-$("changePasswordButton").addEventListener(
-  "click",
-  async () => {
-
-    if (!currentUser) return;
-
-    const oldPassword =
-      prompt(
-        "Enter your current password:"
-      );
-
-    if (!oldPassword) return;
-
-    const newPassword =
-      prompt(
-        "Enter your new password:"
-      );
-
-    if (!newPassword) return;
-
-    if (newPassword.length < 6) {
-
-      alert(
-        "Your new password must be at least 6 characters."
-      );
-
-      return;
-
-    }
-
-    try {
-
-      const credential =
-        EmailAuthProvider.credential(
-          currentUser.email,
-          oldPassword
-        );
-
-      await reauthenticateWithCredential(
-        currentUser,
-        credential
-      );
-
-      await updatePassword(
-        currentUser,
-        newPassword
-      );
-
-      showNotification(
-        "Password Changed",
-        "Your password was successfully changed."
-      );
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        readableAuthError(error)
-      );
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   LOGOUT BUTTONS
-   ========================================================= */
-
-$("logoutButton").addEventListener(
-  "click",
-  logout
-);
-
-$("startLogoutButton").addEventListener(
-  "click",
-  logout
-);
-
-
-/* =========================================================
-   NOTIFICATIONS
-   ========================================================= */
-
-let notificationTimer = null;
-
-function showNotification(
-  title,
-  message
-) {
-
-  $("notificationTitle").textContent =
-    title;
-
-  $("notificationMessage").textContent =
-    message;
-
-  $("notification").classList.remove(
-    "hidden"
-  );
-
-  clearTimeout(
-    notificationTimer
-  );
-
-  notificationTimer =
-    setTimeout(
-      () => {
-
-        $("notification").classList.add(
-          "hidden"
-        );
-
-      },
-      3500
-    );
-
-}
-
-
-/* =========================================================
-   LOGIN / SIGNUP BUTTONS
-   ========================================================= */
-
-$("loginButton").addEventListener(
-  "click",
-  login
-);
-
-$("signupButton").addEventListener(
-  "click",
-  signup
-);
-
-$("showSignupButton").addEventListener(
-  "click",
-  showSignup
-);
-
-$("showLoginButton").addEventListener(
-  "click",
-  showLogin
-);
-
-$("forgotPasswordButton").addEventListener(
-  "click",
-  resetPassword
-);
-
-
-/* =========================================================
-   ENTER KEY LOGIN
-   ========================================================= */
-
-$("loginPassword").addEventListener(
-  "keydown",
-  event => {
-
-    if (event.key === "Enter") {
-      login();
-    }
-
-  }
-);
-
-
-$("signupPasswordConfirm").addEventListener(
-  "keydown",
-  event => {
-
-    if (event.key === "Enter") {
-      signup();
-    }
-
-  }
-);
-
-
-/* =========================================================
-   PREVENT CONTEXT MENU ON PAINT
-   ========================================================= */
-
-canvas.addEventListener(
-  "contextmenu",
-  event => event.preventDefault()
-);
-
-
-/* =========================================================
-   INITIAL STATE
-   ========================================================= */
-
-console.log(
-  "NEXUS v1.2 loaded."
-);
-
-console.log(
-  "Firebase multi-user system initialized."
-);
+</body>
+</html>
