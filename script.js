@@ -1,79 +1,79 @@
 /* =========================================================
    NEXUS v1.4
-   COMPLETE STYLE
+   COMPLETE FIREBASE-FREE SYSTEM
 ========================================================= */
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+"use strict";
 
-:root {
-    --accent: #7c5cff;
-    --accent2: #00d4ff;
-
-    --bg: #070711;
-    --panel: rgba(20, 20, 38, 0.92);
-    --panel2: rgba(30, 30, 55, 0.92);
-
-    --text: #ffffff;
-    --muted: #a8a8c5;
-
-    --border: rgba(255,255,255,0.12);
-
-    --danger: #ff4f70;
-
-    --taskbar: rgba(8,8,18,0.88);
-}
-
-body.light {
-    --bg: #eef1ff;
-    --panel: rgba(255,255,255,0.94);
-    --panel2: rgba(240,242,255,0.96);
-
-    --text: #171725;
-    --muted: #666680;
-
-    --border: rgba(0,0,0,0.12);
-
-    --taskbar: rgba(255,255,255,0.88);
-}
-
-body {
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
-
-    font-family:
-        Inter,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-
-    background: var(--bg);
-    color: var(--text);
-}
 
 /* =========================================================
-   GENERAL
+   STORAGE
 ========================================================= */
 
-button,
-input,
-textarea {
-    font-family: inherit;
+const ACCOUNT_KEY = "nexus_v14_accounts";
+const SESSION_KEY = "nexus_v14_session";
+const HISTORY_KEY = "nexus_v14_history";
+
+let accounts =
+    JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "{}");
+
+let currentUser = null;
+
+let browserHistory =
+    JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function $(id) {
+    return document.getElementById(id);
 }
 
-button {
-    cursor: pointer;
-    border: none;
+function show(element) {
+    if (element) element.classList.remove("hidden");
 }
 
-.hidden {
-    display: none !important;
+function hide(element) {
+    if (element) element.classList.add("hidden");
+}
+
+function saveAccounts() {
+    localStorage.setItem(
+        ACCOUNT_KEY,
+        JSON.stringify(accounts)
+    );
+}
+
+function saveHistory() {
+    localStorage.setItem(
+        HISTORY_KEY,
+        JSON.stringify(browserHistory)
+    );
+}
+
+function toast(message) {
+
+    const container = $("toastContainer");
+
+    if (!container) return;
+
+    const item = document.createElement("div");
+
+    item.className = "toast";
+
+    item.textContent = message;
+
+    container.appendChild(item);
+
+    setTimeout(() => {
+        item.remove();
+    }, 3000);
+}
+
+function safeText(value) {
+    return String(value ?? "");
 }
 
 
@@ -81,97 +81,54 @@ button {
    BOOT
 ========================================================= */
 
-.boot-screen {
-    position: fixed;
-    inset: 0;
+function startBoot() {
 
-    z-index: 99999;
+    let progress = 0;
 
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    const interval = setInterval(() => {
 
-    background:
-        radial-gradient(
-            circle at center,
-            #15122e 0%,
-            #070711 65%
-        );
+        progress += Math.floor(
+            Math.random() * 15
+        ) + 5;
 
-    color: white;
-}
+        if (progress > 100) {
+            progress = 100;
+        }
 
-.boot-logo,
-.auth-logo,
-.about-logo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+        $("bootProgress").style.width =
+            progress + "%";
 
-    width: 90px;
-    height: 90px;
+        if (progress < 35) {
+            $("bootText").textContent =
+                "Initializing...";
+        }
+        else if (progress < 65) {
+            $("bootText").textContent =
+                "Loading NEXUS core...";
+        }
+        else if (progress < 90) {
+            $("bootText").textContent =
+                "Preparing desktop...";
+        }
+        else {
+            $("bootText").textContent =
+                "Ready.";
+        }
 
-    border-radius: 28px;
+        if (progress >= 100) {
 
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            var(--accent2)
-        );
+            clearInterval(interval);
 
-    font-size: 55px;
-    font-weight: 900;
+            setTimeout(() => {
 
-    box-shadow:
-        0 0 45px rgba(124,92,255,0.45);
+                hide($("bootScreen"));
 
-    animation: pulse 2s infinite;
-}
+                checkSession();
 
-.boot-screen h1 {
-    margin-top: 20px;
-    font-size: 42px;
-    letter-spacing: 5px;
-}
+            }, 500);
+        }
 
-.boot-screen p {
-    margin-top: 10px;
-    color: #aaaacc;
-}
-
-.boot-loader {
-    width: 260px;
-    height: 7px;
-
-    margin-top: 30px;
-
-    border-radius: 10px;
-
-    overflow: hidden;
-
-    background: rgba(255,255,255,0.1);
-}
-
-#bootProgress {
-    width: 0%;
-    height: 100%;
-
-    background:
-        linear-gradient(
-            90deg,
-            var(--accent),
-            var(--accent2)
-        );
-
-    transition: width 0.2s;
-}
-
-@keyframes pulse {
-    50% {
-        transform: scale(1.05);
-    }
+    }, 180);
 }
 
 
@@ -179,151 +136,327 @@ button {
    AUTH
 ========================================================= */
 
-.auth-screen {
-    position: fixed;
-    inset: 0;
+function checkSession() {
 
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    const session =
+        localStorage.getItem(SESSION_KEY);
 
-    background:
-        radial-gradient(
-            circle at 20% 20%,
-            rgba(124,92,255,0.25),
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at 80% 80%,
-            rgba(0,212,255,0.16),
-            transparent 35%
-        ),
-        #070711;
+    if (
+        session &&
+        accounts[session]
+    ) {
 
-    z-index: 9000;
+        currentUser = session;
+
+        enterDesktop();
+
+    } else {
+
+        show($("authScreen"));
+    }
 }
 
-.auth-card {
-    width: min(430px, 92vw);
 
-    padding: 35px;
+function switchToSignup() {
 
-    border: 1px solid var(--border);
+    hide($("loginPanel"));
+    show($("signupPanel"));
 
-    border-radius: 28px;
-
-    background: rgba(20,20,38,0.94);
-
-    box-shadow:
-        0 30px 100px rgba(0,0,0,0.5);
-
-    backdrop-filter: blur(25px);
-
-    text-align: center;
 }
 
-.auth-logo {
-    width: 70px;
-    height: 70px;
-    margin: 0 auto 15px;
 
-    font-size: 40px;
+function switchToLogin() {
+
+    hide($("signupPanel"));
+    show($("loginPanel"));
+
 }
 
-.auth-card h1 {
-    font-size: 34px;
-    letter-spacing: 4px;
-}
 
-.version {
-    color: var(--muted);
-}
+function createAccount() {
 
-.auth-card h2 {
-    margin-top: 25px;
-}
+    const email =
+        $("signupEmail").value.trim().toLowerCase();
 
-.auth-card p {
-    color: var(--muted);
-    margin: 8px 0 15px;
-}
+    const username =
+        $("signupUsername").value.trim();
 
-.auth-card input {
-    width: 100%;
+    const password =
+        $("signupPassword").value;
 
-    margin-top: 10px;
-    padding: 14px 16px;
+    const confirm =
+        $("signupConfirm").value;
 
-    border: 1px solid var(--border);
-    border-radius: 13px;
 
-    outline: none;
+    if (!email) {
 
-    background: rgba(255,255,255,0.06);
+        toast("Please enter your email.");
 
-    color: white;
+        return;
+    }
 
-    transition: 0.2s;
-}
 
-.auth-card input:focus {
-    border-color: var(--accent);
+    if (!username) {
 
-    box-shadow:
-        0 0 0 3px rgba(124,92,255,0.15);
-}
+        toast("Please enter a username.");
 
-.primary-button {
-    width: 100%;
+        return;
+    }
 
-    margin-top: 14px;
-    padding: 14px;
 
-    border-radius: 13px;
+    /*
+       Username:
+       letters
+       numbers
+       spaces
+       underscores
+    */
 
-    color: white;
+    if (!/^[A-Za-z0-9 _]+$/.test(username)) {
 
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            #5b43d6
+        toast(
+            "Use letters, numbers, spaces or underscores."
         );
 
-    font-weight: 700;
+        return;
+    }
 
-    transition: 0.2s;
+
+    if (password.length < 4) {
+
+        toast(
+            "Password must be at least 4 characters."
+        );
+
+        return;
+    }
+
+
+    if (password !== confirm) {
+
+        toast(
+            "Passwords do not match."
+        );
+
+        return;
+    }
+
+
+    if (Object.values(accounts).some(
+        account =>
+            account.email.toLowerCase() === email
+    )) {
+
+        toast(
+            "That email is already registered."
+        );
+
+        return;
+    }
+
+
+    if (Object.values(accounts).some(
+        account =>
+            account.username.toLowerCase() ===
+            username.toLowerCase()
+    )) {
+
+        toast(
+            "That username is already taken."
+        );
+
+        return;
+    }
+
+
+    /*
+       This is intentionally local-only.
+       No Firebase.
+       No server.
+    */
+
+    const id =
+        "user_" +
+        Date.now() +
+        "_" +
+        Math.random()
+            .toString(36)
+            .slice(2);
+
+
+    accounts[id] = {
+
+        id,
+
+        email,
+
+        username,
+
+        password,
+
+        theme: "dark",
+
+        wallpaper: "nexus",
+
+        notes: "",
+
+        files: [],
+
+        createdAt:
+            new Date().toISOString()
+
+    };
+
+
+    saveAccounts();
+
+    $("loginEmail").value = email;
+    $("loginUsername").value = username;
+
+    $("signupEmail").value = "";
+    $("signupUsername").value = "";
+    $("signupPassword").value = "";
+    $("signupConfirm").value = "";
+
+    switchToLogin();
+
+    toast(
+        "Account created successfully!"
+    );
 }
 
-.primary-button:hover {
-    transform: translateY(-2px);
 
-    box-shadow:
-        0 8px 25px rgba(124,92,255,0.3);
+function login() {
+
+    const email =
+        $("loginEmail").value.trim().toLowerCase();
+
+    const username =
+        $("loginUsername").value.trim();
+
+    const password =
+        $("loginPassword").value;
+
+
+    const found =
+        Object.values(accounts).find(
+            account =>
+                account.email.toLowerCase() === email &&
+                account.username.toLowerCase() === username &&
+                account.password === password
+        );
+
+
+    if (!found) {
+
+        toast(
+            "Incorrect email, username or password."
+        );
+
+        return;
+    }
+
+
+    currentUser = found.id;
+
+    localStorage.setItem(
+        SESSION_KEY,
+        currentUser
+    );
+
+
+    $("loginPassword").value = "";
+
+    enterDesktop();
 }
 
-.text-button,
-.link-button {
-    background: none;
-    color: #9f8dff;
-    margin-top: 10px;
+
+function logout() {
+
+    localStorage.removeItem(
+        SESSION_KEY
+    );
+
+    currentUser = null;
+
+    closeAllWindows();
+
+    hide($("desktop"));
+
+    show($("authScreen"));
+
+    switchToLogin();
+
+    toast("Logged out.");
 }
 
-.link-button {
-    font-weight: 700;
+
+function deleteAccount() {
+
+    if (!currentUser) return;
+
+
+    const confirmed =
+        confirm(
+            "Delete your NEXUS account from this browser?"
+        );
+
+    if (!confirmed) return;
+
+
+    delete accounts[currentUser];
+
+    saveAccounts();
+
+    localStorage.removeItem(
+        SESSION_KEY
+    );
+
+    currentUser = null;
+
+    closeAllWindows();
+
+    hide($("desktop"));
+
+    show($("authScreen"));
+
+    toast(
+        "Account deleted."
+    );
 }
 
-.local-warning {
-    margin-top: 25px;
-    padding: 12px;
 
-    border-radius: 12px;
+function forgotPassword() {
 
-    background: rgba(255,255,255,0.05);
+    const email =
+        $("loginEmail").value.trim().toLowerCase();
 
-    color: var(--muted);
+    const found =
+        Object.values(accounts).find(
+            account =>
+                account.email.toLowerCase() === email
+        );
 
-    font-size: 13px;
+
+    if (!found) {
+
+        toast(
+            "Enter the email used for your account."
+        );
+
+        return;
+    }
+
+
+    /*
+       Because this is a local-only system,
+       there is no real email reset service.
+    */
+
+    alert(
+        "This NEXUS version stores accounts only in this browser.\n\n" +
+        "There is no external password-reset service."
+    );
 }
 
 
@@ -331,1102 +464,170 @@ button {
    DESKTOP
 ========================================================= */
 
-.desktop {
-    position: fixed;
-    inset: 0;
+function enterDesktop() {
+
+    if (!currentUser) return;
+
+    hide($("authScreen"));
+
+    show($("desktop"));
+
+    const user =
+        accounts[currentUser];
+
+    updateUserUI();
+
+    applyUserSettings();
+
+    loadNote();
+
+    loadFiles();
+
+    initializePaint();
+
+    updateClock();
+
+    toast(
+        "Welcome to NEXUS, " +
+        user.username +
+        "!"
+    );
 }
 
-.wallpaper {
-    position: absolute;
-    inset: 0;
 
-    z-index: 0;
+function updateUserUI() {
 
-    background:
-        radial-gradient(
-            circle at 20% 20%,
-            rgba(124,92,255,0.4),
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at 80% 70%,
-            rgba(0,212,255,0.2),
-            transparent 35%
-        ),
-        linear-gradient(
-            135deg,
-            #09091a,
-            #151034
-        );
+    if (!currentUser) return;
 
-    transition: 0.5s;
-}
+    const user =
+        accounts[currentUser];
 
-.wallpaper.purple {
-    background:
-        radial-gradient(
-            circle at 30% 30%,
-            #a855f7,
-            transparent 35%
-        ),
-        linear-gradient(
-            135deg,
-            #18051f,
-            #090713
-        );
-}
+    $("settingsUsername").textContent =
+        user.username;
 
-.wallpaper.blue {
-    background:
-        radial-gradient(
-            circle at 30% 30%,
-            #00bfff,
-            transparent 35%
-        ),
-        linear-gradient(
-            135deg,
-            #03141d,
-            #070a16
-        );
-}
+    $("settingsEmail").textContent =
+        user.email;
 
-.wallpaper.green {
-    background:
-        radial-gradient(
-            circle at 30% 30%,
-            #00d084,
-            transparent 35%
-        ),
-        linear-gradient(
-            135deg,
-            #03160f,
-            #070d0a
-        );
+    $("settingsUsernameInput").value =
+        user.username;
+
+    $("startUsername").textContent =
+        user.username;
+
+    $("startEmail").textContent =
+        user.email;
 }
 
 
 /* =========================================================
-   DESKTOP ICONS
+   WINDOW SYSTEM
 ========================================================= */
 
-.desktop-icons {
-    position: absolute;
+let zIndex = 20;
 
-    top: 25px;
-    left: 20px;
 
-    z-index: 2;
+function openWindow(id) {
 
-    display: grid;
+    const win = $(id);
 
-    grid-template-columns: repeat(2, 90px);
+    if (!win) return;
 
-    gap: 18px;
-}
-
-.desktop-icon {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-
-    width: 85px;
-    min-height: 80px;
-
-    background: transparent;
-
-    color: white;
-
-    border-radius: 12px;
-
-    padding: 7px;
-
-    transition: 0.15s;
-}
-
-.desktop-icon:hover {
-    background: rgba(255,255,255,0.12);
-}
-
-.desktop-icon span {
-    font-size: 34px;
-}
-
-.desktop-icon label {
-    margin-top: 5px;
-
-    font-size: 12px;
-
-    text-shadow:
-        0 2px 5px black;
-}
-
-
-/* =========================================================
-   WINDOWS
-========================================================= */
-
-.window {
-    position: absolute;
-
-    z-index: 10;
-
-    display: none;
-
-    width: 700px;
-    max-width: calc(100vw - 30px);
-
-    height: 500px;
-    max-height: calc(100vh - 90px);
-
-    left: 50%;
-    top: 45%;
-
-    transform: translate(-50%, -50%);
-
-    overflow: hidden;
-
-    border: 1px solid var(--border);
-
-    border-radius: 17px;
-
-    background: var(--panel);
-
-    box-shadow:
-        0 30px 90px rgba(0,0,0,0.5);
-
-    backdrop-filter: blur(25px);
-}
-
-.window.open {
-    display: block;
-
-    animation: windowOpen 0.18s ease;
-}
-
-.window.minimized {
-    display: none;
-}
-
-@keyframes windowOpen {
-    from {
-        opacity: 0;
-        transform:
-            translate(-50%, -50%)
-            scale(0.96);
-    }
-
-    to {
-        opacity: 1;
-        transform:
-            translate(-50%, -50%)
-            scale(1);
-    }
-}
-
-.window-header {
-    height: 48px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    padding: 0 15px;
-
-    background:
-        rgba(255,255,255,0.05);
-
-    border-bottom: 1px solid var(--border);
-
-    font-weight: 700;
-}
-
-.window-header button {
-    width: 30px;
-    height: 30px;
-
-    border-radius: 8px;
-
-    color: var(--text);
-
-    background: transparent;
-
-    font-size: 19px;
-}
-
-.window-header button:hover {
-    background: rgba(255,255,255,0.12);
-}
-
-.close-button:hover {
-    background: #ff4565 !important;
-    color: white !important;
-}
-
-.window-content {
-    height: calc(100% - 48px);
-
-    overflow: auto;
-
-    padding: 20px;
-}
-
-
-/* =========================================================
-   NOTEPAD
-========================================================= */
-
-.notepad-content {
-    display: flex;
-    flex-direction: column;
-}
-
-.notepad-toolbar,
-.file-toolbar,
-.paint-toolbar {
-    display: flex;
-    gap: 8px;
-
-    margin-bottom: 12px;
-
-    flex-wrap: wrap;
-}
-
-.notepad-toolbar button,
-.file-toolbar button,
-.paint-toolbar button,
-.settings-content button {
-    padding: 9px 13px;
-
-    border-radius: 9px;
-
-    color: var(--text);
-
-    background: rgba(255,255,255,0.08);
-
-    border: 1px solid var(--border);
-}
-
-.notepad-toolbar button:hover,
-.file-toolbar button:hover,
-.paint-toolbar button:hover,
-.settings-content button:hover {
-    background: rgba(124,92,255,0.25);
-}
-
-#notepad {
-    flex: 1;
-
-    width: 100%;
-
-    resize: none;
-
-    padding: 15px;
-
-    border: 1px solid var(--border);
-    border-radius: 12px;
-
-    background: rgba(0,0,0,0.2);
-
-    color: var(--text);
-
-    outline: none;
-
-    line-height: 1.6;
-}
-
-.status-bar {
-    display: flex;
-    justify-content: space-between;
-
-    margin-top: 8px;
-
-    color: var(--muted);
-
-    font-size: 12px;
-}
-
-
-/* =========================================================
-   CALCULATOR
-========================================================= */
-
-.calculator-display {
-    width: 100%;
-
-    padding: 18px;
-
-    margin-bottom: 15px;
-
-    border: 1px solid var(--border);
-    border-radius: 12px;
-
-    background: rgba(0,0,0,0.25);
-
-    color: var(--text);
-
-    text-align: right;
-
-    font-size: 28px;
-
-    outline: none;
-}
-
-.calculator-grid {
-    display: grid;
-
-    grid-template-columns:
-        repeat(4, 1fr);
-
-    gap: 9px;
-}
-
-.calculator-grid button {
-    min-height: 55px;
-
-    border-radius: 12px;
-
-    background:
-        rgba(255,255,255,0.08);
-
-    color: var(--text);
-
-    font-size: 18px;
-
-    border: 1px solid var(--border);
-}
-
-.calculator-grid button:hover {
-    background:
-        rgba(124,92,255,0.3);
-}
-
-.calculator-grid .equals {
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            #5140d5
-        );
-}
-
-
-/* =========================================================
-   FILES
-========================================================= */
-
-.file-layout {
-    display: grid;
-
-    grid-template-columns: 200px 1fr;
-
-    gap: 15px;
-
-    height: calc(100% - 60px);
-}
-
-.file-list {
-    overflow: auto;
-
-    border: 1px solid var(--border);
-    border-radius: 12px;
-
-    padding: 8px;
-
-    background: rgba(0,0,0,0.15);
-}
-
-.file-item {
-    width: 100%;
-
-    padding: 11px;
-
-    margin-bottom: 5px;
-
-    border-radius: 8px;
-
-    text-align: left;
-
-    background: transparent;
-
-    color: var(--text);
-}
-
-.file-item:hover,
-.file-item.active {
-    background:
-        rgba(124,92,255,0.25);
-}
-
-.file-editor {
-    display: flex;
-    flex-direction: column;
-
-    gap: 10px;
-}
-
-.file-editor input,
-.file-editor textarea {
-    width: 100%;
-
-    padding: 12px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: rgba(0,0,0,0.2);
-
-    color: var(--text);
-
-    outline: none;
-}
-
-.file-editor textarea {
-    flex: 1;
-    resize: none;
-}
-
-
-/* =========================================================
-   PAINT
-========================================================= */
-
-.paint-toolbar {
-    align-items: center;
-}
-
-.paint-toolbar label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-#paintCanvas {
-    display: block;
-
-    width: 100%;
-    height: calc(100% - 60px);
-
-    min-height: 300px;
-
-    border-radius: 12px;
-
-    background: white;
-
-    cursor: crosshair;
-
-    touch-action: none;
-}
-
-
-/* =========================================================
-   GAMES
-========================================================= */
-
-.game-menu {
-    text-align: center;
-}
-
-.game-menu h2 {
-    font-size: 30px;
-}
-
-.game-menu > p {
-    color: var(--muted);
-    margin: 5px 0 20px;
-}
-
-.game-cards {
-    display: grid;
-
-    grid-template-columns:
-        repeat(2, 1fr);
-
-    gap: 15px;
-}
-
-.game-card {
-    display: flex;
-    flex-direction: column;
-
-    align-items: center;
-
-    padding: 22px;
-
-    min-height: 150px;
-
-    border: 1px solid var(--border);
-
-    border-radius: 17px;
-
-    background:
-        rgba(255,255,255,0.06);
-
-    color: var(--text);
-
-    transition: 0.2s;
-}
+    win.classList.add("open");
 
-.game-card:hover {
-    transform: translateY(-4px);
+    win.classList.remove("minimized");
 
-    border-color:
-        rgba(124,92,255,0.6);
+    zIndex++;
 
-    background:
-        rgba(124,92,255,0.14);
-}
-
-.game-card span {
-    font-size: 42px;
-}
-
-.game-card strong {
-    margin-top: 8px;
-}
-
-.game-card small {
-    margin-top: 5px;
-    color: var(--muted);
-}
-
-.game-screen {
-    text-align: center;
-}
-
-.back-game {
-    padding: 8px 12px;
-
-    border-radius: 8px;
-
-    background: rgba(255,255,255,0.08);
-
-    color: var(--text);
-}
-
-.game-screen h2 {
-    margin-top: 15px;
-}
-
-.catch-area {
-    position: relative;
-
-    width: 100%;
-    height: 280px;
-
-    margin-top: 15px;
-
-    border-radius: 15px;
-
-    border: 1px solid var(--border);
-
-    background:
-        radial-gradient(
-            circle at center,
-            rgba(124,92,255,0.2),
-            rgba(0,0,0,0.2)
-        );
-
-    overflow: hidden;
-}
-
-#catchTarget {
-    position: absolute;
-
-    width: 48px;
-    height: 48px;
-
-    border-radius: 50%;
-
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            var(--accent2)
-        );
-
-    color: white;
-
-    font-size: 20px;
-    font-weight: 900;
-
-    box-shadow:
-        0 0 20px rgba(0,212,255,0.4);
-}
-
-.click-rush-button {
-    width: 220px;
-    height: 100px;
-
-    margin-top: 30px;
-
-    border-radius: 20px;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ff4f70,
-            #ff8a00
-        );
-
-    color: white;
-
-    font-size: 28px;
-
-    font-weight: 900;
-}
-
-.click-rush-button:disabled {
-    opacity: 0.4;
-}
-
-.memory-board {
-    display: grid;
-
-    grid-template-columns:
-        repeat(4, 1fr);
-
-    gap: 8px;
-
-    max-width: 400px;
-
-    margin: 20px auto;
-}
-
-.memory-card {
-    aspect-ratio: 1;
-
-    border-radius: 10px;
-
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            #4030a5
-        );
-
-    color: transparent;
-
-    font-size: 24px;
-
-    font-weight: 800;
-}
-
-.memory-card.revealed,
-.memory-card.matched {
-    background:
-        rgba(255,255,255,0.1);
-
-    color: var(--text);
-}
-
-#snakeCanvas {
-    display: block;
-
-    width: 400px;
-    max-width: 100%;
-
-    margin: 15px auto;
-
-    background: #050509;
-
-    border:
-        1px solid var(--border);
-
-    border-radius: 10px;
-}
-
-
-/* =========================================================
-   BROWSER
-========================================================= */
-
-.browser-window {
-    width: 900px;
-    height: 620px;
-}
-
-.browser-toolbar {
-    display: flex;
-    align-items: center;
-
-    gap: 7px;
-
-    padding: 9px;
-
-    background:
-        rgba(0,0,0,0.18);
-
-    border-bottom:
-        1px solid var(--border);
-}
-
-.browser-toolbar button,
-.browser-extra button {
-    min-width: 35px;
-    height: 35px;
-
-    border-radius: 8px;
-
-    background:
-        rgba(255,255,255,0.07);
-
-    color: var(--text);
-
-    border: 1px solid var(--border);
-}
-
-.browser-toolbar button:hover,
-.browser-extra button:hover {
-    background:
-        rgba(124,92,255,0.25);
-}
-
-#browserAddress {
-    flex: 1;
-
-    height: 35px;
-
-    padding: 0 13px;
-
-    border-radius: 18px;
-
-    border:
-        1px solid var(--border);
-
-    background:
-        rgba(255,255,255,0.07);
-
-    color: var(--text);
-
-    outline: none;
-}
-
-.browser-extra {
-    display: flex;
-
-    gap: 7px;
-
-    padding: 7px 9px;
+    win.style.zIndex = zIndex;
 
-    border-bottom:
-        1px solid var(--border);
+    updateTaskbar();
 }
 
-.browser-page {
-    position: relative;
 
-    height: calc(100% - 142px);
+function closeWindow(win) {
 
-    background:
-        var(--panel2);
-}
-
-#browserFrame {
-    width: 100%;
-    height: 100%;
-
-    border: none;
-
-    background: white;
-}
-
-.browser-home {
-    height: 100%;
-
-    display: flex;
-    flex-direction: column;
-
-    align-items: center;
-    justify-content: center;
-
-    text-align: center;
-}
-
-.browser-logo {
-    width: 75px;
-    height: 75px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 23px;
-
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            var(--accent2)
-        );
-
-    font-size: 40px;
-    font-weight: 900;
-}
-
-.browser-home h1 {
-    margin-top: 15px;
-}
-
-.browser-home p {
-    color: var(--muted);
-}
-
-.quick-sites {
-    display: flex;
-
-    gap: 10px;
-
-    margin-top: 25px;
-}
-
-.quick-sites button {
-    padding: 12px 18px;
-
-    border-radius: 12px;
-
-    color: var(--text);
-
-    background:
-        rgba(255,255,255,0.07);
-
-    border:
-        1px solid var(--border);
-}
-
-.browser-blocked {
-    height: 100%;
-
-    display: flex;
-    flex-direction: column;
-
-    align-items: center;
-    justify-content: center;
-
-    text-align: center;
-
-    padding: 30px;
-}
-
-.browser-blocked p {
-    max-width: 500px;
-
-    margin: 10px 0;
-
-    color: var(--muted);
-}
-
-.browser-blocked .primary-button {
-    width: auto;
-
-    padding: 11px 18px;
-}
-
-.browser-status {
-    height: 35px;
-
-    display: flex;
-    align-items: center;
-
-    padding: 0 12px;
-
-    border-top:
-        1px solid var(--border);
+    if (!win) return;
 
-    color: var(--muted);
+    win.classList.remove("open");
 
-    font-size: 12px;
-}
-
-.browser-history {
-    position: absolute;
-
-    z-index: 100;
-
-    top: 92px;
-    right: 10px;
-
-    width: 300px;
-    max-height: 350px;
-
-    overflow: auto;
-
-    background:
-        var(--panel);
-
-    border:
-        1px solid var(--border);
-
-    border-radius: 13px;
-
-    box-shadow:
-        0 20px 50px rgba(0,0,0,0.5);
-}
-
-.history-header {
-    display: flex;
-    justify-content: space-between;
-
-    padding: 12px;
-
-    border-bottom:
-        1px solid var(--border);
-}
-
-.history-header button {
-    background: transparent;
-    color: var(--text);
-}
-
-.history-item {
-    display: block;
-
-    width: 100%;
-
-    padding: 10px;
-
-    text-align: left;
-
-    background: transparent;
-
-    color: var(--text);
-
-    border-bottom:
-        1px solid var(--border);
-}
-
-.history-item:hover {
-    background:
-        rgba(124,92,255,0.15);
-}
-
-
-/* =========================================================
-   SETTINGS
-========================================================= */
-
-.settings-profile {
-    display: flex;
-    align-items: center;
+    win.classList.remove("minimized");
 
-    gap: 15px;
-
-    padding-bottom: 20px;
-
-    border-bottom:
-        1px solid var(--border);
+    updateTaskbar();
 }
-
-.profile-avatar,
-.start-avatar {
-    display: flex;
 
-    align-items: center;
-    justify-content: center;
 
-    width: 55px;
-    height: 55px;
+function minimizeWindow(win) {
 
-    border-radius: 50%;
-
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            var(--accent2)
-        );
-
-    font-size: 25px;
-}
+    if (!win) return;
 
-.settings-profile p {
-    color: var(--muted);
-}
+    win.classList.toggle("minimized");
 
-.settings-content h3 {
-    margin-top: 22px;
-    margin-bottom: 10px;
+    updateTaskbar();
 }
-
-.settings-content input {
-    width: 100%;
-
-    padding: 11px;
 
-    border:
-        1px solid var(--border);
 
-    border-radius: 10px;
+function closeAllWindows() {
 
-    background:
-        rgba(0,0,0,0.15);
+    document.querySelectorAll(
+        ".window"
+    ).forEach(win => {
 
-    color: var(--text);
+        win.classList.remove("open");
 
-    outline: none;
-}
+        win.classList.remove("minimized");
 
-.settings-buttons {
-    display: flex;
+    });
 
-    flex-wrap: wrap;
-
-    gap: 8px;
+    updateTaskbar();
 }
-
-.danger-button {
-    margin-right: 8px;
 
-    background:
-        rgba(255,79,112,0.12) !important;
 
-    color:
-        #ff7891 !important;
-}
+function updateTaskbar() {
 
+    const container =
+        $("taskbarApps");
 
-/* =========================================================
-   ABOUT
-========================================================= */
-
-.about-content {
-    text-align: center;
-}
+    if (!container) return;
 
-.about-logo {
-    width: 75px;
-    height: 75px;
+    container.innerHTML = "";
 
-    margin: 10px auto 15px;
+    document.querySelectorAll(
+        ".window"
+    ).forEach(win => {
 
-    font-size: 42px;
-}
+        if (!win.classList.contains("open")) {
+            return;
+        }
 
-.about-content h1 {
-    font-size: 35px;
-    letter-spacing: 4px;
-}
+        const title =
+            win.querySelector(
+                ".window-header span"
+            )?.textContent ||
+            "App";
 
-.feature-list {
-    display: grid;
+        const button =
+            document.createElement("button");
 
-    grid-template-columns:
-        repeat(2, 1fr);
+        button.className =
+            "taskbar-app";
 
-    gap: 8px;
+        button.textContent =
+            title;
 
-    margin-top: 25px;
-}
+        button.onclick = () => {
 
-.feature-list div {
-    padding: 12px;
+            if (win.classList.contains("minimized")) {
 
-    border:
-        1px solid var(--border);
+                openWindow(win.id);
 
-    border-radius: 10px;
+            } else {
 
-    background:
-        rgba(255,255,255,0.05);
+                minimizeWindow(win);
+            }
+        };
+
+        container.appendChild(button);
+    });
 }
 
 
@@ -1434,368 +635,2360 @@ button {
    START MENU
 ========================================================= */
 
-.start-menu {
-    position: absolute;
+function toggleStartMenu() {
 
-    z-index: 1000;
-
-    left: 10px;
-    bottom: 68px;
-
-    width: 330px;
-    max-height: 70vh;
-
-    overflow: auto;
-
-    padding: 15px;
-
-    border:
-        1px solid var(--border);
-
-    border-radius: 18px;
-
-    background:
-        var(--panel);
-
-    box-shadow:
-        0 25px 70px rgba(0,0,0,0.5);
-
-    backdrop-filter: blur(25px);
-
-    animation: startOpen 0.15s ease;
-}
-
-@keyframes startOpen {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.start-profile {
-    display: flex;
-
-    align-items: center;
-
-    gap: 12px;
-
-    padding-bottom: 15px;
-
-    border-bottom:
-        1px solid var(--border);
-}
-
-.start-profile small {
-    display: block;
-
-    margin-top: 3px;
-
-    color: var(--muted);
-}
-
-.start-apps {
-    display: grid;
-
-    grid-template-columns:
-        repeat(2, 1fr);
-
-    gap: 7px;
-
-    margin-top: 15px;
-}
-
-.start-apps button,
-.start-bottom button {
-    padding: 12px;
-
-    border-radius: 10px;
-
-    text-align: left;
-
-    background:
-        rgba(255,255,255,0.06);
-
-    color: var(--text);
-}
-
-.start-apps button:hover,
-.start-bottom button:hover {
-    background:
-        rgba(124,92,255,0.2);
-}
-
-.start-bottom {
-    margin-top: 15px;
-
-    border-top:
-        1px solid var(--border);
-
-    padding-top: 12px;
+    $("startMenu")
+        .classList.toggle("hidden");
 }
 
 
 /* =========================================================
-   TASKBAR
+   NOTEPAD
 ========================================================= */
 
-.taskbar {
-    position: absolute;
+function loadNote() {
 
-    z-index: 2000;
+    if (!currentUser) return;
 
-    bottom: 0;
-    left: 0;
-    right: 0;
+    $("notepad").value =
+        accounts[currentUser].notes || "";
 
-    height: 58px;
-
-    display: flex;
-    align-items: center;
-
-    padding: 7px 10px;
-
-    background:
-        var(--taskbar);
-
-    border-top:
-        1px solid var(--border);
-
-    backdrop-filter: blur(25px);
+    updateWordCount();
 }
 
-.start-button {
-    height: 42px;
 
-    padding: 0 16px;
+function saveNote() {
 
-    border-radius: 11px;
+    if (!currentUser) return;
 
-    color: white;
+    accounts[currentUser].notes =
+        $("notepad").value;
 
-    background:
-        linear-gradient(
-            135deg,
-            var(--accent),
-            #4c38c9
+    saveAccounts();
+
+    $("noteStatus").textContent =
+        "Saved";
+
+    updateWordCount();
+
+    toast("Note saved.");
+}
+
+
+function updateWordCount() {
+
+    const text =
+        $("notepad").value.trim();
+
+    const count =
+        text ?
+        text.split(/\s+/).length :
+        0;
+
+    $("wordCount").textContent =
+        count + " words";
+}
+
+
+/* =========================================================
+   CALCULATOR
+========================================================= */
+
+let calculatorExpression = "";
+
+
+function calculatorInput(value) {
+
+    if (value === "C") {
+
+        calculatorExpression = "";
+
+    }
+    else if (value === "backspace") {
+
+        calculatorExpression =
+            calculatorExpression.slice(0, -1);
+
+    }
+    else if (value === "=") {
+
+        calculateResult();
+
+        return;
+
+    }
+    else {
+
+        calculatorExpression += value;
+    }
+
+
+    $("calculatorDisplay").value =
+        calculatorExpression;
+}
+
+
+function calculateResult() {
+
+    try {
+
+        /*
+           Only allow calculator characters.
+        */
+
+        if (
+            !/^[0-9+\-*/().\s]+$/.test(
+                calculatorExpression
+            )
+        ) {
+
+            throw new Error();
+
+        }
+
+
+        const result =
+            Function(
+                `"use strict"; return (${calculatorExpression})`
+            )();
+
+
+        if (!Number.isFinite(result)) {
+            throw new Error();
+        }
+
+
+        calculatorExpression =
+            String(result);
+
+        $("calculatorDisplay").value =
+            calculatorExpression;
+
+    }
+    catch {
+
+        calculatorExpression = "";
+
+        $("calculatorDisplay").value =
+            "Error";
+
+        setTimeout(() => {
+
+            $("calculatorDisplay").value =
+                "";
+
+        }, 800);
+    }
+}
+
+
+/* =========================================================
+   FILE MANAGER
+========================================================= */
+
+let selectedFileIndex = -1;
+
+
+function loadFiles() {
+
+    if (!currentUser) return;
+
+    renderFiles();
+}
+
+
+function renderFiles() {
+
+    const list =
+        $("fileList");
+
+    list.innerHTML = "";
+
+    const files =
+        accounts[currentUser].files || [];
+
+
+    if (files.length === 0) {
+
+        list.innerHTML =
+            `<div class="small-text">
+                No files yet.
+             </div>`;
+
+        $("fileName").value = "";
+        $("fileContent").value = "";
+
+        selectedFileIndex = -1;
+
+        return;
+    }
+
+
+    files.forEach(
+        (file, index) => {
+
+            const button =
+                document.createElement("button");
+
+            button.className =
+                "file-item";
+
+            if (index === selectedFileIndex) {
+                button.classList.add("active");
+            }
+
+            button.textContent =
+                "📄 " + file.name;
+
+            button.onclick = () => {
+
+                selectFile(index);
+
+            };
+
+            list.appendChild(button);
+        }
+    );
+}
+
+
+function selectFile(index) {
+
+    const files =
+        accounts[currentUser].files;
+
+    if (!files[index]) return;
+
+    selectedFileIndex = index;
+
+    $("fileName").value =
+        files[index].name;
+
+    $("fileContent").value =
+        files[index].content;
+
+    renderFiles();
+}
+
+
+function createFile() {
+
+    accounts[currentUser].files.push({
+
+        name: "New File.txt",
+
+        content: ""
+
+    });
+
+    selectedFileIndex =
+        accounts[currentUser].files.length - 1;
+
+    saveAccounts();
+
+    renderFiles();
+
+    selectFile(selectedFileIndex);
+
+    toast("New file created.");
+}
+
+
+function saveFile() {
+
+    if (selectedFileIndex < 0) {
+
+        toast("Select a file first.");
+
+        return;
+    }
+
+
+    const file =
+        accounts[currentUser]
+            .files[selectedFileIndex];
+
+
+    file.name =
+        $("fileName").value.trim() ||
+        "Untitled.txt";
+
+    file.content =
+        $("fileContent").value;
+
+
+    saveAccounts();
+
+    renderFiles();
+
+    toast("File saved.");
+}
+
+
+function deleteFile() {
+
+    if (selectedFileIndex < 0) {
+
+        toast("Select a file first.");
+
+        return;
+    }
+
+
+    accounts[currentUser]
+        .files.splice(
+            selectedFileIndex,
+            1
         );
 
-    font-weight: 800;
-}
 
-.taskbar-apps {
-    display: flex;
+    selectedFileIndex = -1;
 
-    gap: 5px;
+    saveAccounts();
 
-    margin-left: 10px;
+    renderFiles();
 
-    flex: 1;
-}
-
-.taskbar-app {
-    height: 42px;
-
-    min-width: 42px;
-
-    padding: 0 10px;
-
-    border-radius: 9px;
-
-    background:
-        rgba(255,255,255,0.07);
-
-    color: var(--text);
-}
-
-.taskbar-app.active {
-    background:
-        rgba(124,92,255,0.3);
-}
-
-.taskbar-right {
-    display: flex;
-    align-items: center;
-
-    gap: 15px;
-
-    color: var(--text);
-
-    padding: 0 8px;
-}
-
-#taskbarClock {
-    font-variant-numeric: tabular-nums;
+    toast("File deleted.");
 }
 
 
 /* =========================================================
-   TOAST
+   PAINT
 ========================================================= */
 
-#toastContainer {
-    position: absolute;
+let paintContext = null;
 
-    z-index: 9999;
+let painting = false;
 
-    right: 20px;
-    bottom: 75px;
+let lastX = 0;
+let lastY = 0;
 
-    display: flex;
-    flex-direction: column;
 
-    gap: 8px;
+function initializePaint() {
+
+    const canvas =
+        $("paintCanvas");
+
+    if (!canvas) return;
+
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+    const ratio =
+        window.devicePixelRatio || 1;
+
+
+    canvas.width =
+        rect.width * ratio;
+
+    canvas.height =
+        rect.height * ratio;
+
+
+    paintContext =
+        canvas.getContext("2d");
+
+    paintContext.scale(
+        ratio,
+        ratio
+    );
+
+
+    paintContext.fillStyle =
+        "white";
+
+    paintContext.fillRect(
+        0,
+        0,
+        rect.width,
+        rect.height
+    );
+
+
+    canvas.addEventListener(
+        "pointerdown",
+        startPainting
+    );
+
+    canvas.addEventListener(
+        "pointermove",
+        paint
+    );
+
+    canvas.addEventListener(
+        "pointerup",
+        stopPainting
+    );
+
+    canvas.addEventListener(
+        "pointerleave",
+        stopPainting
+    );
 }
 
-.toast {
-    min-width: 250px;
 
-    padding: 13px 15px;
+function canvasPosition(event) {
 
-    border:
-        1px solid var(--border);
+    const canvas =
+        $("paintCanvas");
 
-    border-radius: 12px;
+    const rect =
+        canvas.getBoundingClientRect();
 
-    background:
-        var(--panel);
+    return {
 
-    box-shadow:
-        0 15px 40px rgba(0,0,0,0.4);
+        x: event.clientX - rect.left,
 
-    animation:
-        toastIn 0.2s ease;
+        y: event.clientY - rect.top
+
+    };
 }
 
-@keyframes toastIn {
-    from {
-        opacity: 0;
-        transform: translateX(30px);
+
+function startPainting(event) {
+
+    painting = true;
+
+    const pos =
+        canvasPosition(event);
+
+    lastX = pos.x;
+    lastY = pos.y;
+}
+
+
+function paint(event) {
+
+    if (!painting || !paintContext) {
+        return;
     }
 
-    to {
-        opacity: 1;
-        transform: translateX(0);
+
+    const pos =
+        canvasPosition(event);
+
+
+    paintContext.beginPath();
+
+    paintContext.moveTo(
+        lastX,
+        lastY
+    );
+
+    paintContext.lineTo(
+        pos.x,
+        pos.y
+    );
+
+
+    paintContext.strokeStyle =
+        $("paintColor").value;
+
+    paintContext.lineWidth =
+        Number(
+            $("brushSize").value
+        );
+
+    paintContext.lineCap =
+        "round";
+
+    paintContext.lineJoin =
+        "round";
+
+    paintContext.stroke();
+
+
+    lastX = pos.x;
+    lastY = pos.y;
+}
+
+
+function stopPainting() {
+
+    painting = false;
+}
+
+
+function clearPaint() {
+
+    const canvas =
+        $("paintCanvas");
+
+    if (!paintContext) return;
+
+    paintContext.fillStyle =
+        "white";
+
+    paintContext.fillRect(
+        0,
+        0,
+        canvas.clientWidth,
+        canvas.clientHeight
+    );
+}
+
+
+function savePaint() {
+
+    const canvas =
+        $("paintCanvas");
+
+    const link =
+        document.createElement("a");
+
+    link.download =
+        "nexus-paint.png";
+
+    link.href =
+        canvas.toDataURL("image/png");
+
+    link.click();
+
+    toast("Painting saved.");
+}
+
+
+/* =========================================================
+   CATCH NEXUS
+========================================================= */
+
+let catchScore = 0;
+
+let catchTimer = null;
+
+
+function startCatchGame() {
+
+    clearInterval(catchTimer);
+
+    catchScore = 0;
+
+    $("catchScore").textContent =
+        "0";
+
+
+    moveCatchTarget();
+
+    catchTimer =
+        setInterval(
+            moveCatchTarget,
+            700
+        );
+
+
+    toast(
+        "Catch the N!"
+    );
+}
+
+
+function moveCatchTarget() {
+
+    const area =
+        $("catchArea");
+
+    const target =
+        $("catchTarget");
+
+    if (!area || !target) return;
+
+
+    const maxX =
+        Math.max(
+            0,
+            area.clientWidth -
+            target.offsetWidth
+        );
+
+    const maxY =
+        Math.max(
+            0,
+            area.clientHeight -
+            target.offsetHeight
+        );
+
+
+    target.style.left =
+        Math.random() *
+        maxX +
+        "px";
+
+    target.style.top =
+        Math.random() *
+        maxY +
+        "px";
+}
+
+
+function catchTarget() {
+
+    catchScore++;
+
+    $("catchScore").textContent =
+        catchScore;
+
+    moveCatchTarget();
+}
+
+
+/* =========================================================
+   CLICK RUSH
+========================================================= */
+
+let clickScore = 0;
+
+let clickSeconds = 10;
+
+let clickTimer = null;
+
+
+function startClickRush() {
+
+    clearInterval(clickTimer);
+
+    clickScore = 0;
+
+    clickSeconds = 10;
+
+
+    $("clickScore").textContent =
+        "0";
+
+    $("clickTime").textContent =
+        "10";
+
+    $("clickButton").disabled =
+        false;
+
+
+    clickTimer =
+        setInterval(() => {
+
+            clickSeconds--;
+
+            $("clickTime").textContent =
+                clickSeconds;
+
+
+            if (clickSeconds <= 0) {
+
+                clearInterval(
+                    clickTimer
+                );
+
+                $("clickButton").disabled =
+                    true;
+
+                toast(
+                    "Click Rush score: " +
+                    clickScore
+                );
+            }
+
+        }, 1000);
+}
+
+
+function clickRush() {
+
+    clickScore++;
+
+    $("clickScore").textContent =
+        clickScore;
+}
+
+
+/* =========================================================
+   MEMORY MATCH
+========================================================= */
+
+const memorySymbols = [
+    "🚀",
+    "🚀",
+    "🎮",
+    "🎮",
+    "💻",
+    "💻",
+    "⚡",
+    "⚡",
+    "🌟",
+    "🌟",
+    "🧠",
+    "🧠"
+];
+
+let memoryCards = [];
+
+let memoryFirst = null;
+
+let memorySecond = null;
+
+let memoryLock = false;
+
+let memoryMoves = 0;
+
+let memoryMatched = 0;
+
+
+function shuffle(array) {
+
+    return array
+        .map(value => ({
+            value,
+            sort: Math.random()
+        }))
+        .sort(
+            (a,b) => a.sort - b.sort
+        )
+        .map(item => item.value);
+}
+
+
+function startMemoryGame() {
+
+    const board =
+        $("memoryBoard");
+
+    board.innerHTML = "";
+
+    memoryCards =
+        shuffle(memorySymbols);
+
+    memoryFirst = null;
+    memorySecond = null;
+    memoryLock = false;
+
+    memoryMoves = 0;
+    memoryMatched = 0;
+
+    $("memoryMoves").textContent =
+        "0";
+
+
+    memoryCards.forEach(
+        (symbol, index) => {
+
+            const card =
+                document.createElement("button");
+
+            card.className =
+                "memory-card";
+
+            card.dataset.index =
+                index;
+
+            card.textContent =
+                symbol;
+
+            card.onclick =
+                () => flipMemoryCard(card);
+
+            board.appendChild(card);
+
+        }
+    );
+}
+
+
+function flipMemoryCard(card) {
+
+    if (memoryLock) return;
+
+    if (
+        card.classList.contains(
+            "revealed"
+        )
+    ) return;
+
+    if (
+        card.classList.contains(
+            "matched"
+        )
+    ) return;
+
+
+    card.classList.add(
+        "revealed"
+    );
+
+
+    if (!memoryFirst) {
+
+        memoryFirst = card;
+
+        return;
+    }
+
+
+    memorySecond = card;
+
+    memoryMoves++;
+
+    $("memoryMoves").textContent =
+        memoryMoves;
+
+
+    const firstIndex =
+        Number(
+            memoryFirst.dataset.index
+        );
+
+    const secondIndex =
+        Number(
+            memorySecond.dataset.index
+        );
+
+
+    if (
+        memoryCards[firstIndex] ===
+        memoryCards[secondIndex]
+    ) {
+
+        memoryFirst.classList.add(
+            "matched"
+        );
+
+        memorySecond.classList.add(
+            "matched"
+        );
+
+        memoryMatched++;
+
+        memoryFirst = null;
+        memorySecond = null;
+
+
+        if (memoryMatched ===
+            memorySymbols.length / 2) {
+
+            toast(
+                "You completed Memory Match! 🧠"
+            );
+        }
+
+    } else {
+
+        memoryLock = true;
+
+        setTimeout(() => {
+
+            memoryFirst.classList.remove(
+                "revealed"
+            );
+
+            memorySecond.classList.remove(
+                "revealed"
+            );
+
+            memoryFirst = null;
+            memorySecond = null;
+
+            memoryLock = false;
+
+        }, 750);
     }
 }
 
 
 /* =========================================================
-   CLOCK OVERLAY
+   SNAKE
 ========================================================= */
 
-.clock-overlay {
-    position: absolute;
+let snakeInterval = null;
 
-    z-index: 3;
+let snake = [];
 
-    right: 35px;
-    top: 30px;
+let snakeDirection = {
+    x: 1,
+    y: 0
+};
 
-    text-align: right;
+let snakeFood = {
+    x: 10,
+    y: 10
+};
 
-    pointer-events: none;
+let snakeScore = 0;
 
-    text-shadow:
-        0 4px 20px rgba(0,0,0,0.6);
+const snakeSize = 20;
+
+const snakeColumns = 20;
+
+const snakeRows = 15;
+
+
+function randomFood() {
+
+    return {
+
+        x:
+            Math.floor(
+                Math.random() *
+                snakeColumns
+            ),
+
+        y:
+            Math.floor(
+                Math.random() *
+                snakeRows
+            )
+    };
 }
 
-#bigClock {
-    font-size: clamp(35px, 6vw, 75px);
 
-    font-weight: 800;
+function startSnakeGame() {
 
-    letter-spacing: -3px;
+    clearInterval(
+        snakeInterval
+    );
+
+
+    snake = [
+        {
+            x: 5,
+            y: 7
+        },
+        {
+            x: 4,
+            y: 7
+        },
+        {
+            x: 3,
+            y: 7
+        }
+    ];
+
+
+    snakeDirection = {
+        x: 1,
+        y: 0
+    };
+
+
+    snakeFood =
+        randomFood();
+
+
+    snakeScore = 0;
+
+    $("snakeScore").textContent =
+        "0";
+
+
+    drawSnake();
+
+
+    snakeInterval =
+        setInterval(
+            updateSnake,
+            120
+        );
 }
 
-#bigDate {
-    color: rgba(255,255,255,0.7);
 
-    font-size: 14px;
+function updateSnake() {
+
+    const head = {
+        x:
+            snake[0].x +
+            snakeDirection.x,
+
+        y:
+            snake[0].y +
+            snakeDirection.y
+    };
+
+
+    /*
+       Wall collision
+    */
+
+    if (
+        head.x < 0 ||
+        head.x >= snakeColumns ||
+        head.y < 0 ||
+        head.y >= snakeRows
+    ) {
+
+        endSnake();
+
+        return;
+    }
+
+
+    /*
+       Body collision
+    */
+
+    if (
+        snake.some(
+            part =>
+                part.x === head.x &&
+                part.y === head.y
+        )
+    ) {
+
+        endSnake();
+
+        return;
+    }
+
+
+    snake.unshift(head);
+
+
+    if (
+        head.x === snakeFood.x &&
+        head.y === snakeFood.y
+    ) {
+
+        snakeScore++;
+
+        $("snakeScore").textContent =
+            snakeScore;
+
+        snakeFood =
+            randomFood();
+
+    } else {
+
+        snake.pop();
+    }
+
+
+    drawSnake();
+}
+
+
+function drawSnake() {
+
+    const canvas =
+        $("snakeCanvas");
+
+    const ctx =
+        canvas.getContext("2d");
+
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /*
+       Grid
+    */
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,0.05)";
+
+    for (
+        let x = 0;
+        x <= snakeColumns;
+        x++
+    ) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            x * snakeSize,
+            0
+        );
+
+        ctx.lineTo(
+            x * snakeSize,
+            canvas.height
+        );
+
+        ctx.stroke();
+    }
+
+
+    for (
+        let y = 0;
+        y <= snakeRows;
+        y++
+    ) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            y * snakeSize
+        );
+
+        ctx.lineTo(
+            canvas.width,
+            y * snakeSize
+        );
+
+        ctx.stroke();
+    }
+
+
+    /*
+       Food
+    */
+
+    ctx.fillStyle =
+        "#ff4f70";
+
+    ctx.fillRect(
+        snakeFood.x * snakeSize,
+        snakeFood.y * snakeSize,
+        snakeSize - 2,
+        snakeSize - 2
+    );
+
+
+    /*
+       Snake
+    */
+
+    ctx.fillStyle =
+        "#7c5cff";
+
+    snake.forEach(
+        (part, index) => {
+
+            ctx.fillStyle =
+                index === 0
+                    ? "#00d4ff"
+                    : "#7c5cff";
+
+            ctx.fillRect(
+                part.x * snakeSize,
+                part.y * snakeSize,
+                snakeSize - 2,
+                snakeSize - 2
+            );
+
+        }
+    );
+}
+
+
+function endSnake() {
+
+    clearInterval(
+        snakeInterval
+    );
+
+    snakeInterval = null;
+
+    toast(
+        "Snake game over! Score: " +
+        snakeScore
+    );
 }
 
 
 /* =========================================================
-   SMALL TEXT
+   SNAKE KEYBOARD
 ========================================================= */
 
-.small-text {
-    color: var(--muted);
+document.addEventListener(
+    "keydown",
+    event => {
 
-    font-size: 12px;
+        if (!$("snakeGameScreen")
+            .classList.contains("hidden")) {
+
+            if (
+                event.key === "ArrowUp" &&
+                snakeDirection.y !== 1
+            ) {
+
+                snakeDirection = {
+                    x: 0,
+                    y: -1
+                };
+
+            }
+            else if (
+                event.key === "ArrowDown" &&
+                snakeDirection.y !== -1
+            ) {
+
+                snakeDirection = {
+                    x: 0,
+                    y: 1
+                };
+
+            }
+            else if (
+                event.key === "ArrowLeft" &&
+                snakeDirection.x !== 1
+            ) {
+
+                snakeDirection = {
+                    x: -1,
+                    y: 0
+                };
+
+            }
+            else if (
+                event.key === "ArrowRight" &&
+                snakeDirection.x !== -1
+            ) {
+
+                snakeDirection = {
+                    x: 1,
+                    y: 0
+                };
+            }
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   GAME SCREEN SWITCHING
+========================================================= */
+
+function showGame(game) {
+
+    hide($("gameMenu"));
+
+    hide($("catchGameScreen"));
+
+    hide($("clickGameScreen"));
+
+    hide($("memoryGameScreen"));
+
+    hide($("snakeGameScreen"));
+
+
+    if (game === "catch") {
+
+        show($("catchGameScreen"));
+
+    }
+    else if (game === "click") {
+
+        show($("clickGameScreen"));
+
+    }
+    else if (game === "memory") {
+
+        show($("memoryGameScreen"));
+
+    }
+    else if (game === "snake") {
+
+        show($("snakeGameScreen"));
+
+    }
+}
+
+
+function returnToGames() {
+
+    hide($("catchGameScreen"));
+
+    hide($("clickGameScreen"));
+
+    hide($("memoryGameScreen"));
+
+    hide($("snakeGameScreen"));
+
+    show($("gameMenu"));
+
+    clearInterval(catchTimer);
+
+    clearInterval(clickTimer);
+
+    clearInterval(snakeInterval);
 }
 
 
 /* =========================================================
-   MOBILE
+   BROWSER
 ========================================================= */
 
-@media (max-width: 700px) {
+let currentBrowserURL = "";
 
-    .desktop-icons {
-        grid-template-columns:
-            repeat(4, 70px);
 
-        left: 8px;
-        top: 15px;
+function normalizeURL(value) {
 
-        gap: 8px;
+    value = value.trim();
+
+    if (!value) {
+        return "";
     }
 
-    .desktop-icon {
-        width: 65px;
+
+    /*
+       Search if it doesn't look like a URL.
+    */
+
+    if (
+        !value.includes(".") &&
+        !value.startsWith("http://") &&
+        !value.startsWith("https://")
+    ) {
+
+        return (
+            "https://www.google.com/search?q=" +
+            encodeURIComponent(value)
+        );
     }
 
-    .desktop-icon span {
-        font-size: 28px;
+
+    if (
+        !value.startsWith("http://") &&
+        !value.startsWith("https://")
+    ) {
+
+        return "https://" + value;
     }
 
-    .desktop-icon label {
-        font-size: 10px;
+
+    return value;
+}
+
+
+function navigateBrowser(value) {
+
+    const url =
+        normalizeURL(value);
+
+    if (!url) return;
+
+
+    currentBrowserURL = url;
+
+    $("browserAddress").value =
+        url;
+
+
+    /*
+       Store browser history.
+    */
+
+    browserHistory =
+        browserHistory.filter(
+            item => item !== url
+        );
+
+    browserHistory.unshift(url);
+
+    browserHistory =
+        browserHistory.slice(0, 30);
+
+    saveHistory();
+
+    renderHistory();
+
+
+    showBrowserLoading();
+
+
+    const frame =
+        $("browserFrame");
+
+
+    frame.src = url;
+
+    show(frame);
+
+    hide($("browserHomePage));
+
+    hide($("browserBlocked));
+
+
+    $("browserTabTitle").textContent =
+        url;
+
+
+    /*
+       Browsers cannot detect every
+       iframe restriction perfectly.
+    */
+
+    setTimeout(() => {
+
+        if (
+            frame.classList.contains("hidden")
+        ) {
+            return;
+        }
+
+        /*
+           Keep iframe visible.
+           The user can use Open External
+           if the site blocks embedding.
+        */
+
+    }, 1500);
+}
+
+
+function showBrowserLoading() {
+
+    $("browserTabTitle").textContent =
+        "Loading...";
+
+    hide($("browserBlocked));
+}
+
+
+function browserHome() {
+
+    currentBrowserURL = "";
+
+    $("browserAddress").value = "";
+
+    hide($("browserFrame"));
+
+    hide($("browserBlocked));
+
+    show($("browserHomePage));
+
+    $("browserTabTitle").textContent =
+        "NEXUS Browser";
+}
+
+
+function openExternal() {
+
+    if (!currentBrowserURL) {
+
+        toast(
+            "Enter a website first."
+        );
+
+        return;
     }
 
-    .window {
-        width: calc(100vw - 16px);
-        height: calc(100vh - 80px);
+
+    window.open(
+        currentBrowserURL,
+        "_blank",
+        "noopener,noreferrer"
+    );
+}
+
+
+function renderHistory() {
+
+    const list =
+        $("historyList");
+
+    list.innerHTML = "";
+
+
+    if (browserHistory.length === 0) {
+
+        list.innerHTML =
+            `<div class="small-text" style="padding:12px">
+                No history yet.
+             </div>`;
+
+        return;
     }
 
-    .browser-window {
-        width: calc(100vw - 16px);
+
+    browserHistory.forEach(
+        url => {
+
+            const button =
+                document.createElement("button");
+
+            button.className =
+                "history-item";
+
+            button.textContent =
+                url;
+
+            button.onclick = () => {
+
+                navigateBrowser(url);
+
+                hide(
+                    $("browserHistoryPanel")
+                );
+            };
+
+            list.appendChild(button);
+        }
+    );
+}
+
+
+function toggleHistory() {
+
+    $("browserHistoryPanel")
+        .classList.toggle("hidden");
+
+    renderHistory();
+}
+
+
+function addFavorite() {
+
+    if (!currentBrowserURL) {
+
+        toast(
+            "Open a page first."
+        );
+
+        return;
     }
 
-    .game-cards {
-        grid-template-columns:
-            1fr;
-    }
 
-    .file-layout {
-        grid-template-columns:
-            1fr;
-    }
+    const favorites =
+        JSON.parse(
+            localStorage.getItem(
+                "nexus_v14_favorites"
+            ) || "[]"
+        );
 
-    .file-list {
-        max-height: 120px;
-    }
 
-    .feature-list {
-        grid-template-columns:
-            1fr;
-    }
+    if (!favorites.includes(
+        currentBrowserURL
+    )) {
 
-    .start-menu {
-        width: calc(100vw - 20px);
-    }
+        favorites.push(
+            currentBrowserURL
+        );
 
-    .clock-overlay {
-        top: 15px;
-        right: 15px;
-    }
+        localStorage.setItem(
+            "nexus_v14_favorites",
+            JSON.stringify(favorites)
+        );
 
-    #bigClock {
-        font-size: 38px;
+        toast("Added to favorites.");
+
+    } else {
+
+        toast(
+            "Already in favorites."
+        );
     }
 }
+
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+
+function applyUserSettings() {
+
+    if (!currentUser) return;
+
+    const user =
+        accounts[currentUser];
+
+
+    if (user.theme === "light") {
+
+        document.body.classList.add(
+            "light"
+        );
+
+    } else {
+
+        document.body.classList.remove(
+            "light"
+        );
+    }
+
+
+    applyWallpaper(
+        user.wallpaper || "nexus"
+    );
+}
+
+
+function applyWallpaper(name) {
+
+    const wallpaper =
+        $("wallpaper");
+
+    wallpaper.className =
+        "wallpaper";
+
+
+    if (
+        name !== "nexus" &&
+        name !== ""
+    ) {
+
+        wallpaper.classList.add(
+            name
+        );
+    }
+
+
+    if (currentUser) {
+
+        accounts[currentUser]
+            .wallpaper = name;
+
+        saveAccounts();
+    }
+}
+
+
+function setTheme(theme) {
+
+    if (!currentUser) return;
+
+
+    if (theme === "light") {
+
+        document.body.classList.add(
+            "light"
+        );
+
+    } else {
+
+        document.body.classList.remove(
+            "light"
+        );
+    }
+
+
+    accounts[currentUser].theme =
+        theme;
+
+    saveAccounts();
+
+    toast(
+        theme === "light"
+            ? "Light theme enabled."
+            : "Dark theme enabled."
+    );
+}
+
+
+function saveUsername() {
+
+    if (!currentUser) return;
+
+
+    const username =
+        $("settingsUsernameInput")
+            .value
+            .trim();
+
+
+    if (!username) {
+
+        toast(
+            "Username cannot be empty."
+        );
+
+        return;
+    }
+
+
+    if (!/^[A-Za-z0-9 _]+$/.test(
+        username
+    )) {
+
+        toast(
+            "Use letters, numbers, spaces or underscores."
+        );
+
+        return;
+    }
+
+
+    const duplicate =
+        Object.values(accounts)
+            .some(
+                account =>
+                    account.id !== currentUser &&
+                    account.username.toLowerCase() ===
+                    username.toLowerCase()
+            );
+
+
+    if (duplicate) {
+
+        toast(
+            "That username is already taken."
+        );
+
+        return;
+    }
+
+
+    accounts[currentUser].username =
+        username;
+
+    saveAccounts();
+
+    updateUserUI();
+
+    toast(
+        "Username updated."
+    );
+}
+
+
+function changePassword() {
+
+    if (!currentUser) return;
+
+
+    const oldPassword =
+        prompt(
+            "Enter your current password:"
+        );
+
+
+    if (
+        oldPassword === null
+    ) return;
+
+
+    if (
+        oldPassword !==
+        accounts[currentUser].password
+    ) {
+
+        toast(
+            "Current password is incorrect."
+        );
+
+        return;
+    }
+
+
+    const newPassword =
+        prompt(
+            "Enter your new password:"
+        );
+
+
+    if (
+        !newPassword ||
+        newPassword.length < 4
+    ) {
+
+        toast(
+            "Password must be at least 4 characters."
+        );
+
+        return;
+    }
+
+
+    accounts[currentUser].password =
+        newPassword;
+
+    saveAccounts();
+
+    toast(
+        "Password changed."
+    );
+}
+
+
+/* =========================================================
+   CLOCK
+========================================================= */
+
+function updateClock() {
+
+    const now =
+        new Date();
+
+
+    const time =
+        now.toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+
+
+    const date =
+        now.toLocaleDateString(
+            [],
+            {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+            }
+        );
+
+
+    $("taskbarClock").textContent =
+        time;
+
+    $("bigClock").textContent =
+        time;
+
+    $("bigDate").textContent =
+        date;
+}
+
+
+/* =========================================================
+   EVENT LISTENERS
+========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        /*
+           Boot
+        */
+
+        startBoot();
+
+
+        /*
+           Auth
+        */
+
+        $("showSignup").onclick =
+            switchToSignup;
+
+        $("showLogin").onclick =
+            switchToLogin;
+
+        $("signupButton").onclick =
+            createAccount;
+
+        $("loginButton").onclick =
+            login;
+
+        $("forgotPassword").onclick =
+            forgotPassword;
+
+
+        /*
+           Enter key auth
+        */
+
+        document.querySelectorAll(
+            "#loginPanel input, #signupPanel input"
+        ).forEach(
+            input => {
+
+                input.addEventListener(
+                    "keydown",
+                    event => {
+
+                        if (
+                            event.key === "Enter"
+                        ) {
+
+                            if (
+                                input.closest(
+                                    "#loginPanel"
+                                )
+                            ) {
+
+                                login();
+
+                            } else {
+
+                                createAccount();
+                            }
+                        }
+
+                    }
+                );
+
+            }
+        );
+
+
+        /*
+           Desktop icons
+        */
+
+        document.querySelectorAll(
+            "[data-open]"
+        ).forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        openWindow(
+                            button.dataset.open
+                        );
+
+                        hide(
+                            $("startMenu")
+                        );
+                    }
+                );
+
+            }
+        );
+
+
+        /*
+           Window controls
+        */
+
+        document.querySelectorAll(
+            ".close-button"
+        ).forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        closeWindow(
+                            button.closest(
+                                ".window"
+                            )
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+        document.querySelectorAll(
+            ".minimize-button"
+        ).forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        minimizeWindow(
+                            button.closest(
+                                ".window"
+                            )
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+        /*
+           Bring clicked window forward
+        */
+
+        document.querySelectorAll(
+            ".window"
+        ).forEach(
+            win => {
+
+                win.addEventListener(
+                    "mousedown",
+                    () => {
+
+                        zIndex++;
+
+                        win.style.zIndex =
+                            zIndex;
+                    }
+                );
+
+            }
+        );
+
+
+        /*
+           Start
+        */
+
+        $("startButton").onclick =
+            toggleStartMenu;
+
+
+        $("startLogout").onclick =
+            logout;
+
+
+        /*
+           Notepad
+        */
+
+        $("saveNote").onclick =
+            saveNote;
+
+
+        $("clearNote").onclick =
+            () => {
+
+                $("notepad").value = "";
+
+                updateWordCount();
+
+                $("noteStatus").textContent =
+                    "Cleared";
+            };
+
+
+        $("newNote").onclick =
+            () => {
+
+                $("notepad").value = "";
+
+                updateWordCount();
+
+                $("noteStatus").textContent =
+                    "New note";
+            };
+
+
+        $("notepad").addEventListener(
+            "input",
+            updateWordCount
+        );
+
+
+        /*
+           Calculator
+        */
+
+        document.querySelectorAll(
+            "[data-calc]"
+        ).forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        calculatorInput(
+                            button.dataset.calc
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+        /*
+           Files
+        */
+
+        $("newFile").onclick =
+            createFile;
+
+        $("saveFile").onclick =
+            saveFile;
+
+        $("deleteFile").onclick =
+            deleteFile;
+
+
+        /*
+           Paint
+        */
+
+        $("clearPaint").onclick =
+            clearPaint;
+
+        $("savePaint").onclick =
+            savePaint;
+
+
+        /*
+           Games
+        */
+
+        document.querySelectorAll(
+            ".game-card"
+        ).forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        showGame(
+                            button.dataset.game
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+        document.querySelectorAll(
+            ".back-game"
+        ).forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    returnToGames
+                );
+
+            }
+        );
+
+
+        $("startCatch").onclick =
+            startCatchGame;
+
+        $("catchTarget").onclick =
+            catchTarget;
+
+
+        $("startClick").onclick =
+            startClickRush;
+
+        $("clickButton").onclick =
+            clickRush;
+
+
+        $("startMemory").onclick =
+            startMemoryGame;
+
+
+        $("startSnake").onclick =
+            startSnakeGame;
+
+
+        /*
+           Browser
+        */
+
+        $("browserGo").onclick =
+            () => {
+
+                navigateBrowser(
+                    $("browserAddress").value
+                );
+
+            };
+
+
+        $("browserAddress")
+            .addEventListener(
+                "keydown",
+                event => {
+
+                    if (
+                        event.key === "Enter"
+                    ) {
+
+                        navigateBrowser(
+                            $("browserAddress")
+                                .value
+                        );
+                    }
+
+                }
+            );
+
+
+        $("browserHome").onclick =
+            browserHome;
+
+
+        $("browserReload").onclick =
+            () => {
+
+                if (
+                    currentBrowserURL
+                ) {
+
+                    $("browserFrame").src =
+                        currentBrowserURL;
+                }
+
+            };
+
+
+        $("browserBack").onclick =
+            () => {
+
+                history.back();
+
+            };
+
+
+        $("browserForward").onclick =
+            () => {
+
+                history.forward();
+
+            };
+
+
+        $("openExternalButton").onclick =
+            openExternal;
+
+
+        $("blockedExternalButton").onclick =
+            openExternal;
+
+
+        $("browserFavorite").onclick =
+            addFavorite;
+
+
+        $("browserHistoryButton").onclick =
+            toggleHistory;
+
+
+        $("closeHistory").onclick =
+            () => {
+
+                hide(
+                    $("browserHistoryPanel")
+                );
+
+            };
+
+
+        /*
+           Quick browser sites
+        */
+
+        document.querySelectorAll(
+            ".quick-sites button"
+        ).forEach(
+            button => {
+
+                button.onclick =
+                    () => {
+
+                        navigateBrowser(
+                            button.dataset.url
+                        );
+
+                    };
+
+            }
+        );
+
+
+        /*
+           Settings
+        */
+
+        $("darkTheme").onclick =
+            () => setTheme("dark");
+
+        $("lightTheme").onclick =
+            () => setTheme("light");
+
+        $("saveUsername").onclick =
+            saveUsername;
+
+        $("changePassword").onclick =
+            changePassword;
+
+        $("logoutButton").onclick =
+            logout;
+
+        $("deleteAccount").onclick =
+            deleteAccount;
+
+
+        /*
+           Wallpaper
+        */
+
+        document.querySelectorAll(
+            "[data-wallpaper]"
+        ).forEach(
+            button => {
+
+                button.onclick =
+                    () => {
+
+                        applyWallpaper(
+                            button.dataset.wallpaper
+                        );
+
+                    };
+
+            }
+        );
+
+
+        /*
+           Close start menu when
+           clicking elsewhere.
+        */
+
+        document.addEventListener(
+            "click",
+            event => {
+
+                if (
+                    !$("startMenu").contains(
+                        event.target
+                    ) &&
+                    !$("startButton").contains(
+                        event.target
+                    )
+                ) {
+
+                    hide(
+                        $("startMenu")
+                    );
+                }
+
+            }
+        );
+
+
+        /*
+           Clock
+        */
+
+        updateClock();
+
+        setInterval(
+            updateClock,
+            1000
+        );
+
+
+        /*
+           History
+        */
+
+        renderHistory();
+
+    }
+);
+
+
+/* =========================================================
+   RESIZE PAINT
+========================================================= */
+
+window.addEventListener(
+    "resize",
+    () => {
+
+        /*
+           Paint canvas is intentionally
+           not automatically resized because
+           resizing it would erase drawings.
+        */
+
+    }
+);
