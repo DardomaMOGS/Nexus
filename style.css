@@ -1,1033 +1,1498 @@
 /* =========================================================
    NEXUS v1.2
-   STYLE
-   ========================================================= */
+   COMPLETE SYSTEM STYLES
+========================================================= */
+
+
+/* =========================================================
+   GLOBAL
+========================================================= */
 
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    box-sizing: border-box;
 }
 
 html,
 body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family:
+        Inter,
+        Arial,
+        Helvetica,
+        sans-serif;
 }
 
 body {
-  background: #080812;
-  color: white;
+    background: #080b12;
+    color: #ffffff;
 }
-
-
-/* =========================================================
-   GENERAL
-   ========================================================= */
 
 button,
 input,
-textarea {
-  font-family: inherit;
+textarea,
+select {
+    font: inherit;
 }
 
 button {
-  cursor: pointer;
-}
-
-.hidden {
-  display: none !important;
+    cursor: pointer;
 }
 
 
 /* =========================================================
    SCREENS
-   ========================================================= */
+========================================================= */
 
 .screen {
-  position: fixed;
-  inset: 0;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.hidden {
+    display: none !important;
 }
 
 
 /* =========================================================
-   AUTH SCREEN
-   ========================================================= */
+   BOOT SCREEN
+========================================================= */
 
-.auth-screen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background:
-    radial-gradient(circle at top left, #693cff55, transparent 35%),
-    radial-gradient(circle at bottom right, #00b7ff33, transparent 35%),
-    #070712;
+#bootScreen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(
+            circle at center,
+            #162044 0%,
+            #080b12 55%,
+            #030408 100%
+        );
+    z-index: 99999;
 }
 
-.auth-box {
-  width: min(420px, 92vw);
-  padding: 38px;
-
-  border-radius: 24px;
-
-  background: rgba(20, 20, 38, 0.9);
-  border: 1px solid rgba(255,255,255,0.12);
-
-  box-shadow:
-    0 30px 100px rgba(0,0,0,0.55),
-    0 0 60px rgba(105,60,255,0.15);
-
-  text-align: center;
+.boot-content {
+    width: min(420px, 90%);
+    text-align: center;
 }
 
-.nexus-logo,
-.loading-logo,
-.about-logo {
-  width: 80px;
-  height: 80px;
+.nexus-logo-large {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 20px;
 
-  margin: 0 auto 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    border-radius: 24px;
 
-  border-radius: 22px;
+    background:
+        linear-gradient(
+            135deg,
+            #5b5ff7,
+            #8d4cff
+        );
 
-  font-size: 48px;
-  font-weight: 900;
+    box-shadow:
+        0 0 40px rgba(99, 91, 255, 0.55);
 
-  background: linear-gradient(135deg, #8d5cff, #00c6ff);
-
-  box-shadow: 0 0 40px rgba(100,100,255,0.35);
+    font-size: 48px;
+    font-weight: 900;
 }
 
-.auth-box h1 {
-  font-size: 38px;
-  letter-spacing: 5px;
+.boot-content h1 {
+    margin: 0;
+    font-size: 42px;
+    letter-spacing: 8px;
+}
+
+.boot-version {
+    margin-top: 8px;
+    color: #8d96aa;
+}
+
+.boot-loader {
+    width: 100%;
+    height: 7px;
+    margin-top: 35px;
+
+    background: #1a1f2b;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+#bootProgress {
+    width: 0%;
+    height: 100%;
+
+    background:
+        linear-gradient(
+            90deg,
+            #5b5ff7,
+            #a24cff
+        );
+
+    transition: width 0.25s ease;
+}
+
+#bootText {
+    margin-top: 14px;
+    color: #858da1;
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   AUTH
+========================================================= */
+
+#authScreen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow-y: auto;
+
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(91, 95, 247, 0.18),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 80% 80%,
+            rgba(162, 76, 255, 0.15),
+            transparent 35%
+        ),
+        #080b12;
+}
+
+.auth-container {
+    width: min(440px, calc(100% - 30px));
+    padding: 30px 0;
+}
+
+.auth-brand {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.auth-brand .nexus-logo-large {
+    width: 75px;
+    height: 75px;
+    font-size: 38px;
+}
+
+.auth-brand h1 {
+    margin: 0;
+    font-size: 35px;
+    letter-spacing: 7px;
+}
+
+.auth-brand p {
+    color: #858da1;
+    margin-top: 8px;
+}
+
+
+.auth-panel {
+    padding: 30px;
+
+    background:
+        rgba(20, 25, 37, 0.9);
+
+    border:
+        1px solid rgba(255, 255, 255, 0.08);
+
+    border-radius: 22px;
+
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.45);
+
+    backdrop-filter: blur(20px);
+}
+
+.auth-panel h2 {
+    margin: 0;
+    font-size: 25px;
 }
 
 .auth-subtitle {
-  color: #aaaac5;
-  margin: 8px 0 28px;
+    color: #858da1;
+    margin-top: 7px;
+    margin-bottom: 25px;
 }
 
-.auth-box h2 {
-  margin-bottom: 20px;
+.auth-panel label {
+    display: block;
+    margin:
+        15px 0 7px;
+
+    color: #cbd1df;
+    font-size: 14px;
 }
 
-.auth-box input {
-  width: 100%;
-  padding: 14px 16px;
+.auth-panel input {
+    width: 100%;
+    padding: 13px 14px;
 
-  margin-bottom: 12px;
+    color: white;
+    background: #0d111a;
 
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
+    border:
+        1px solid #252c3a;
 
-  background: rgba(255,255,255,0.06);
-  color: white;
+    border-radius: 11px;
 
-  outline: none;
+    outline: none;
+
+    transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
 }
 
-.auth-box input:focus {
-  border-color: #8d5cff;
-  box-shadow: 0 0 15px rgba(141,92,255,0.2);
+.auth-panel input:focus {
+    border-color: #6c70ff;
+
+    box-shadow:
+        0 0 0 3px rgba(108, 112, 255, 0.12);
 }
 
 .primary-button {
-  width: 100%;
-  padding: 14px;
+    width: 100%;
+    margin-top: 22px;
 
-  border: none;
-  border-radius: 12px;
+    padding: 13px 16px;
 
-  color: white;
-  font-weight: bold;
+    border: none;
+    border-radius: 11px;
 
-  background: linear-gradient(135deg, #7955ff, #00aeea);
+    color: white;
 
-  transition: transform 0.15s, opacity 0.15s;
+    background:
+        linear-gradient(
+            135deg,
+            #5b5ff7,
+            #8d4cff
+        );
+
+    font-weight: 700;
+
+    transition:
+        transform 0.15s,
+        filter 0.15s;
 }
 
 .primary-button:hover {
-  transform: translateY(-1px);
-  opacity: 0.92;
+    filter: brightness(1.1);
 }
 
-.text-button,
-.link-button {
-  border: none;
-  background: none;
-  color: #8d78ff;
-  margin-top: 12px;
+.primary-button:active {
+    transform: scale(0.98);
 }
 
-.link-button {
-  margin-top: 0;
+.text-button {
+    display: block;
+
+    margin:
+        18px auto 0;
+
+    border: none;
+    background: transparent;
+
+    color: #8d91ff;
+
+    font-size: 14px;
 }
 
-.auth-box p {
-  color: #aaaac5;
-  margin-top: 20px;
+.text-button:hover {
+    text-decoration: underline;
 }
 
-.auth-error {
-  min-height: 20px;
-  margin-top: 15px;
-  color: #ff7c91;
-  font-size: 14px;
-}
+.auth-message {
+    min-height: 20px;
+    margin: 12px 0 0;
 
-
-/* =========================================================
-   LOADING
-   ========================================================= */
-
-.loading-screen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: #080812;
-}
-
-.loading-content {
-  text-align: center;
-}
-
-.loading-content h1 {
-  letter-spacing: 8px;
-  margin-bottom: 10px;
-}
-
-.loading-content p {
-  color: #aaaac5;
-}
-
-.progress-container {
-  width: 300px;
-  height: 7px;
-
-  margin-top: 25px;
-
-  overflow: hidden;
-  border-radius: 20px;
-
-  background: #202033;
-}
-
-#loadingProgress {
-  width: 0;
-  height: 100%;
-
-  background: linear-gradient(90deg, #8d5cff, #00c6ff);
-
-  transition: width 0.2s;
+    color: #ff7f92;
+    font-size: 13px;
+    text-align: center;
 }
 
 
 /* =========================================================
    DESKTOP
-   ========================================================= */
+========================================================= */
 
 .desktop {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
+    position: fixed;
+    inset: 0;
+
+    overflow: hidden;
+
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(76, 83, 190, 0.3),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 80% 80%,
+            rgba(122, 48, 170, 0.25),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #10162a,
+            #080b12
+        );
+
+    background-size: cover;
 }
 
-.wallpaper {
-  position: absolute;
-  inset: 0;
 
-  background:
-    radial-gradient(circle at 20% 20%, #7b4dff55, transparent 30%),
-    radial-gradient(circle at 80% 70%, #00bfff44, transparent 30%),
-    linear-gradient(135deg, #0b0920, #17102e);
+/* =========================================================
+   WALLPAPER THEMES
+========================================================= */
 
-  transition: 0.3s;
+.desktop.wallpaper-blue {
+    background:
+        radial-gradient(
+            circle at 30% 20%,
+            #243f87,
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #08101f,
+            #101a35
+        );
 }
 
-.wallpaper.blue {
-  background:
-    radial-gradient(circle at 20% 20%, #00aaff66, transparent 30%),
-    linear-gradient(135deg, #07152a, #082e4c);
+.desktop.wallpaper-purple {
+    background:
+        radial-gradient(
+            circle at 30% 20%,
+            #652f9e,
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 80% 80%,
+            #2e1e69,
+            transparent 40%
+        ),
+        #0c0815;
 }
 
-.wallpaper.green {
-  background:
-    radial-gradient(circle at 80% 20%, #00ff9966, transparent 30%),
-    linear-gradient(135deg, #071d18, #073b2e);
+.desktop.wallpaper-green {
+    background:
+        radial-gradient(
+            circle at 30% 20%,
+            #147354,
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 80% 80%,
+            #164b3e,
+            transparent 40%
+        ),
+        #07120f;
 }
 
-.wallpaper.sunset {
-  background:
-    radial-gradient(circle at 30% 20%, #ff7b5566, transparent 30%),
-    linear-gradient(135deg, #29101b, #4b1d12);
+.desktop.wallpaper-sunset {
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            #b64b35,
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 80% 70%,
+            #6d2f74,
+            transparent 35%
+        ),
+        #150b15;
 }
 
 
 /* =========================================================
    DESKTOP ICONS
-   ========================================================= */
+========================================================= */
 
 .desktop-icons {
-  position: relative;
-  z-index: 2;
+    position: absolute;
 
-  display: grid;
-  grid-template-columns: repeat(2, 90px);
+    top: 20px;
+    left: 20px;
 
-  gap: 20px;
+    display: grid;
 
-  padding: 25px;
+    grid-template-columns:
+        repeat(2, 90px);
+
+    gap: 18px;
+
+    z-index: 2;
 }
 
 .desktop-icon {
-  width: 80px;
+    width: 90px;
 
-  border: none;
-  background: transparent;
+    padding: 8px 4px;
 
-  color: white;
+    border: 1px solid transparent;
+    border-radius: 10px;
 
-  text-shadow: 0 2px 4px black;
+    color: white;
+    background: transparent;
 
-  padding: 8px;
-  border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
 
-  transition: background 0.15s;
+    font-size: 12px;
+
+    text-shadow:
+        0 1px 4px #000;
+
+    transition:
+        background 0.15s,
+        border-color 0.15s;
 }
 
 .desktop-icon:hover {
-  background: rgba(255,255,255,0.12);
+    background:
+        rgba(255, 255, 255, 0.09);
+
+    border-color:
+        rgba(255, 255, 255, 0.12);
 }
 
-.desktop-icon span {
-  display: block;
-  font-size: 34px;
-  margin-bottom: 7px;
-}
-
-.desktop-icon label {
-  font-size: 12px;
+.desktop-icon-symbol {
+    font-size: 32px;
 }
 
 
 /* =========================================================
    WINDOWS
-   ========================================================= */
+========================================================= */
 
-.app-window {
-  position: absolute;
+.window {
+    position: absolute;
 
-  z-index: 10;
+    width: min(700px, calc(100vw - 30px));
+    height: min(520px, calc(100vh - 100px));
 
-  width: 650px;
-  max-width: calc(100vw - 30px);
+    top: 70px;
+    left: 50%;
 
-  height: 480px;
-  max-height: calc(100vh - 90px);
+    transform: translateX(-50%);
 
-  left: 50%;
-  top: 50%;
+    display: flex;
+    flex-direction: column;
 
-  transform: translate(-50%, -50%);
+    overflow: hidden;
 
-  display: none;
+    background:
+        rgba(17, 21, 31, 0.96);
 
-  border-radius: 16px;
+    border:
+        1px solid rgba(255, 255, 255, 0.1);
 
-  overflow: hidden;
+    border-radius: 15px;
 
-  background: rgba(20,20,35,0.96);
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.55);
 
-  border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(20px);
 
-  box-shadow:
-    0 25px 80px rgba(0,0,0,0.5),
-    0 0 40px rgba(80,70,255,0.08);
+    z-index: 10;
 }
 
-.app-window.open {
-  display: block;
+.window.maximized {
+    width: calc(100% - 20px);
+    height: calc(100% - 75px);
+
+    top: 10px;
+    left: 10px;
+
+    transform: none;
 }
-
-.app-window.maximized {
-  inset: 20px;
-  width: auto;
-  height: auto;
-  transform: none;
-}
-
-
-/* =========================================================
-   WINDOW HEADER
-   ========================================================= */
 
 .window-header {
-  height: 48px;
+    height: 48px;
+    min-height: 48px;
 
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+    padding: 0 12px 0 16px;
 
-  padding: 0 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 
-  background: rgba(255,255,255,0.06);
+    background:
+        rgba(255, 255, 255, 0.035);
 
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-
-  font-weight: bold;
+    border-bottom:
+        1px solid rgba(255, 255, 255, 0.07);
 }
 
-.window-button {
-  width: 32px;
-  height: 30px;
+.window-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
 
-  border: none;
-  border-radius: 7px;
-
-  background: rgba(255,255,255,0.08);
-  color: white;
-
-  font-size: 18px;
+    font-size: 14px;
+    font-weight: 700;
 }
 
-.window-button:hover {
-  background: rgba(255,255,255,0.18);
+.window-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.window-control {
+    width: 31px;
+    height: 30px;
+
+    border: none;
+    border-radius: 7px;
+
+    background: transparent;
+    color: #c9ceda;
+}
+
+.window-control:hover {
+    background:
+        rgba(255, 255, 255, 0.1);
+}
+
+.window-control.close:hover {
+    background: #c94158;
+    color: white;
 }
 
 .window-body {
-  height: calc(100% - 48px);
-  padding: 18px;
+    flex: 1;
+    min-height: 0;
 
-  overflow: auto;
+    overflow: auto;
+
+    padding: 18px;
 }
 
 
 /* =========================================================
    NOTEPAD
-   ========================================================= */
+========================================================= */
 
 .notepad-body {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
-#notesArea {
-  flex: 1;
-
-  width: 100%;
-
-  resize: none;
-
-  border: none;
-  outline: none;
-
-  border-radius: 10px;
-
-  padding: 15px;
-
-  background: rgba(0,0,0,0.22);
-  color: white;
-
-  font-size: 16px;
-  line-height: 1.6;
+.notepad-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
 }
 
-.app-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.small-button {
+    border: 1px solid #2b3242;
+    background: #151b27;
+    color: #d9deea;
 
-  margin-top: 10px;
+    padding: 7px 11px;
+    border-radius: 8px;
+
+    font-size: 12px;
 }
 
-.app-footer button {
-  padding: 8px 15px;
+.small-button:hover {
+    background: #202738;
+}
 
-  border: none;
-  border-radius: 8px;
+.notepad-textarea {
+    flex: 1;
 
-  background: #33334d;
-  color: white;
+    width: 100%;
+
+    resize: none;
+
+    padding: 15px;
+
+    color: #e9ecf4;
+
+    background: #090c12;
+
+    border:
+        1px solid #252d3c;
+
+    border-radius: 10px;
+
+    outline: none;
+
+    line-height: 1.6;
 }
 
 
 /* =========================================================
    CALCULATOR
-   ========================================================= */
+========================================================= */
 
-.calculator-body {
-  max-width: 420px;
-  margin: auto;
+.calculator {
+    max-width: 340px;
+    margin: 0 auto;
 }
 
-#calculatorDisplay {
-  width: 100%;
+.calc-display {
+    width: 100%;
 
-  padding: 18px;
+    padding: 20px;
 
-  margin-bottom: 15px;
+    margin-bottom: 12px;
 
-  border: none;
-  border-radius: 12px;
+    text-align: right;
 
-  background: #080812;
-  color: white;
+    color: white;
 
-  font-size: 25px;
-  text-align: right;
+    background: #080a0f;
+
+    border:
+        1px solid #262d3b;
+
+    border-radius: 12px;
+
+    font-size: 30px;
+
+    overflow: hidden;
 }
 
-.calculator-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.calc-grid {
+    display: grid;
 
-  gap: 8px;
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 8px;
 }
 
-.calculator-grid button {
-  min-height: 55px;
+.calc-button {
+    min-height: 58px;
 
-  border: none;
-  border-radius: 10px;
+    border: none;
+    border-radius: 10px;
 
-  background: #2a2941;
-  color: white;
+    color: #e8ebf2;
 
-  font-size: 18px;
+    background: #171d29;
+
+    font-size: 18px;
 }
 
-.calculator-grid button:hover {
-  background: #3a3858;
+.calc-button:hover {
+    background: #252d3d;
 }
 
-.calculator-grid .equals {
-  grid-row: span 2;
-
-  background: linear-gradient(135deg, #7655ff, #00aeea);
+.calc-button.operator {
+    background: #30306d;
 }
 
-.calculator-grid .zero {
-  grid-column: span 2;
+.calc-button.equals {
+    background:
+        linear-gradient(
+            135deg,
+            #5b5ff7,
+            #8d4cff
+        );
+}
+
+.calc-button.clear {
+    background: #602637;
 }
 
 
 /* =========================================================
    FILE MANAGER
-   ========================================================= */
+========================================================= */
 
 .file-toolbar {
-  display: flex;
-  gap: 8px;
-
-  margin-bottom: 12px;
-}
-
-.file-toolbar button,
-.settings-body button,
-.wallpaper-buttons button {
-  padding: 9px 12px;
-
-  border: none;
-  border-radius: 9px;
-
-  background: #302f49;
-  color: white;
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
 }
 
 .file-list {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-
-  margin-bottom: 15px;
+    display: grid;
+    gap: 8px;
 }
 
 .file-item {
-  padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 
-  border-radius: 10px;
+    padding: 12px;
 
-  background: #27263d;
+    background: #111722;
 
-  cursor: pointer;
+    border:
+        1px solid #202837;
+
+    border-radius: 10px;
 }
 
-.file-item.selected {
-  background: #6f53dc;
+.file-item-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.file-editor {
-  width: 100%;
-  height: 180px;
-
-  resize: vertical;
-
-  padding: 12px;
-
-  border: none;
-  border-radius: 10px;
-
-  background: rgba(0,0,0,0.25);
-  color: white;
-
-  outline: none;
+.file-icon {
+    font-size: 25px;
 }
 
-#saveFileButton {
-  margin-top: 10px;
+.file-name {
+    font-weight: 600;
+}
+
+.file-size {
+    color: #778095;
+    font-size: 11px;
+}
+
+.file-actions {
+    display: flex;
+    gap: 6px;
 }
 
 
 /* =========================================================
    PAINT
-   ========================================================= */
+========================================================= */
 
-.paint-body {
-  display: flex;
-  flex-direction: column;
+.paint-container {
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
 }
 
-.paint-tools {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.paint-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
 
-  margin-bottom: 12px;
-
-  flex-wrap: wrap;
+    margin-bottom: 10px;
 }
 
-.paint-tools button {
-  padding: 8px 12px;
+.paint-toolbar input[type="color"] {
+    width: 40px;
+    height: 35px;
 
-  border: none;
-  border-radius: 8px;
+    padding: 2px;
 
-  background: #302f49;
-  color: white;
+    border:
+        1px solid #2a3140;
+
+    border-radius: 8px;
+
+    background: #121722;
+}
+
+.paint-size {
+    width: 100px;
+}
+
+.paint-canvas-wrapper {
+    flex: 1;
+    min-height: 0;
+
+    background: white;
+
+    border-radius: 10px;
+
+    overflow: hidden;
 }
 
 #paintCanvas {
-  width: 100%;
-  max-height: 100%;
+    width: 100%;
+    height: 100%;
 
-  background: white;
+    display: block;
 
-  border-radius: 10px;
-
-  cursor: crosshair;
+    touch-action: none;
 }
 
 
 /* =========================================================
    GAME
-   ========================================================= */
+========================================================= */
 
-.game-body {
-  text-align: center;
+.game-container {
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
 }
 
-#gameArea {
-  position: relative;
+.game-info {
+    display: flex;
+    justify-content: space-between;
 
-  width: 100%;
-  height: 300px;
+    margin-bottom: 12px;
 
-  margin: 15px 0;
-
-  overflow: hidden;
-
-  border-radius: 15px;
-
-  background:
-    radial-gradient(circle, #20204c, #0a0a16);
+    color: #cbd1df;
 }
 
-#gameTarget {
-  position: absolute;
+.game-board {
+    position: relative;
 
-  width: 55px;
-  height: 55px;
+    flex: 1;
+    min-height: 300px;
 
-  border: none;
-  border-radius: 50%;
+    overflow: hidden;
 
-  background: linear-gradient(135deg, #8d5cff, #00c6ff);
+    border-radius: 14px;
 
-  color: white;
+    background:
+        radial-gradient(
+            circle,
+            #1b2450,
+            #090c15
+        );
 
-  font-weight: bold;
-  font-size: 20px;
+    border:
+        1px solid #252d40;
+}
 
-  display: none;
+.game-target {
+    position: absolute;
+
+    width: 52px;
+    height: 52px;
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 50%;
+
+    background:
+        linear-gradient(
+            135deg,
+            #5b5ff7,
+            #a14cff
+        );
+
+    box-shadow:
+        0 0 30px rgba(100, 80, 255, 0.7);
+
+    font-size: 25px;
+
+    cursor: pointer;
+}
+
+.game-start {
+    align-self: center;
+    margin-top: 12px;
 }
 
 
 /* =========================================================
    SETTINGS
-   ========================================================= */
+========================================================= */
 
-.settings-body h3 {
-  margin: 20px 0 10px;
+.settings-section {
+    padding: 18px 0;
+
+    border-bottom:
+        1px solid rgba(255, 255, 255, 0.08);
 }
 
-.settings-body h3:first-child {
-  margin-top: 0;
+.settings-section:last-child {
+    border-bottom: none;
 }
 
-.settings-body p {
-  color: #c2c2d4;
-  margin-bottom: 7px;
+.settings-section h3 {
+    margin-top: 0;
 }
 
-.settings-body button {
-  margin: 5px 5px 5px 0;
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin: 12px 0;
 }
 
-.wallpaper-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.settings-label {
+    color: #d8dce7;
+}
+
+.settings-description {
+    margin-top: 3px;
+    color: #778095;
+    font-size: 12px;
+}
+
+.settings-select,
+.settings-input {
+    min-width: 180px;
+
+    padding: 9px 10px;
+
+    color: white;
+    background: #0c111a;
+
+    border:
+        1px solid #2a3242;
+
+    border-radius: 8px;
+}
+
+.danger-button {
+    padding: 10px 14px;
+
+    color: white;
+
+    background: #662536;
+
+    border:
+        1px solid #8a3047;
+
+    border-radius: 9px;
+}
+
+.danger-button:hover {
+    background: #813048;
 }
 
 
 /* =========================================================
    ABOUT
-   ========================================================= */
+========================================================= */
 
-.about-body {
-  text-align: center;
+.about {
+    text-align: center;
 }
 
 .about-logo {
-  width: 70px;
-  height: 70px;
-
-  font-size: 40px;
+    margin: 10px auto 20px;
 }
 
-.about-body p {
-  margin: 10px 0;
-  color: #c0bfd0;
+.about h2 {
+    margin-bottom: 5px;
+}
+
+.about-version {
+    color: #80889c;
+}
+
+.about-card {
+    margin-top: 25px;
+
+    padding: 16px;
+
+    text-align: left;
+
+    background: #101621;
+
+    border:
+        1px solid #202837;
+
+    border-radius: 12px;
+}
+
+.about-card p {
+    color: #aab1c0;
+    line-height: 1.6;
 }
 
 
 /* =========================================================
    START MENU
-   ========================================================= */
+========================================================= */
 
 .start-menu {
-  position: absolute;
+    position: absolute;
 
-  z-index: 100;
+    left: 10px;
+    bottom: 68px;
 
-  left: 10px;
-  bottom: 62px;
+    width: 330px;
+    max-width: calc(100vw - 20px);
 
-  width: 290px;
+    padding: 14px;
 
-  padding: 15px;
+    background:
+        rgba(13, 17, 25, 0.97);
 
-  border-radius: 15px;
+    border:
+        1px solid rgba(255, 255, 255, 0.1);
 
-  background: rgba(20,20,35,0.97);
+    border-radius: 17px;
 
-  border: 1px solid rgba(255,255,255,0.1);
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.5);
 
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    backdrop-filter: blur(20px);
+
+    z-index: 1000;
 }
 
-.start-user {
-  display: flex;
-  align-items: center;
+.start-header {
+    display: flex;
+    align-items: center;
 
-  gap: 12px;
+    gap: 12px;
 
-  padding-bottom: 10px;
+    padding: 10px;
+
+    margin-bottom: 10px;
+
+    border-bottom:
+        1px solid rgba(255, 255, 255, 0.08);
 }
 
-.user-avatar {
-  width: 45px;
-  height: 45px;
+.start-user-icon {
+    width: 40px;
+    height: 40px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-  border-radius: 50%;
+    background: #242b3b;
 
-  background: #373456;
+    border-radius: 50%;
 }
 
-.start-user small {
-  display: block;
-
-  margin-top: 3px;
-
-  color: #9999b0;
-
-  max-width: 200px;
-
-  overflow: hidden;
-  text-overflow: ellipsis;
+.start-header strong {
+    display: block;
 }
 
-.start-menu hr {
-  border: none;
-  border-top: 1px solid rgba(255,255,255,0.08);
-
-  margin: 10px 0;
+.start-header small {
+    color: #778095;
 }
 
-.start-menu button {
-  display: block;
+.start-apps {
+    display: grid;
 
-  width: 100%;
+    grid-template-columns:
+        repeat(2, 1fr);
 
-  padding: 11px;
-
-  text-align: left;
-
-  border: none;
-  border-radius: 8px;
-
-  background: transparent;
-  color: white;
+    gap: 5px;
 }
 
-.start-menu button:hover {
-  background: rgba(255,255,255,0.1);
+.start-apps button,
+.start-footer button {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 11px;
+
+    border: none;
+    border-radius: 9px;
+
+    color: #dce1ec;
+    background: transparent;
+
+    text-align: left;
+}
+
+.start-apps button:hover,
+.start-footer button:hover {
+    background:
+        rgba(255, 255, 255, 0.08);
+}
+
+.start-footer {
+    margin-top: 10px;
+    padding-top: 8px;
+
+    border-top:
+        1px solid rgba(255, 255, 255, 0.08);
 }
 
 
 /* =========================================================
    TASKBAR
-   ========================================================= */
+========================================================= */
 
 .taskbar {
-  position: absolute;
+    position: absolute;
 
-  z-index: 200;
+    left: 0;
+    right: 0;
+    bottom: 0;
 
-  left: 0;
-  right: 0;
-  bottom: 0;
+    height: 58px;
 
-  height: 55px;
+    display: flex;
+    align-items: center;
 
-  display: flex;
-  align-items: center;
+    padding: 8px 10px;
 
-  padding: 7px;
+    background:
+        rgba(7, 9, 14, 0.88);
 
-  background: rgba(10,10,20,0.85);
+    border-top:
+        1px solid rgba(255, 255, 255, 0.08);
 
-  border-top: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(18px);
 
-  backdrop-filter: blur(15px);
+    z-index: 2000;
 }
 
 .start-button {
-  width: 43px;
-  height: 41px;
+    height: 42px;
 
-  border: none;
-  border-radius: 10px;
+    display: flex;
+    align-items: center;
 
-  background: linear-gradient(135deg, #7655ff, #00aeea);
+    gap: 8px;
 
-  color: white;
+    padding: 0 14px;
 
-  font-size: 23px;
+    border: none;
+    border-radius: 10px;
+
+    color: white;
+
+    background:
+        rgba(255, 255, 255, 0.07);
+
+    font-weight: 700;
+}
+
+.start-button:hover {
+    background:
+        rgba(255, 255, 255, 0.12);
+}
+
+.start-n {
+    width: 24px;
+    height: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 7px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #5b5ff7,
+            #8d4cff
+        );
+
+    font-size: 13px;
 }
 
 .taskbar-apps {
-  display: flex;
+    display: flex;
+    align-items: center;
 
-  gap: 5px;
+    gap: 5px;
 
-  margin-left: 8px;
+    margin-left: 8px;
+
+    flex: 1;
+
+    overflow-x: auto;
 }
 
 .taskbar-app {
-  height: 40px;
+    height: 40px;
 
-  padding: 0 13px;
+    min-width: 42px;
 
-  border: none;
-  border-radius: 9px;
+    padding: 0 10px;
 
-  background: rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: 7px;
 
-  color: white;
+    border: none;
+    border-radius: 9px;
+
+    color: #cdd2df;
+
+    background: transparent;
+}
+
+.taskbar-app:hover {
+    background:
+        rgba(255, 255, 255, 0.08);
 }
 
 .taskbar-app.active {
-  background: rgba(130,100,255,0.35);
+    background:
+        rgba(255, 255, 255, 0.1);
 }
 
 .taskbar-right {
-  margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 
-  display: flex;
-  align-items: center;
+    color: #aeb5c5;
 
-  gap: 15px;
-
-  padding-right: 8px;
-
-  color: #c7c7d6;
-
-  font-size: 13px;
+    font-size: 12px;
 }
 
-#onlineStatus {
-  color: #6cff9a;
+#taskbarClock {
+    min-width: 52px;
+    text-align: right;
 }
 
 
 /* =========================================================
-   NOTIFICATION
-   ========================================================= */
+   TOASTS
+========================================================= */
 
-.notification {
-  position: absolute;
+#toastContainer {
+    position: fixed;
 
-  z-index: 500;
+    right: 18px;
+    bottom: 75px;
 
-  right: 20px;
-  bottom: 75px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 
-  width: 300px;
-
-  padding: 15px;
-
-  border-radius: 14px;
-
-  background: rgba(25,25,40,0.97);
-
-  border: 1px solid rgba(255,255,255,0.1);
-
-  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
-
-  animation: notificationIn 0.25s ease;
+    z-index: 99999;
 }
 
-.notification strong {
-  display: block;
-  margin-bottom: 5px;
+.toast {
+    min-width: 250px;
+    max-width: 340px;
+
+    padding: 13px 15px;
+
+    background:
+        rgba(19, 24, 35, 0.96);
+
+    border:
+        1px solid rgba(255, 255, 255, 0.1);
+
+    border-radius: 11px;
+
+    box-shadow:
+        0 12px 35px rgba(0, 0, 0, 0.35);
+
+    animation:
+        toastIn 0.25s ease;
 }
 
-.notification p {
-  color: #aaaac0;
-  font-size: 14px;
+.toast-title {
+    font-weight: 700;
+    margin-bottom: 3px;
 }
 
-@keyframes notificationIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
+.toast-message {
+    color: #9da5b6;
+    font-size: 12px;
+}
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 
 /* =========================================================
    LIGHT THEME
-   ========================================================= */
+========================================================= */
 
 body.light-theme {
-  color: #151522;
+    color: #172033;
 }
 
-body.light-theme .app-window,
-body.light-theme .start-menu {
-  background: rgba(245,245,250,0.96);
-  color: #151522;
+body.light-theme .desktop {
+    background:
+        linear-gradient(
+            135deg,
+            #d9e4ff,
+            #eef1ff
+        );
+}
+
+body.light-theme .window {
+    background:
+        rgba(247, 249, 255, 0.97);
+
+    color: #172033;
+
+    border-color:
+        rgba(0, 0, 0, 0.1);
 }
 
 body.light-theme .window-header {
-  background: rgba(0,0,0,0.05);
+    background:
+        rgba(0, 0, 0, 0.035);
+
+    border-color:
+        rgba(0, 0, 0, 0.08);
 }
 
-body.light-theme .window-button,
-body.light-theme .start-menu button {
-  color: #151522;
+body.light-theme .window-control {
+    color: #343b4a;
 }
 
-body.light-theme #notesArea,
-body.light-theme .file-editor {
-  background: #eeeeF5;
-  color: #151522;
+body.light-theme .notepad-textarea,
+body.light-theme .calc-display {
+    color: #172033;
+    background: #ffffff;
+    border-color: #d6dbe5;
 }
 
-body.light-theme .desktop-icon {
-  color: white;
+body.light-theme .small-button,
+body.light-theme .calc-button {
+    color: #253044;
+    background: #e9edf5;
+    border-color: #d3d8e2;
+}
+
+body.light-theme .file-item,
+body.light-theme .about-card {
+    background: #edf1f8;
+    border-color: #d8dde7;
+}
+
+body.light-theme .settings-description,
+body.light-theme .file-size {
+    color: #687286;
 }
 
 body.light-theme .taskbar {
-  background: rgba(245,245,250,0.85);
+    background:
+        rgba(240, 243, 250, 0.9);
+
+    border-color:
+        rgba(0, 0, 0, 0.08);
 }
 
-body.light-theme .taskbar-app {
-  color: #151522;
+body.light-theme .taskbar-app,
+body.light-theme .start-button {
+    color: #293347;
 }
 
-body.light-theme .notification {
-  background: rgba(245,245,250,0.98);
-  color: #151522;
+body.light-theme .start-menu {
+    background:
+        rgba(248, 250, 255, 0.97);
+
+    color: #182033;
+
+    border-color:
+        rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .start-apps button,
+body.light-theme .start-footer button {
+    color: #293347;
+}
+
+body.light-theme .game-board {
+    background:
+        radial-gradient(
+            circle,
+            #b7c4ff,
+            #e8ebff
+        );
 }
 
 
 /* =========================================================
    MOBILE
-   ========================================================= */
+========================================================= */
 
-@media (max-width: 700px) {
+@media (max-width: 650px) {
 
-  .auth-box {
-    padding: 25px;
-  }
+    .desktop-icons {
+        grid-template-columns:
+            repeat(2, 80px);
 
-  .desktop-icons {
-    grid-template-columns: repeat(3, 80px);
-    gap: 10px;
-  }
+        gap: 10px;
 
-  .app-window {
-    width: calc(100vw - 20px);
-    height: calc(100vh - 85px);
+        top: 12px;
+        left: 10px;
+    }
 
-    left: 10px;
-    top: 10px;
+    .desktop-icon {
+        width: 80px;
+    }
 
-    transform: none;
-  }
+    .desktop-icon-symbol {
+        font-size: 27px;
+    }
 
-  .taskbar-app {
-    padding: 0 8px;
-    font-size: 12px;
-  }
+    .window {
+        width: calc(100vw - 12px);
+        height: calc(100vh - 72px);
 
-  .taskbar-right #onlineStatus {
-    display: none;
-  }
+        top: 5px;
 
-  .start-menu {
-    width: calc(100vw - 20px);
-  }
+        border-radius: 12px;
+    }
 
+    .window-body {
+        padding: 12px;
+    }
+
+    .taskbar {
+        height: 58px;
+    }
+
+    .start-button span:last-child {
+        display: none;
+    }
+
+    .taskbar-right #taskbarUsername {
+        display: none;
+    }
+
+    .start-menu {
+        left: 6px;
+        bottom: 65px;
+
+        width: calc(100vw - 12px);
+    }
+
+    .settings-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .settings-select,
+    .settings-input {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .auth-panel {
+        padding: 22px;
+    }
 }
