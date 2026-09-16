@@ -1,1 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS OS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
 
+<body>
+
+    <!-- BOOT SCREEN -->
+    <div id="bootScreen">
+        <div class="nexus-logo">NEXUS</div>
+        <div class="loading-bar">
+            <div id="loadingProgress"></div>
+        </div>
+        <p>Starting NEXUS...</p>
+    </div>
+
+    <!-- DESKTOP -->
+    <main id="desktop">
+
+        <!-- Desktop Icons -->
+        <div class="desktop-icons">
+
+            <button class="desktop-icon" onclick="openApp('notepad')">
+                <span>📝</span>
+                <label>Notepad</label>
+            </button>
+
+            <button class="desktop-icon" onclick="openApp('calculator')">
+                <span>🧮</span>
+                <label>Calculator</label>
+            </button>
+
+            <button class="desktop-icon" onclick="openApp('files')">
+                <span>📁</span>
+                <label>Files</label>
+            </button>
+
+            <button class="desktop-icon" onclick="openApp('paint')">
+                <span>🎨</span>
+                <label>Paint</label>
+            </button>
+
+            <button class="desktop-icon" onclick="openApp('game')">
+                <span>🎮</span>
+                <label>Game</label>
+            </button>
+
+            <button class="desktop-icon" onclick="openApp('settings')">
+                <span>⚙️</span>
+                <label>Settings</label>
+            </button>
+
+        </div>
+
+        <!-- APP WINDOWS -->
+
+        <section class="window" id="notepad">
+            <header class="window-header">
+                <span>📝 Notepad</span>
+                <button onclick="closeApp('notepad')">✕</button>
+            </header>
+
+            <textarea id="notes" placeholder="Start typing..."></textarea>
+        </section>
+
+
+        <section class="window" id="calculator">
+            <header class="window-header">
+                <span>🧮 Calculator</span>
+                <button onclick="closeApp('calculator')">✕</button>
+            </header>
+
+            <input id="calcDisplay" readonly>
+
+            <div class="calculator-buttons">
+                <button onclick="calc('7')">7</button>
+                <button onclick="calc('8')">8</button>
+                <button onclick="calc('9')">9</button>
+                <button onclick="calc('/')">÷</button>
+
+                <button onclick="calc('4')">4</button>
+                <button onclick="calc('5')">5</button>
+                <button onclick="calc('6')">6</button>
+                <button onclick="calc('*')">×</button>
+
+                <button onclick="calc('1')">1</button>
+                <button onclick="calc('2')">2</button>
+                <button onclick="calc('3')">3</button>
+                <button onclick="calc('-')">−</button>
+
+                <button onclick="calc('0')">0</button>
+                <button onclick="calc('.')">.</button>
+                <button onclick="calculate()">=</button>
+                <button onclick="calc('+')">+</button>
+
+                <button class="clear" onclick="clearCalc()">CLEAR</button>
+            </div>
+        </section>
+
+
+        <section class="window" id="files">
+            <header class="window-header">
+                <span>📁 File Manager</span>
+                <button onclick="closeApp('files')">✕</button>
+            </header>
+
+            <div class="file-area">
+                <div class="fake-file">📄 My Notes.txt</div>
+                <div class="fake-file">🎨 My Drawing.png</div>
+                <div class="fake-file">🎮 Game Data</div>
+            </div>
+        </section>
+
+
+        <section class="window" id="paint">
+            <header class="window-header">
+                <span>🎨 Paint</span>
+                <button onclick="closeApp('paint')">✕</button>
+            </header>
+
+            <canvas id="paintCanvas" width="500" height="300"></canvas>
+
+            <div class="paint-controls">
+                <button onclick="clearCanvas()">Clear</button>
+            </div>
+        </section>
+
+
+        <section class="window" id="game">
+            <header class="window-header">
+                <span>🎮 NEXUS Game</span>
+                <button onclick="closeApp('game')">✕</button>
+            </header>
+
+            <div class="game-area">
+                <h2>🟣 Catch the NEXUS!</h2>
+                <p>Click the circle as many times as you can.</p>
+
+                <button id="gameTarget" onclick="hitTarget()">🟣</button>
+
+                <p>Score: <strong id="score">0</strong></p>
+            </div>
+        </section>
+
+
+        <section class="window" id="settings">
+            <header class="window-header">
+                <span>⚙️ Settings</span>
+                <button onclick="closeApp('settings')">✕</button>
+            </header>
+
+            <div class="settings-area">
+                <h2>NEXUS Settings</h2>
+
+                <button onclick="toggleTheme()">
+                    🌙 Toggle Dark Mode
+                </button>
+
+                <button onclick="changeWallpaper()">
+                    🖼️ Change Wallpaper
+                </button>
+            </div>
+        </section>
+
+
+        <!-- TASKBAR -->
+
+        <footer class="taskbar">
+
+            <button class="start-button" onclick="toggleStartMenu()">
+                🟣 NEXUS
+            </button>
+
+            <div id="startMenu">
+
+                <h2>NEXUS</h2>
+
+                <button onclick="openApp('notepad')">📝 Notepad</button>
+                <button onclick="openApp('calculator')">🧮 Calculator</button>
+                <button onclick="openApp('files')">📁 Files</button>
+                <button onclick="openApp('paint')">🎨 Paint</button>
+                <button onclick="openApp('game')">🎮 Game</button>
+                <button onclick="openApp('settings')">⚙️ Settings</button>
+
+            </div>
+
+            <div class="taskbar-time" id="clock">
+                00:00
+            </div>
+
+        </footer>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
