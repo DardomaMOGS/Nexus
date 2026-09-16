@@ -3,199 +3,627 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS OS</title>
+    <title>NEXUS OS v1.1</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <!-- BOOT SCREEN -->
-    <div id="bootScreen">
-        <div class="nexus-logo">NEXUS</div>
-        <div class="loading-bar">
-            <div id="loadingProgress"></div>
+<!-- ================= PASSWORD SCREEN ================= -->
+
+<div id="passwordScreen">
+
+    <div class="password-box">
+
+        <div class="password-logo">🟣</div>
+
+        <h1>NEXUS</h1>
+
+        <p id="passwordTitle">Create your NEXUS password</p>
+
+        <div id="passwordSetup">
+
+            <input
+                id="newPassword"
+                type="password"
+                placeholder="Create password"
+                autocomplete="new-password"
+            >
+
+            <input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm password"
+                autocomplete="new-password"
+            >
+
+            <button onclick="createPassword()">
+                🔐 Create Password
+            </button>
+
         </div>
-        <p>Starting NEXUS...</p>
+
+        <div id="passwordLogin">
+
+            <input
+                id="passwordInput"
+                type="password"
+                placeholder="Enter password"
+                autocomplete="current-password"
+                onkeydown="passwordEnter(event)"
+            >
+
+            <button onclick="unlockNexus()">
+                🔓 Unlock
+            </button>
+
+        </div>
+
+        <p id="passwordError"></p>
+
     </div>
 
-    <!-- DESKTOP -->
-    <main id="desktop">
+</div>
 
-        <!-- Desktop Icons -->
-        <div class="desktop-icons">
 
-            <button class="desktop-icon" onclick="openApp('notepad')">
-                <span>📝</span>
-                <label>Notepad</label>
-            </button>
+<!-- ================= BOOT SCREEN ================= -->
 
-            <button class="desktop-icon" onclick="openApp('calculator')">
-                <span>🧮</span>
-                <label>Calculator</label>
-            </button>
+<div id="bootScreen">
 
-            <button class="desktop-icon" onclick="openApp('files')">
-                <span>📁</span>
-                <label>Files</label>
-            </button>
+    <div class="boot-logo">NEXUS</div>
 
-            <button class="desktop-icon" onclick="openApp('paint')">
-                <span>🎨</span>
-                <label>Paint</label>
-            </button>
+    <div class="loading-bar">
+        <div id="loadingProgress"></div>
+    </div>
 
-            <button class="desktop-icon" onclick="openApp('game')">
-                <span>🎮</span>
-                <label>Game</label>
-            </button>
+    <p id="bootText">Starting NEXUS...</p>
 
-            <button class="desktop-icon" onclick="openApp('settings')">
-                <span>⚙️</span>
-                <label>Settings</label>
-            </button>
+</div>
+
+
+<!-- ================= DESKTOP ================= -->
+
+<main id="desktop">
+
+    <!-- Desktop icons -->
+
+    <div class="desktop-icons">
+
+        <button class="desktop-icon" ondblclick="openApp('notepad')">
+            <span>📝</span>
+            <label>Notepad</label>
+        </button>
+
+        <button class="desktop-icon" ondblclick="openApp('calculator')">
+            <span>🧮</span>
+            <label>Calculator</label>
+        </button>
+
+        <button class="desktop-icon" ondblclick="openApp('files')">
+            <span>📁</span>
+            <label>Files</label>
+        </button>
+
+        <button class="desktop-icon" ondblclick="openApp('paint')">
+            <span>🎨</span>
+            <label>Paint</label>
+        </button>
+
+        <button class="desktop-icon" ondblclick="openApp('game')">
+            <span>🎮</span>
+            <label>Game</label>
+        </button>
+
+        <button class="desktop-icon" ondblclick="openApp('settings')">
+            <span>⚙️</span>
+            <label>Settings</label>
+        </button>
+
+        <button class="desktop-icon" ondblclick="openApp('about')">
+            <span>💻</span>
+            <label>About</label>
+        </button>
+
+    </div>
+
+
+    <!-- ================= NOTEPAD ================= -->
+
+    <section class="window" id="notepad">
+
+        <header class="window-header">
+
+            <span>📝 Notepad</span>
+
+            <div class="window-buttons">
+
+                <button onclick="minimizeApp('notepad')">─</button>
+                <button onclick="maximizeApp('notepad')">□</button>
+                <button onclick="closeApp('notepad')">✕</button>
+
+            </div>
+
+        </header>
+
+        <div class="window-content notepad-content">
+
+            <textarea
+                id="notes"
+                placeholder="Start typing..."
+            ></textarea>
+
+            <div class="notepad-footer">
+
+                <span id="noteCount">0 characters</span>
+
+                <button onclick="clearNotes()">
+                    🗑️ Clear
+                </button>
+
+            </div>
 
         </div>
 
-        <!-- APP WINDOWS -->
-
-        <section class="window" id="notepad">
-            <header class="window-header">
-                <span>📝 Notepad</span>
-                <button onclick="closeApp('notepad')">✕</button>
-            </header>
-
-            <textarea id="notes" placeholder="Start typing..."></textarea>
-        </section>
+    </section>
 
 
-        <section class="window" id="calculator">
-            <header class="window-header">
-                <span>🧮 Calculator</span>
+    <!-- ================= CALCULATOR ================= -->
+
+    <section class="window" id="calculator">
+
+        <header class="window-header">
+
+            <span>🧮 Calculator</span>
+
+            <div class="window-buttons">
+
+                <button onclick="minimizeApp('calculator')">─</button>
+                <button onclick="maximizeApp('calculator')">□</button>
                 <button onclick="closeApp('calculator')">✕</button>
-            </header>
 
-            <input id="calcDisplay" readonly>
+            </div>
+
+        </header>
+
+        <div class="window-content">
+
+            <input id="calcDisplay" readonly placeholder="0">
 
             <div class="calculator-buttons">
+
+                <button onclick="clearCalc()">AC</button>
+                <button onclick="deleteCalc()">⌫</button>
+                <button onclick="calc('%')">%</button>
+                <button onclick="calc('/')">÷</button>
+
                 <button onclick="calc('7')">7</button>
                 <button onclick="calc('8')">8</button>
                 <button onclick="calc('9')">9</button>
-                <button onclick="calc('/')">÷</button>
+                <button onclick="calc('*')">×</button>
 
                 <button onclick="calc('4')">4</button>
                 <button onclick="calc('5')">5</button>
                 <button onclick="calc('6')">6</button>
-                <button onclick="calc('*')">×</button>
+                <button onclick="calc('-')">−</button>
 
                 <button onclick="calc('1')">1</button>
                 <button onclick="calc('2')">2</button>
                 <button onclick="calc('3')">3</button>
-                <button onclick="calc('-')">−</button>
-
-                <button onclick="calc('0')">0</button>
-                <button onclick="calc('.')">.</button>
-                <button onclick="calculate()">=</button>
                 <button onclick="calc('+')">+</button>
 
-                <button class="clear" onclick="clearCalc()">CLEAR</button>
+                <button class="zero-button" onclick="calc('0')">0</button>
+                <button onclick="calc('.')">.</button>
+                <button class="equals-button" onclick="calculate()">=</button>
+
             </div>
-        </section>
+
+        </div>
+
+    </section>
 
 
-        <section class="window" id="files">
-            <header class="window-header">
-                <span>📁 File Manager</span>
+    <!-- ================= FILE MANAGER ================= -->
+
+    <section class="window" id="files">
+
+        <header class="window-header">
+
+            <span>📁 File Manager</span>
+
+            <div class="window-buttons">
+
+                <button onclick="minimizeApp('files')">─</button>
+                <button onclick="maximizeApp('files')">□</button>
                 <button onclick="closeApp('files')">✕</button>
-            </header>
 
-            <div class="file-area">
-                <div class="fake-file">📄 My Notes.txt</div>
-                <div class="fake-file">🎨 My Drawing.png</div>
-                <div class="fake-file">🎮 Game Data</div>
             </div>
-        </section>
+
+        </header>
+
+        <div class="window-content">
+
+            <div class="file-toolbar">
+
+                <button onclick="createFile()">
+                    ➕ New File
+                </button>
+
+                <button onclick="refreshFiles()">
+                    🔄 Refresh
+                </button>
+
+            </div>
+
+            <div id="fileArea" class="file-area"></div>
+
+        </div>
+
+    </section>
 
 
-        <section class="window" id="paint">
-            <header class="window-header">
-                <span>🎨 Paint</span>
+    <!-- ================= PAINT ================= -->
+
+    <section class="window" id="paint">
+
+        <header class="window-header">
+
+            <span>🎨 Paint</span>
+
+            <div class="window-buttons">
+
+                <button onclick="minimizeApp('paint')">─</button>
+                <button onclick="maximizeApp('paint')">□</button>
                 <button onclick="closeApp('paint')">✕</button>
-            </header>
 
-            <canvas id="paintCanvas" width="500" height="300"></canvas>
-
-            <div class="paint-controls">
-                <button onclick="clearCanvas()">Clear</button>
             </div>
-        </section>
+
+        </header>
+
+        <div class="window-content paint-content">
+
+            <div class="paint-toolbar">
+
+                <label>
+                    Color
+                    <input type="color" id="paintColor" value="#7c3aed">
+                </label>
+
+                <label>
+                    Size
+                    <input type="range" id="brushSize" min="1" max="30" value="5">
+                </label>
+
+                <button onclick="clearCanvas()">
+                    🗑️ Clear
+                </button>
+
+            </div>
+
+            <canvas id="paintCanvas" width="600" height="350"></canvas>
+
+        </div>
+
+    </section>
 
 
-        <section class="window" id="game">
-            <header class="window-header">
-                <span>🎮 NEXUS Game</span>
+    <!-- ================= GAME ================= -->
+
+    <section class="window" id="game">
+
+        <header class="window-header">
+
+            <span>🎮 NEXUS Game</span>
+
+            <div class="window-buttons">
+
+                <button onclick="minimizeApp('game')">─</button>
+                <button onclick="maximizeApp('game')">□</button>
                 <button onclick="closeApp('game')">✕</button>
-            </header>
 
-            <div class="game-area">
-                <h2>🟣 Catch the NEXUS!</h2>
-                <p>Click the circle as many times as you can.</p>
-
-                <button id="gameTarget" onclick="hitTarget()">🟣</button>
-
-                <p>Score: <strong id="score">0</strong></p>
             </div>
-        </section>
+
+        </header>
+
+        <div class="window-content game-content">
+
+            <h2>🟣 Catch the NEXUS!</h2>
+
+            <p>Click the circle as many times as possible.</p>
+
+            <div id="gameBoard" class="game-board">
+
+                <button id="gameTarget" onclick="hitTarget()">
+                    🟣
+                </button>
+
+            </div>
+
+            <div class="game-stats">
+
+                <span>
+                    Score:
+                    <strong id="score">0</strong>
+                </span>
+
+                <span>
+                    Time:
+                    <strong id="gameTime">30</strong>
+                </span>
+
+            </div>
+
+            <button class="game-start" onclick="startGame()">
+                ▶ Start Game
+            </button>
+
+        </div>
+
+    </section>
 
 
-        <section class="window" id="settings">
-            <header class="window-header">
-                <span>⚙️ Settings</span>
+    <!-- ================= SETTINGS ================= -->
+
+    <section class="window" id="settings">
+
+        <header class="window-header">
+
+            <span>⚙️ Settings</span>
+
+            <div class="window-buttons">
+
+                <button onclick="minimizeApp('settings')">─</button>
+                <button onclick="maximizeApp('settings')">□</button>
                 <button onclick="closeApp('settings')">✕</button>
-            </header>
 
-            <div class="settings-area">
-                <h2>NEXUS Settings</h2>
+            </div>
+
+        </header>
+
+        <div class="window-content settings-area">
+
+            <h2>NEXUS Settings</h2>
+
+            <div class="setting-card">
+
+                <h3>👤 Profile</h3>
+
+                <input
+                    id="usernameInput"
+                    type="text"
+                    placeholder="Your username"
+                >
+
+                <button onclick="saveUsername()">
+                    💾 Save Username
+                </button>
+
+            </div>
+
+            <div class="setting-card">
+
+                <h3>🎨 Appearance</h3>
 
                 <button onclick="toggleTheme()">
-                    🌙 Toggle Dark Mode
+                    🌙 Toggle Dark / Light
                 </button>
 
                 <button onclick="changeWallpaper()">
                     🖼️ Change Wallpaper
                 </button>
+
             </div>
-        </section>
+
+            <div class="setting-card">
+
+                <h3>🔐 Security</h3>
+
+                <button onclick="lockNexus()">
+                    🔒 Lock NEXUS
+                </button>
+
+                <button onclick="changePassword()">
+                    🔑 Change Password
+                </button>
+
+            </div>
+
+            <div class="setting-card">
+
+                <h3>🔔 Notifications</h3>
+
+                <button onclick="testNotification()">
+                    🔔 Test Notification
+                </button>
+
+            </div>
+
+        </div>
+
+    </section>
 
 
-        <!-- TASKBAR -->
+    <!-- ================= ABOUT ================= -->
 
-        <footer class="taskbar">
+    <section class="window" id="about">
 
-            <button class="start-button" onclick="toggleStartMenu()">
-                🟣 NEXUS
+        <header class="window-header">
+
+            <span>💻 About NEXUS</span>
+
+            <div class="window-buttons">
+
+                <button onclick="minimizeApp('about')">─</button>
+                <button onclick="maximizeApp('about')">□</button>
+                <button onclick="closeApp('about')">✕</button>
+
+            </div>
+
+        </header>
+
+        <div class="window-content about-content">
+
+            <div class="about-logo">🟣</div>
+
+            <h1>NEXUS OS</h1>
+
+            <p>Version 1.1</p>
+
+            <p>
+                A mini browser-based operating system
+                built with HTML, CSS and JavaScript.
+            </p>
+
+            <hr>
+
+            <p>
+                🚀 Built for creativity, experimentation and learning.
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <!-- ================= NOTIFICATION ================= -->
+
+    <div id="notification" class="notification">
+
+        <div id="notificationIcon">🔔</div>
+
+        <div>
+
+            <strong id="notificationTitle">
+                NEXUS
+            </strong>
+
+            <p id="notificationMessage">
+                Notification
+            </p>
+
+        </div>
+
+        <button onclick="hideNotification()">✕</button>
+
+    </div>
+
+
+    <!-- ================= START MENU ================= -->
+
+    <div id="startMenu">
+
+        <div class="start-header">
+
+            <div class="start-avatar">
+                🟣
+            </div>
+
+            <div>
+
+                <strong>NEXUS</strong>
+
+                <small id="startUsername">
+                    User
+                </small>
+
+            </div>
+
+        </div>
+
+
+        <div class="search-box">
+
+            🔍
+
+            <input
+                id="appSearch"
+                type="text"
+                placeholder="Search apps..."
+                oninput="searchApps()"
+            >
+
+        </div>
+
+
+        <div id="appList">
+
+            <button data-app="notepad" onclick="openApp('notepad')">
+                📝 Notepad
             </button>
 
-            <div id="startMenu">
+            <button data-app="calculator" onclick="openApp('calculator')">
+                🧮 Calculator
+            </button>
 
-                <h2>NEXUS</h2>
+            <button data-app="files" onclick="openApp('files')">
+                📁 Files
+            </button>
 
-                <button onclick="openApp('notepad')">📝 Notepad</button>
-                <button onclick="openApp('calculator')">🧮 Calculator</button>
-                <button onclick="openApp('files')">📁 Files</button>
-                <button onclick="openApp('paint')">🎨 Paint</button>
-                <button onclick="openApp('game')">🎮 Game</button>
-                <button onclick="openApp('settings')">⚙️ Settings</button>
+            <button data-app="paint" onclick="openApp('paint')">
+                🎨 Paint
+            </button>
 
-            </div>
+            <button data-app="game" onclick="openApp('game')">
+                🎮 Game
+            </button>
 
-            <div class="taskbar-time" id="clock">
+            <button data-app="settings" onclick="openApp('settings')">
+                ⚙️ Settings
+            </button>
+
+            <button data-app="about" onclick="openApp('about')">
+                💻 About NEXUS
+            </button>
+
+        </div>
+
+
+        <div class="start-footer">
+
+            <button onclick="lockNexus()">
+                🔒 Lock
+            </button>
+
+            <button onclick="openApp('settings')">
+                ⚙️ Settings
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= TASKBAR ================= -->
+
+    <footer class="taskbar">
+
+        <button
+            class="start-button"
+            onclick="toggleStartMenu()"
+        >
+            🟣
+        </button>
+
+        <div id="taskbarApps" class="taskbar-apps"></div>
+
+        <div class="taskbar-right">
+
+            <span>🌐</span>
+
+            <span id="taskbarUsername">
+                User
+            </span>
+
+            <span id="clock">
                 00:00
-            </div>
+            </span>
 
-        </footer>
+        </div>
 
-    </main>
+    </footer>
 
-    <script src="script.js"></script>
+</main>
+
+<script src="script.js"></script>
+
 </body>
 </html>
