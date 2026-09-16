@@ -1,1569 +1,3146 @@
 /* =========================================================
    NEXUS v1.2
-   MULTI-USER SYSTEM
-   ========================================================= */
-
-import {
-  initializeApp
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+   COMPLETE OPERATING ENVIRONMENT
+   LOCAL MULTI-USER SYSTEM
+========================================================= */
 
 
 /* =========================================================
-   FIREBASE CONFIG
-   ========================================================= */
+   STORAGE KEYS
+========================================================= */
 
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "dardomamogs.firebaseapp.com",
-  projectId: "dardomamogs",
-  storageBucket: "dardomamogs.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "G-67XLGPBFNT"
+const ACCOUNTS_KEY = "nexus_v12_accounts";
+const SESSION_KEY = "nexus_v12_session";
+
+
+/* =========================================================
+   APPLICATION INFORMATION
+========================================================= */
+
+const APP_INFO = {
+    notepad: {
+        title: "Notepad",
+        icon: "📝"
+    },
+
+    calculator: {
+        title: "Calculator",
+        icon: "🧮"
+    },
+
+    files: {
+        title: "File Manager",
+        icon: "📁"
+    },
+
+    paint: {
+        title: "Paint",
+        icon: "🎨"
+    },
+
+    game: {
+        title: "Catch NEXUS",
+        icon: "🎮"
+    },
+
+    settings: {
+        title: "Settings",
+        icon: "⚙️"
+    },
+
+    about: {
+        title: "About NEXUS",
+        icon: "ℹ️"
+    }
 };
 
 
 /* =========================================================
-   FIREBASE INITIALIZATION
-   ========================================================= */
-
-const firebaseApp = initializeApp(firebaseConfig);
-
-const auth = getAuth(firebaseApp);
-
-const db = getFirestore(firebaseApp);
-
-
-/* =========================================================
    GLOBAL STATE
-   ========================================================= */
+========================================================= */
 
-let currentUser = null;
-let currentProfile = null;
+let currentAccount = null;
 
-let selectedFile = null;
+let openWindows = {};
 
-let calculatorValue = "";
+let highestZIndex = 20;
 
-let gameScore = 0;
-let gameRunning = false;
+let calculatorValue = "0";
 
-let saveNotesTimer = null;
+let paintState = null;
+
+let gameState = null;
 
 
 /* =========================================================
    DOM HELPERS
-   ========================================================= */
+========================================================= */
 
 const $ = id => document.getElementById(id);
 
-const qs = selector => document.querySelector(selector);
+const qs = selector =>
+    document.querySelector(selector);
 
-const qsa = selector => document.querySelectorAll(selector);
+const qsa = selector =>
+    document.querySelectorAll(selector);
 
 
 /* =========================================================
-   AUTH ERROR TRANSLATION
-   ========================================================= */
+   ACCOUNT STORAGE
+========================================================= */
 
-function readableAuthError(error) {
+function getAccounts() {
 
-  const code = error.code || "";
+    try {
 
-  const messages = {
+        return JSON.parse(
+            localStorage.getItem(ACCOUNTS_KEY)
+        ) || {};
 
-    "auth/invalid-email":
-      "That email address is not valid.",
+    } catch (error) {
 
-    "auth/user-not-found":
-      "No account was found with that email.",
+        return {};
+    }
+}
 
-    "auth/wrong-password":
-      "The password is incorrect.",
 
-    "auth/invalid-credential":
-      "The email or password is incorrect.",
+function saveAccounts(accounts) {
 
-    "auth/email-already-in-use":
-      "An account with this email already exists.",
-
-    "auth/weak-password":
-      "Please choose a stronger password.",
-
-    "auth/too-many-requests":
-      "Too many attempts. Please try again later.",
-
-    "auth/network-request-failed":
-      "Network error. Check your internet connection."
-
-  };
-
-  return messages[code] || error.message || "Something went wrong.";
-
+    localStorage.setItem(
+        ACCOUNTS_KEY,
+        JSON.stringify(accounts)
+    );
 }
 
 
 /* =========================================================
-   AUTH UI
-   ========================================================= */
+   ID GENERATOR
+========================================================= */
 
-function showLogin() {
+function createID() {
 
-  $("loginPanel").classList.remove("hidden");
-  $("signupPanel").classList.add("hidden");
+    if (
+        window.crypto &&
+        typeof crypto.randomUUID === "function"
+    ) {
 
-  $("loginError").textContent = "";
-  $("signupError").textContent = "";
+        return crypto.randomUUID();
+    }
 
-}
-
-
-function showSignup() {
-
-  $("loginPanel").classList.add("hidden");
-  $("signupPanel").classList.remove("hidden");
-
-  $("loginError").textContent = "";
-  $("signupError").textContent = "";
-
+    return (
+        Date.now().toString(36) +
+        Math.random().toString(36).slice(2)
+    );
 }
 
 
 /* =========================================================
-   SIGN UP
-   ========================================================= */
+   PASSWORD HASH
+========================================================= */
 
-async function signup() {
+async function hashPassword(password) {
 
-  const username = $("signupUsername").value.trim();
-  const email = $("signupEmail").value.trim();
-  const password = $("signupPassword").value;
-  const confirm = $("signupPasswordConfirm").value;
+    if (
+        window.crypto &&
+        crypto.subtle
+    ) {
 
-  $("signupError").textContent = "";
+        const data =
+            new TextEncoder().encode(password);
 
-  if (!username) {
-    $("signupError").textContent = "Please choose a username.";
-    return;
-  }
+        const hash =
+            await crypto.subtle.digest(
+                "SHA-256",
+                data
+            );
 
-  if (username.length < 2) {
-    $("signupError").textContent = "Username must be at least 2 characters.";
-    return;
-  }
+        return Array.from(
+            new Uint8Array(hash)
+        )
+            .map(
+                byte =>
+                    byte
+                        .toString(16)
+                        .padStart(2, "0")
+            )
+            .join("");
+    }
 
-  if (!email) {
-    $("signupError").textContent = "Please enter your email.";
-    return;
-  }
+    /*
+       Fallback for browsers without
+       Web Crypto support.
+    */
 
-  if (password.length < 6) {
-    $("signupError").textContent =
-      "Password must be at least 6 characters.";
-    return;
-  }
+    let hash = 0;
 
-  if (password !== confirm) {
-    $("signupError").textContent =
-      "The passwords do not match.";
-    return;
-  }
+    for (let i = 0; i < password.length; i++) {
 
-  $("signupButton").disabled = true;
-  $("signupButton").textContent = "Creating...";
+        hash =
+            (
+                (hash << 5) -
+                hash +
+                password.charCodeAt(i)
+            ) |
+            0;
+    }
 
-  try {
+    return String(hash);
+}
 
-    const credential =
-      await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
 
-    const user = credential.user;
+/* =========================================================
+   DEFAULT ACCOUNT DATA
+========================================================= */
 
-    const profile = {
+function createDefaultAccount(
+    username,
+    passwordHash
+) {
 
-      username: username,
+    return {
 
-      email: user.email,
+        id: createID(),
 
-      createdAt: Date.now(),
+        username,
 
-      theme: "dark",
+        passwordHash,
 
-      wallpaper: "default",
+        createdAt:
+            new Date().toISOString(),
 
-      notes: "",
+        theme: "dark",
 
-      files: {
+        wallpaper: "default",
 
-        "Welcome.txt":
-          "Welcome to NEXUS v1.2!\n\nThis file belongs to your account."
+        notes:
+            "Welcome to NEXUS v1.2!\n\n" +
+            "This is your personal Notepad.",
 
-      }
+        files: {
 
+            "Welcome.txt":
+                "Welcome to NEXUS v1.2!\n\n" +
+                "Your personal browser operating environment.",
+
+            "About.txt":
+                "NEXUS v1.2\n" +
+                "Local browser operating environment.",
+
+            "Ideas.txt":
+                "Write your ideas here..."
+        },
+
+        highScore: 0
     };
+}
 
-    await setDoc(
-      doc(db, "users", user.uid),
-      profile
+
+/* =========================================================
+   CURRENT SESSION
+========================================================= */
+
+function getSessionID() {
+
+    return localStorage.getItem(
+        SESSION_KEY
+    );
+}
+
+
+function setSessionID(id) {
+
+    localStorage.setItem(
+        SESSION_KEY,
+        id
+    );
+}
+
+
+function clearSession() {
+
+    localStorage.removeItem(
+        SESSION_KEY
+    );
+}
+
+
+/* =========================================================
+   SAVE CURRENT ACCOUNT
+========================================================= */
+
+function saveCurrentAccount() {
+
+    if (!currentAccount) {
+        return;
+    }
+
+    const accounts = getAccounts();
+
+    accounts[currentAccount.id] =
+        currentAccount;
+
+    saveAccounts(accounts);
+}
+
+
+/* =========================================================
+   FIND ACCOUNT
+========================================================= */
+
+function findAccountByUsername(username) {
+
+    const accounts = getAccounts();
+
+    const normalized =
+        username.trim().toLowerCase();
+
+    return Object.values(accounts)
+        .find(
+            account =>
+                account.username
+                    .toLowerCase() === normalized
+        );
+}
+
+
+/* =========================================================
+   BOOT
+========================================================= */
+
+function bootNexus() {
+
+    const progress =
+        $("bootProgress");
+
+    const text =
+        $("bootText");
+
+    const steps = [
+        [15, "Initializing NEXUS..."],
+        [35, "Loading system components..."],
+        [55, "Preparing user environment..."],
+        [75, "Loading applications..."],
+        [90, "Starting desktop..."],
+        [100, "Ready."]
+    ];
+
+    let index = 0;
+
+    const interval =
+        setInterval(() => {
+
+            if (index >= steps.length) {
+
+                clearInterval(interval);
+
+                setTimeout(
+                    checkSession,
+                    300
+                );
+
+                return;
+            }
+
+            const [
+                percentage,
+                message
+            ] = steps[index];
+
+            progress.style.width =
+                percentage + "%";
+
+            text.textContent =
+                message;
+
+            index++;
+
+        }, 300);
+}
+
+
+/* =========================================================
+   CHECK SESSION
+========================================================= */
+
+function checkSession() {
+
+    const sessionID =
+        getSessionID();
+
+    if (!sessionID) {
+
+        showAuth();
+
+        return;
+    }
+
+    const accounts =
+        getAccounts();
+
+    const account =
+        accounts[sessionID];
+
+    if (!account) {
+
+        clearSession();
+
+        showAuth();
+
+        return;
+    }
+
+    loginAccount(account);
+}
+
+
+/* =========================================================
+   AUTH DISPLAY
+========================================================= */
+
+function showAuth() {
+
+    $("bootScreen").classList.add(
+        "hidden"
     );
 
-    showNotification(
-      "Account Created",
-      `Welcome to NEXUS, ${username}!`
+    $("desktop").classList.add(
+        "hidden"
     );
 
-  } catch (error) {
+    $("authScreen").classList.remove(
+        "hidden"
+    );
 
-    console.error(error);
+    $("loginPanel").classList.remove(
+        "hidden"
+    );
 
-    $("signupError").textContent =
-      readableAuthError(error);
+    $("signupPanel").classList.add(
+        "hidden"
+    );
+}
 
-  }
 
-  $("signupButton").disabled = false;
-  $("signupButton").textContent = "🚀 Create Account";
+function showLoginPanel() {
 
+    $("loginPanel").classList.remove(
+        "hidden"
+    );
+
+    $("signupPanel").classList.add(
+        "hidden"
+    );
+
+    $("loginMessage").textContent = "";
+}
+
+
+function showSignupPanel() {
+
+    $("loginPanel").classList.add(
+        "hidden"
+    );
+
+    $("signupPanel").classList.remove(
+        "hidden"
+    );
+
+    $("signupMessage").textContent = "";
+}
+
+
+/* =========================================================
+   CREATE ACCOUNT
+========================================================= */
+
+async function createAccount(
+    username,
+    password,
+    confirmPassword
+) {
+
+    const message =
+        $("signupMessage");
+
+    username =
+        username.trim();
+
+    if (username.length < 3) {
+
+        message.textContent =
+            "Username must be at least 3 characters.";
+
+        return;
+    }
+
+    if (!/^[a-zA-Z0-9_ -]+$/.test(username)) {
+
+        message.textContent =
+            "Use only letters, numbers, spaces, hyphens, or underscores.";
+
+        return;
+    }
+
+    if (password.length < 4) {
+
+        message.textContent =
+            "Password must be at least 4 characters.";
+
+        return;
+    }
+
+    if (password !== confirmPassword) {
+
+        message.textContent =
+            "Passwords do not match.";
+
+        return;
+    }
+
+    if (findAccountByUsername(username)) {
+
+        message.textContent =
+            "That username already exists.";
+
+        return;
+    }
+
+    const passwordHash =
+        await hashPassword(password);
+
+    const account =
+        createDefaultAccount(
+            username,
+            passwordHash
+        );
+
+    const accounts =
+        getAccounts();
+
+    accounts[account.id] =
+        account;
+
+    saveAccounts(accounts);
+
+    setSessionID(account.id);
+
+    currentAccount =
+        account;
+
+    $("signupForm").reset();
+
+    showDesktop();
+
+    showToast(
+        "Account created",
+        `Welcome to NEXUS, ${username}!`
+    );
 }
 
 
 /* =========================================================
    LOGIN
-   ========================================================= */
+========================================================= */
 
-async function login() {
+async function login(
+    username,
+    password
+) {
 
-  const email = $("loginEmail").value.trim();
-  const password = $("loginPassword").value;
+    const message =
+        $("loginMessage");
 
-  $("loginError").textContent = "";
+    const account =
+        findAccountByUsername(username);
 
-  if (!email || !password) {
+    if (!account) {
 
-    $("loginError").textContent =
-      "Please enter your email and password.";
+        message.textContent =
+            "Username or password is incorrect.";
 
-    return;
+        return;
+    }
 
-  }
+    const passwordHash =
+        await hashPassword(password);
 
-  $("loginButton").disabled = true;
-  $("loginButton").textContent = "Logging in...";
+    if (
+        passwordHash !==
+        account.passwordHash
+    ) {
 
-  try {
+        message.textContent =
+            "Username or password is incorrect.";
 
-    await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
+        return;
+    }
+
+    setSessionID(account.id);
+
+    currentAccount =
+        account;
+
+    $("loginForm").reset();
+
+    showDesktop();
+
+    showToast(
+        "Welcome back",
+        `Signed in as ${account.username}`
     );
-
-  } catch (error) {
-
-    console.error(error);
-
-    $("loginError").textContent =
-      readableAuthError(error);
-
-  }
-
-  $("loginButton").disabled = false;
-  $("loginButton").textContent = "🔐 Login";
-
-}
-
-
-/* =========================================================
-   PASSWORD RESET
-   ========================================================= */
-
-async function resetPassword() {
-
-  const email = prompt(
-    "Enter the email address for your NEXUS account:"
-  );
-
-  if (!email) return;
-
-  try {
-
-    await sendPasswordResetEmail(
-      auth,
-      email.trim()
-    );
-
-    showNotification(
-      "Password Reset",
-      "Check your email for the password reset message."
-    );
-
-  } catch (error) {
-
-    alert(readableAuthError(error));
-
-  }
-
 }
 
 
 /* =========================================================
    LOGOUT
-   ========================================================= */
+========================================================= */
 
-async function logout() {
+function logout() {
 
-  try {
+    saveCurrentAccount();
 
-    await signOut(auth);
+    clearSession();
 
-  } catch (error) {
+    currentAccount = null;
 
-    console.error(error);
+    closeAllWindows();
 
-  }
+    $("startMenu").classList.add(
+        "hidden"
+    );
 
+    showAuth();
+
+    showToast(
+        "Signed out",
+        "Your local NEXUS session has ended."
+    );
 }
 
 
 /* =========================================================
-   USER PROFILE
-   ========================================================= */
+   DESKTOP
+========================================================= */
 
-async function loadProfile(user) {
+function showDesktop() {
 
-  const profileRef =
-    doc(db, "users", user.uid);
-
-  const profileSnapshot =
-    await getDoc(profileRef);
-
-  if (!profileSnapshot.exists()) {
-
-    const fallbackProfile = {
-
-      username:
-        user.email
-          ? user.email.split("@")[0]
-          : "User",
-
-      email: user.email || "",
-
-      createdAt: Date.now(),
-
-      theme: "dark",
-
-      wallpaper: "default",
-
-      notes: "",
-
-      files: {}
-
-    };
-
-    await setDoc(
-      profileRef,
-      fallbackProfile
+    $("bootScreen").classList.add(
+        "hidden"
     );
 
-    currentProfile = fallbackProfile;
+    $("authScreen").classList.add(
+        "hidden"
+    );
 
-  } else {
+    $("desktop").classList.remove(
+        "hidden"
+    );
 
-    currentProfile =
-      profileSnapshot.data();
+    applyAccountSettings();
 
-  }
+    updateUserUI();
 
-  currentUser = user;
-
-  applyProfile();
-
+    updateClock();
 }
 
 
 /* =========================================================
-   APPLY PROFILE
-   ========================================================= */
+   USER UI
+========================================================= */
 
-function applyProfile() {
+function updateUserUI() {
 
-  if (!currentUser || !currentProfile) return;
-
-  const username =
-    currentProfile.username || "User";
-
-  $("settingsUsername").textContent =
-    username;
-
-  $("settingsEmail").textContent =
-    currentUser.email || "";
-
-  $("startUsername").textContent =
-    username;
-
-  $("startEmail").textContent =
-    currentUser.email || "";
-
-  $("notesArea").value =
-    currentProfile.notes || "";
-
-  applyTheme(
-    currentProfile.theme || "dark"
-  );
-
-  applyWallpaper(
-    currentProfile.wallpaper || "default"
-  );
-
-  renderFiles();
-
-}
-
-
-/* =========================================================
-   SAVE USER PROFILE
-   ========================================================= */
-
-async function saveProfile(changes) {
-
-  if (!currentUser) return;
-
-  try {
-
-    await updateDoc(
-      doc(db, "users", currentUser.uid),
-      changes
-    );
-
-    Object.assign(
-      currentProfile,
-      changes
-    );
-
-  } catch (error) {
-
-    console.error(
-      "Could not save profile:",
-      error
-    );
-
-    showNotification(
-      "Save Error",
-      "Your changes could not be saved."
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   NEXUS STARTUP
-   ========================================================= */
-
-async function startNexus() {
-
-  $("authScreen").classList.add("hidden");
-
-  $("loadingScreen").classList.remove("hidden");
-
-  $("loadingText").textContent =
-    "Loading your NEXUS...";
-
-  let progress = 0;
-
-  const loadingInterval =
-    setInterval(() => {
-
-      progress += 10;
-
-      $("loadingProgress").style.width =
-        `${progress}%`;
-
-      if (progress >= 100) {
-
-        clearInterval(loadingInterval);
-
-        $("loadingScreen").classList.add("hidden");
-
-        $("desktop").classList.remove("hidden");
-
-        showNotification(
-          "NEXUS Ready",
-          `Welcome back, ${currentProfile.username}!`
-        );
-
-      }
-
-    }, 60);
-
-}
-
-
-/* =========================================================
-   AUTH STATE
-   ========================================================= */
-
-onAuthStateChanged(
-  auth,
-  async user => {
-
-    if (user) {
-
-      try {
-
-        await loadProfile(user);
-
-        await startNexus();
-
-      } catch (error) {
-
-        console.error(error);
-
-        $("authScreen").classList.remove("hidden");
-
-        alert(
-          "NEXUS could not load your account data."
-        );
-
-      }
-
-    } else {
-
-      currentUser = null;
-      currentProfile = null;
-
-      $("desktop").classList.add("hidden");
-
-      $("loadingScreen").classList.add("hidden");
-
-      $("authScreen").classList.remove("hidden");
-
-      showLogin();
-
+    if (!currentAccount) {
+        return;
     }
 
-  }
+    $("startUsername").textContent =
+        currentAccount.username;
+
+    $("taskbarUsername").textContent =
+        currentAccount.username;
+}
+
+
+/* =========================================================
+   ACCOUNT SETTINGS
+========================================================= */
+
+function applyAccountSettings() {
+
+    if (!currentAccount) {
+        return;
+    }
+
+    document.body.classList.toggle(
+        "light-theme",
+        currentAccount.theme === "light"
+    );
+
+    const desktop =
+        $("desktop");
+
+    desktop.classList.remove(
+        "wallpaper-blue",
+        "wallpaper-purple",
+        "wallpaper-green",
+        "wallpaper-sunset"
+    );
+
+    if (
+        currentAccount.wallpaper &&
+        currentAccount.wallpaper !== "default"
+    ) {
+
+        desktop.classList.add(
+            "wallpaper-" +
+            currentAccount.wallpaper
+        );
+    }
+}
+
+
+/* =========================================================
+   CLOCK
+========================================================= */
+
+function updateClock() {
+
+    const now =
+        new Date();
+
+    let hours =
+        now.getHours();
+
+    const minutes =
+        String(
+            now.getMinutes()
+        ).padStart(2, "0");
+
+    const ampm =
+        hours >= 12
+            ? "PM"
+            : "AM";
+
+    hours =
+        hours % 12 || 12;
+
+    $("taskbarClock").textContent =
+        `${hours}:${minutes} ${ampm}`;
+}
+
+
+setInterval(
+    updateClock,
+    1000
 );
 
 
 /* =========================================================
-   OPEN APP
-   ========================================================= */
+   TOAST
+========================================================= */
+
+function showToast(
+    title,
+    message
+) {
+
+    const container =
+        $("toastContainer");
+
+    const toast =
+        document.createElement("div");
+
+    toast.className =
+        "toast";
+
+    toast.innerHTML = `
+
+        <div class="toast-title">
+            ${escapeHTML(title)}
+        </div>
+
+        <div class="toast-message">
+            ${escapeHTML(message)}
+        </div>
+
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(
+        () => {
+
+            toast.remove();
+
+        },
+        3200
+    );
+}
+
+
+/* =========================================================
+   HTML ESCAPE
+========================================================= */
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+/* =========================================================
+   START MENU
+========================================================= */
+
+function toggleStartMenu() {
+
+    $("startMenu").classList.toggle(
+        "hidden"
+    );
+}
+
+
+function closeStartMenu() {
+
+    $("startMenu").classList.add(
+        "hidden"
+    );
+}
+
+
+/* =========================================================
+   WINDOW SYSTEM
+========================================================= */
 
 function openApp(appName) {
 
-  const windowElement =
-    $(`${appName}Window`);
+    closeStartMenu();
 
-  if (!windowElement) return;
+    if (
+        openWindows[appName]
+    ) {
 
-  qsa(".app-window").forEach(win => {
+        focusWindow(
+            openWindows[appName]
+        );
 
-    win.classList.remove("open");
+        return;
+    }
 
-  });
+    const info =
+        APP_INFO[appName];
 
-  windowElement.classList.add("open");
+    if (!info) {
+        return;
+    }
 
-  updateTaskbar();
+    const windowElement =
+        createWindow(
+            appName,
+            info.title,
+            info.icon
+        );
 
+    $("windowArea")
+        .appendChild(
+            windowElement
+        );
+
+    openWindows[appName] =
+        windowElement;
+
+    focusWindow(
+        windowElement
+    );
+
+    updateTaskbar();
+}
+
+
+function createWindow(
+    appName,
+    title,
+    icon
+) {
+
+    const windowElement =
+        document.createElement("section");
+
+    windowElement.className =
+        "window";
+
+    windowElement.dataset.app =
+        appName;
+
+    windowElement.innerHTML = `
+
+        <div class="window-header">
+
+            <div class="window-title">
+
+                <span>
+                    ${icon}
+                </span>
+
+                <span>
+                    ${escapeHTML(title)}
+                </span>
+
+            </div>
+
+            <div class="window-controls">
+
+                <button
+                    class="window-control minimize"
+                    title="Minimize"
+                >
+                    −
+                </button>
+
+                <button
+                    class="window-control maximize"
+                    title="Maximize"
+                >
+                    □
+                </button>
+
+                <button
+                    class="window-control close"
+                    title="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="window-body"></div>
+
+    `;
+
+    const body =
+        windowElement.querySelector(
+            ".window-body"
+        );
+
+    buildApp(
+        appName,
+        body
+    );
+
+    windowElement
+        .querySelector(".close")
+        .addEventListener(
+            "click",
+            () => closeApp(appName)
+        );
+
+    windowElement
+        .querySelector(".minimize")
+        .addEventListener(
+            "click",
+            () => minimizeWindow(windowElement)
+        );
+
+    windowElement
+        .querySelector(".maximize")
+        .addEventListener(
+            "click",
+            () => {
+
+                windowElement.classList.toggle(
+                    "maximized"
+                );
+
+                focusWindow(
+                    windowElement
+                );
+            }
+        );
+
+    windowElement
+        .addEventListener(
+            "mousedown",
+            () => focusWindow(windowElement)
+        );
+
+    return windowElement;
+}
+
+
+/* =========================================================
+   FOCUS WINDOW
+========================================================= */
+
+function focusWindow(
+    windowElement
+) {
+
+    highestZIndex++;
+
+    windowElement.style.zIndex =
+        highestZIndex;
+
+    windowElement.classList.remove(
+        "minimized"
+    );
+
+    updateTaskbar();
+}
+
+
+/* =========================================================
+   MINIMIZE WINDOW
+========================================================= */
+
+function minimizeWindow(
+    windowElement
+) {
+
+    windowElement.style.display =
+        "none";
+
+    updateTaskbar();
 }
 
 
 /* =========================================================
    CLOSE APP
-   ========================================================= */
+========================================================= */
 
-function closeApp(windowElement) {
+function closeApp(appName) {
 
-  if (!windowElement) return;
+    const windowElement =
+        openWindows[appName];
 
-  windowElement.classList.remove("open");
+    if (!windowElement) {
+        return;
+    }
 
-  updateTaskbar();
+    if (appName === "paint") {
 
+        if (paintState) {
+            paintState = null;
+        }
+    }
+
+    if (appName === "game") {
+
+        stopGame();
+    }
+
+    windowElement.remove();
+
+    delete openWindows[appName];
+
+    updateTaskbar();
+}
+
+
+/* =========================================================
+   CLOSE EVERYTHING
+========================================================= */
+
+function closeAllWindows() {
+
+    Object.keys(openWindows)
+        .forEach(
+            closeApp
+        );
 }
 
 
 /* =========================================================
    TASKBAR
-   ========================================================= */
+========================================================= */
 
 function updateTaskbar() {
 
-  const container =
-    $("taskbarApps");
+    const container =
+        $("taskbarApps");
 
-  container.innerHTML = "";
+    container.innerHTML = "";
 
-  qsa(".app-window.open").forEach(win => {
+    Object.keys(openWindows)
+        .forEach(
+            appName => {
 
-    const button =
-      document.createElement("button");
+                const info =
+                    APP_INFO[appName];
 
-    button.className =
-      "taskbar-app active";
+                const button =
+                    document.createElement(
+                        "button"
+                    );
 
-    const title =
-      win.querySelector(".window-header span");
+                button.className =
+                    "taskbar-app";
 
-    button.textContent =
-      title
-        ? title.textContent
-        : "App";
+                button.innerHTML = `
+                    <span>${info.icon}</span>
+                    <span>${escapeHTML(info.title)}</span>
+                `;
 
-    button.onclick = () => {
+                button.addEventListener(
+                    "click",
+                    () => {
 
-      win.classList.toggle("hidden");
+                        const windowElement =
+                            openWindows[appName];
 
-    };
+                        if (
+                            windowElement.style.display ===
+                            "none"
+                        ) {
 
-    container.appendChild(button);
+                            windowElement.style.display =
+                                "flex";
+                        }
 
-  });
+                        focusWindow(
+                            windowElement
+                        );
+                    }
+                );
 
+                container.appendChild(
+                    button
+                );
+            }
+        );
 }
 
 
 /* =========================================================
-   WINDOW BUTTONS
-   ========================================================= */
+   APP BUILDER
+========================================================= */
 
-qsa(".close-button").forEach(button => {
+function buildApp(
+    appName,
+    body
+) {
 
-  button.addEventListener(
-    "click",
-    () => {
+    switch (appName) {
 
-      closeApp(
-        button.closest(".app-window")
-      );
+        case "notepad":
+            buildNotepad(body);
+            break;
 
+        case "calculator":
+            buildCalculator(body);
+            break;
+
+        case "files":
+            buildFileManager(body);
+            break;
+
+        case "paint":
+            buildPaint(body);
+            break;
+
+        case "game":
+            buildGame(body);
+            break;
+
+        case "settings":
+            buildSettings(body);
+            break;
+
+        case "about":
+            buildAbout(body);
+            break;
     }
-  );
-
-});
-
-
-qsa(".minimize-button").forEach(button => {
-
-  button.addEventListener(
-    "click",
-    () => {
-
-      const win =
-        button.closest(".app-window");
-
-      win.classList.remove("open");
-
-      updateTaskbar();
-
-    }
-  );
-
-});
-
-
-/* =========================================================
-   DESKTOP APP BUTTONS
-   ========================================================= */
-
-qsa("[data-app]").forEach(button => {
-
-  button.addEventListener(
-    "click",
-    () => {
-
-      openApp(
-        button.dataset.app
-      );
-
-      $("startMenu").classList.add("hidden");
-
-    }
-  );
-
-});
-
-
-/* =========================================================
-   START MENU
-   ========================================================= */
-
-$("startButton").addEventListener(
-  "click",
-  () => {
-
-    $("startMenu").classList.toggle("hidden");
-
-  }
-);
-
-
-/* =========================================================
-   CLOCK
-   ========================================================= */
-
-function updateClock() {
-
-  const now = new Date();
-
-  let hours =
-    now.getHours();
-
-  let minutes =
-    now.getMinutes();
-
-  hours =
-    String(hours).padStart(2, "0");
-
-  minutes =
-    String(minutes).padStart(2, "0");
-
-  $("clock").textContent =
-    `${hours}:${minutes}`;
-
 }
-
-setInterval(
-  updateClock,
-  1000
-);
-
-updateClock();
 
 
 /* =========================================================
    NOTEPAD
-   ========================================================= */
+========================================================= */
 
-$("notesArea").addEventListener(
-  "input",
-  () => {
+function buildNotepad(body) {
 
-    $("notesStatus").textContent =
-      "Saving...";
+    body.innerHTML = `
 
-    clearTimeout(
-      saveNotesTimer
+        <div class="notepad-body">
+
+            <div class="notepad-toolbar">
+
+                <button
+                    class="small-button"
+                    id="saveNoteButton"
+                >
+                    💾 Save
+                </button>
+
+                <button
+                    class="small-button"
+                    id="clearNoteButton"
+                >
+                    🗑️ Clear
+                </button>
+
+                <span
+                    id="noteStatus"
+                    style="
+                        margin-left:auto;
+                        color:#7f899d;
+                        font-size:12px;
+                        padding-top:7px;
+                    "
+                >
+                    Saved
+                </span>
+
+            </div>
+
+            <textarea
+                id="notepadText"
+                class="notepad-textarea"
+                placeholder="Start typing..."
+            ></textarea>
+
+        </div>
+
+    `;
+
+    const textarea =
+        body.querySelector(
+            "#notepadText"
+        );
+
+    textarea.value =
+        currentAccount.notes || "";
+
+    const saveNote =
+        () => {
+
+            currentAccount.notes =
+                textarea.value;
+
+            saveCurrentAccount();
+
+            body.querySelector(
+                "#noteStatus"
+            ).textContent =
+                "Saved";
+
+            showToast(
+                "Notepad",
+                "Your note was saved."
+            );
+        };
+
+    body.querySelector(
+        "#saveNoteButton"
+    )
+        .addEventListener(
+            "click",
+            saveNote
+        );
+
+    body.querySelector(
+        "#clearNoteButton"
+    )
+        .addEventListener(
+            "click",
+            () => {
+
+                textarea.value = "";
+
+                currentAccount.notes = "";
+
+                saveCurrentAccount();
+
+                body.querySelector(
+                    "#noteStatus"
+                ).textContent =
+                    "Saved";
+            }
+        );
+
+    textarea.addEventListener(
+        "input",
+        () => {
+
+            currentAccount.notes =
+                textarea.value;
+
+            saveCurrentAccount();
+
+            body.querySelector(
+                "#noteStatus"
+            ).textContent =
+                "Auto-saved";
+        }
     );
-
-    saveNotesTimer =
-      setTimeout(
-        async () => {
-
-          await saveProfile({
-            notes:
-              $("notesArea").value
-          });
-
-          $("notesStatus").textContent =
-            "Saved";
-
-        },
-        700
-      );
-
-  }
-);
-
-
-$("clearNotesButton").addEventListener(
-  "click",
-  async () => {
-
-    $("notesArea").value = "";
-
-    await saveProfile({
-      notes: ""
-    });
-
-    $("notesStatus").textContent =
-      "Saved";
-
-  }
-);
+}
 
 
 /* =========================================================
    CALCULATOR
-   ========================================================= */
+========================================================= */
 
-qsa("[data-calc]").forEach(button => {
+function buildCalculator(body) {
 
-  button.addEventListener(
-    "click",
-    () => {
+    calculatorValue = "0";
 
-      const value =
-        button.dataset.calc;
+    body.innerHTML = `
 
-      if (value === "clear") {
+        <div class="calculator">
 
-        calculatorValue = "";
+            <div
+                id="calcDisplay"
+                class="calc-display"
+            >
+                0
+            </div>
 
-      } else if (value === "backspace") {
+            <div class="calc-grid">
 
-        calculatorValue =
-          calculatorValue.slice(0, -1);
+                <button class="calc-button clear" data-calc="C">
+                    C
+                </button>
 
-      } else if (value === "=") {
+                <button class="calc-button" data-calc="(">
+                    (
+                </button>
+
+                <button class="calc-button" data-calc=")">
+                    )
+                </button>
+
+                <button class="calc-button operator" data-calc="/">
+                    ÷
+                </button>
+
+                <button class="calc-button" data-calc="7">
+                    7
+                </button>
+
+                <button class="calc-button" data-calc="8">
+                    8
+                </button>
+
+                <button class="calc-button" data-calc="9">
+                    9
+                </button>
+
+                <button class="calc-button operator" data-calc="*">
+                    ×
+                </button>
+
+                <button class="calc-button" data-calc="4">
+                    4
+                </button>
+
+                <button class="calc-button" data-calc="5">
+                    5
+                </button>
+
+                <button class="calc-button" data-calc="6">
+                    6
+                </button>
+
+                <button class="calc-button operator" data-calc="-">
+                    −
+                </button>
+
+                <button class="calc-button" data-calc="1">
+                    1
+                </button>
+
+                <button class="calc-button" data-calc="2">
+                    2
+                </button>
+
+                <button class="calc-button" data-calc="3">
+                    3
+                </button>
+
+                <button class="calc-button operator" data-calc="+">
+                    +
+                </button>
+
+                <button class="calc-button" data-calc="0">
+                    0
+                </button>
+
+                <button class="calc-button" data-calc=".">
+                    .
+                </button>
+
+                <button class="calc-button" data-calc="%">
+                    %
+                </button>
+
+                <button class="calc-button equals" data-calc="=">
+                    =
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+    const display =
+        body.querySelector(
+            "#calcDisplay"
+        );
+
+    body.querySelectorAll(
+        "[data-calc]"
+    )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        calculatorInput(
+                            button.dataset.calc,
+                            display
+                        );
+                    }
+                );
+            }
+        );
+}
+
+
+function calculatorInput(
+    value,
+    display
+) {
+
+    if (value === "C") {
+
+        calculatorValue = "0";
+
+        display.textContent =
+            calculatorValue;
+
+        return;
+    }
+
+    if (value === "=") {
 
         try {
 
-          if (
-            !/^[0-9+\-*/().\s]+$/
-              .test(calculatorValue)
-          ) {
+            const expression =
+                calculatorValue
+                    .replace(
+                        /%/g,
+                        "/100"
+                    );
 
-            throw new Error();
+            if (
+                !/^[0-9+\-*/().\s]+$/.test(
+                    expression
+                )
+            ) {
 
-          }
+                throw new Error();
+            }
 
-          calculatorValue =
-            String(
-              Function(
-                `"use strict"; return (${calculatorValue})`
-              )()
-            );
+            const result =
+                Function(
+                    `"use strict"; return (${expression})`
+                )();
+
+            if (
+                !Number.isFinite(result)
+            ) {
+
+                throw new Error();
+            }
+
+            calculatorValue =
+                String(result);
 
         } catch {
 
-          calculatorValue = "Error";
-
+            calculatorValue =
+                "Error";
         }
 
-      } else {
+        display.textContent =
+            calculatorValue;
 
-        if (calculatorValue === "Error") {
-          calculatorValue = "";
-        }
+        return;
+    }
+
+    if (calculatorValue === "Error") {
+
+        calculatorValue = "0";
+    }
+
+    if (
+        calculatorValue === "0" &&
+        /[0-9]/.test(value)
+    ) {
+
+        calculatorValue = value;
+
+    } else {
 
         calculatorValue += value;
-
-      }
-
-      $("calculatorDisplay").value =
-        calculatorValue;
-
     }
-  );
 
-});
+    display.textContent =
+        calculatorValue;
+}
 
 
 /* =========================================================
    FILE MANAGER
-   ========================================================= */
+========================================================= */
 
-function renderFiles() {
+function buildFileManager(body) {
 
-  const list =
-    $("fileList");
-
-  list.innerHTML = "";
-
-  const files =
-    currentProfile?.files || {};
-
-  Object.keys(files).forEach(filename => {
-
-    const item =
-      document.createElement("div");
-
-    item.className =
-      "file-item";
-
-    item.textContent =
-      `📄 ${filename}`;
-
-    item.addEventListener(
-      "click",
-      () => {
-
-        selectedFile =
-          filename;
-
-        $("fileEditor").value =
-          files[filename];
-
-        qsa(".file-item").forEach(
-          element =>
-            element.classList.remove("selected")
-        );
-
-        item.classList.add("selected");
-
-      }
-    );
-
-    list.appendChild(item);
-
-  });
-
+    renderFileManager(body);
 }
 
 
-$("newFileButton").addEventListener(
-  "click",
-  async () => {
+function renderFileManager(body) {
 
-    const filename =
-      prompt(
-        "Enter a name for the new file:"
-      );
+    const files =
+        currentAccount.files || {};
 
-    if (!filename) return;
+    const fileNames =
+        Object.keys(files);
 
-    const cleanName =
-      filename.trim();
+    body.innerHTML = `
 
-    if (!cleanName) return;
+        <div>
 
-    if (!currentProfile.files) {
-      currentProfile.files = {};
+            <div class="file-toolbar">
+
+                <button
+                    class="small-button"
+                    id="newFileButton"
+                >
+                    ➕ New File
+                </button>
+
+                <button
+                    class="small-button"
+                    id="refreshFilesButton"
+                >
+                    🔄 Refresh
+                </button>
+
+            </div>
+
+            <div
+                id="fileList"
+                class="file-list"
+            >
+
+                ${
+                    fileNames.length
+                    ? fileNames.map(
+                        createFileHTML
+                    ).join("")
+                    : `
+                        <div
+                            style="
+                                text-align:center;
+                                color:#788196;
+                                padding:40px;
+                            "
+                        >
+                            No files yet.
+                        </div>
+                    `
+                }
+
+            </div>
+
+        </div>
+
+    `;
+
+    body.querySelector(
+        "#newFileButton"
+    )
+        .addEventListener(
+            "click",
+            () => {
+
+                const name =
+                    prompt(
+                        "Enter a file name:"
+                    );
+
+                if (!name) {
+                    return;
+                }
+
+                const cleanName =
+                    name.trim();
+
+                if (!cleanName) {
+                    return;
+                }
+
+                if (
+                    currentAccount.files[
+                        cleanName
+                    ] !== undefined
+                ) {
+
+                    showToast(
+                        "File Manager",
+                        "A file with that name already exists."
+                    );
+
+                    return;
+                }
+
+                currentAccount.files[
+                    cleanName
+                ] = "";
+
+                saveCurrentAccount();
+
+                renderFileManager(body);
+
+                showToast(
+                    "File created",
+                    cleanName
+                );
+            }
+        );
+
+    body.querySelector(
+        "#refreshFilesButton"
+    )
+        .addEventListener(
+            "click",
+            () => {
+
+                renderFileManager(body);
+
+            }
+        );
+
+    body.querySelectorAll(
+        "[data-file-open]"
+    )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        openTextFile(
+                            button.dataset.fileOpen,
+                            body
+                        );
+                    }
+                );
+            }
+        );
+
+    body.querySelectorAll(
+        "[data-file-delete]"
+    )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        deleteFile(
+                            button.dataset.fileDelete,
+                            body
+                        );
+                    }
+                );
+            }
+        );
+}
+
+
+function createFileHTML(
+    name
+) {
+
+    const content =
+        currentAccount.files[name] || "";
+
+    const size =
+        new Blob([content]).size;
+
+    return `
+
+        <div class="file-item">
+
+            <div class="file-item-left">
+
+                <span class="file-icon">
+                    📄
+                </span>
+
+                <div>
+
+                    <div class="file-name">
+                        ${escapeHTML(name)}
+                    </div>
+
+                    <div class="file-size">
+                        ${size} bytes
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="file-actions">
+
+                <button
+                    class="small-button"
+                    data-file-open="${escapeHTML(name)}"
+                >
+                    Open
+                </button>
+
+                <button
+                    class="small-button"
+                    data-file-delete="${escapeHTML(name)}"
+                >
+                    Delete
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+}
+
+
+function openTextFile(
+    name,
+    fileManagerBody
+) {
+
+    const currentContent =
+        currentAccount.files[name] || "";
+
+    fileManagerBody.innerHTML = `
+
+        <div class="notepad-body">
+
+            <div class="notepad-toolbar">
+
+                <button
+                    class="small-button"
+                    id="backFilesButton"
+                >
+                    ← Back
+                </button>
+
+                <button
+                    class="small-button"
+                    id="saveFileButton"
+                >
+                    💾 Save
+                </button>
+
+            </div>
+
+            <textarea
+                id="fileEditor"
+                class="notepad-textarea"
+            ></textarea>
+
+        </div>
+
+    `;
+
+    const editor =
+        fileManagerBody.querySelector(
+            "#fileEditor"
+        );
+
+    editor.value =
+        currentContent;
+
+    fileManagerBody.querySelector(
+        "#backFilesButton"
+    )
+        .addEventListener(
+            "click",
+            () => {
+
+                renderFileManager(
+                    fileManagerBody
+                );
+            }
+        );
+
+    fileManagerBody.querySelector(
+        "#saveFileButton"
+    )
+        .addEventListener(
+            "click",
+            () => {
+
+                currentAccount.files[name] =
+                    editor.value;
+
+                saveCurrentAccount();
+
+                showToast(
+                    "File saved",
+                    name
+                );
+            }
+        );
+}
+
+
+function deleteFile(
+    name,
+    body
+) {
+
+    if (
+        !confirm(
+            `Delete "${name}"?`
+        )
+    ) {
+
+        return;
     }
 
-    currentProfile.files[cleanName] = "";
-
-    selectedFile =
-      cleanName;
-
-    $("fileEditor").value = "";
-
-    await saveProfile({
-      files:
-        currentProfile.files
-    });
-
-    renderFiles();
-
-    showNotification(
-      "File Created",
-      cleanName
-    );
-
-  }
-);
-
-
-$("saveFileButton").addEventListener(
-  "click",
-  async () => {
-
-    if (!selectedFile) {
-
-      showNotification(
-        "No File Selected",
-        "Choose a file first."
-      );
-
-      return;
-
-    }
-
-    currentProfile.files[selectedFile] =
-      $("fileEditor").value;
-
-    await saveProfile({
-      files:
-        currentProfile.files
-    });
-
-    showNotification(
-      "File Saved",
-      selectedFile
-    );
-
-  }
-);
-
-
-$("deleteFileButton").addEventListener(
-  "click",
-  async () => {
-
-    if (!selectedFile) {
-
-      showNotification(
-        "No File Selected",
-        "Choose a file first."
-      );
-
-      return;
-
-    }
-
-    const confirmed =
-      confirm(
-        `Delete "${selectedFile}"?`
-      );
-
-    if (!confirmed) return;
-
-    delete currentProfile.files[
-      selectedFile
+    delete currentAccount.files[
+        name
     ];
 
-    await saveProfile({
-      files:
-        currentProfile.files
-    });
+    saveCurrentAccount();
 
-    selectedFile = null;
+    renderFileManager(body);
 
-    $("fileEditor").value = "";
-
-    renderFiles();
-
-    showNotification(
-      "File Deleted",
-      "The file was removed."
+    showToast(
+        "File deleted",
+        name
     );
-
-  }
-);
+}
 
 
 /* =========================================================
    PAINT
-   ========================================================= */
+========================================================= */
 
-const canvas =
-  $("paintCanvas");
+function buildPaint(body) {
 
-const ctx =
-  canvas.getContext("2d");
+    body.innerHTML = `
 
-let drawing = false;
+        <div class="paint-container">
 
-function canvasPosition(event) {
+            <div class="paint-toolbar">
 
-  const rect =
-    canvas.getBoundingClientRect();
+                <button
+                    id="clearPaint"
+                    class="small-button"
+                >
+                    🗑️ Clear
+                </button>
 
-  return {
+                <button
+                    id="savePaint"
+                    class="small-button"
+                >
+                    💾 Save PNG
+                </button>
 
-    x:
-      (event.clientX - rect.left)
-      * (canvas.width / rect.width),
+                <label>
+                    Color
+                    <input
+                        id="paintColor"
+                        type="color"
+                        value="#5b5ff7"
+                    >
+                </label>
 
-    y:
-      (event.clientY - rect.top)
-      * (canvas.height / rect.height)
+                <label>
+                    Size
+                    <input
+                        id="paintSize"
+                        class="paint-size"
+                        type="range"
+                        min="1"
+                        max="40"
+                        value="5"
+                    >
+                </label>
 
-  };
+            </div>
 
-}
+            <div class="paint-canvas-wrapper">
 
+                <canvas id="paintCanvas"></canvas>
 
-canvas.addEventListener(
-  "pointerdown",
-  event => {
+            </div>
 
-    drawing = true;
+        </div>
 
-    const pos =
-      canvasPosition(event);
+    `;
 
-    ctx.beginPath();
-
-    ctx.moveTo(
-      pos.x,
-      pos.y
-    );
-
-  }
-);
-
-
-canvas.addEventListener(
-  "pointermove",
-  event => {
-
-    if (!drawing) return;
-
-    const pos =
-      canvasPosition(event);
-
-    ctx.lineWidth =
-      Number(
-        $("brushSize").value
-      );
-
-    ctx.lineCap =
-      "round";
-
-    ctx.strokeStyle =
-      "#000000";
-
-    ctx.lineTo(
-      pos.x,
-      pos.y
-    );
-
-    ctx.stroke();
-
-  }
-);
-
-
-canvas.addEventListener(
-  "pointerup",
-  () => {
-
-    drawing = false;
-
-  }
-);
-
-
-canvas.addEventListener(
-  "pointerleave",
-  () => {
-
-    drawing = false;
-
-  }
-);
-
-
-$("clearCanvasButton").addEventListener(
-  "click",
-  () => {
-
-    ctx.clearRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-  }
-);
-
-
-$("saveDrawingButton").addEventListener(
-  "click",
-  () => {
-
-    const image =
-      canvas.toDataURL("image/png");
-
-    const link =
-      document.createElement("a");
-
-    link.href =
-      image;
-
-    link.download =
-      "nexus-drawing.png";
-
-    link.click();
-
-  }
-);
-
-
-/* =========================================================
-   GAME
-   ========================================================= */
-
-function moveGameTarget() {
-
-  const area =
-    $("gameArea");
-
-  const target =
-    $("gameTarget");
-
-  const maxX =
-    area.clientWidth -
-    target.offsetWidth;
-
-  const maxY =
-    area.clientHeight -
-    target.offsetHeight;
-
-  target.style.left =
-    `${Math.random() * maxX}px`;
-
-  target.style.top =
-    `${Math.random() * maxY}px`;
-
-}
-
-
-$("gameTarget").addEventListener(
-  "click",
-  () => {
-
-    if (!gameRunning) return;
-
-    gameScore++;
-
-    $("gameScore").textContent =
-      gameScore;
-
-    moveGameTarget();
-
-  }
-);
-
-
-$("startGameButton").addEventListener(
-  "click",
-  () => {
-
-    gameScore = 0;
-
-    gameRunning = true;
-
-    $("gameScore").textContent =
-      "0";
-
-    $("gameTarget").style.display =
-      "block";
-
-    moveGameTarget();
-
-    showNotification(
-      "Game Started",
-      "Catch the N!"
-    );
-
-  }
-);
-
-
-/* =========================================================
-   THEME
-   ========================================================= */
-
-async function applyTheme(theme) {
-
-  if (theme === "light") {
-
-    document.body.classList.add(
-      "light-theme"
-    );
-
-  } else {
-
-    document.body.classList.remove(
-      "light-theme"
-    );
-
-  }
-
-}
-
-
-$("darkThemeButton").addEventListener(
-  "click",
-  async () => {
-
-    applyTheme("dark");
-
-    await saveProfile({
-      theme: "dark"
-    });
-
-  }
-);
-
-
-$("lightThemeButton").addEventListener(
-  "click",
-  async () => {
-
-    applyTheme("light");
-
-    await saveProfile({
-      theme: "light"
-    });
-
-  }
-);
-
-
-/* =========================================================
-   WALLPAPERS
-   ========================================================= */
-
-async function applyWallpaper(name) {
-
-  const wallpaper =
-    $("wallpaper");
-
-  wallpaper.className =
-    "wallpaper";
-
-  if (name !== "default") {
-
-    wallpaper.classList.add(
-      name
-    );
-
-  }
-
-}
-
-
-qsa("[data-wallpaper]").forEach(
-  button => {
-
-    button.addEventListener(
-      "click",
-      async () => {
-
-        const wallpaper =
-          button.dataset.wallpaper;
-
-        applyWallpaper(
-          wallpaper
+    const canvas =
+        body.querySelector(
+            "#paintCanvas"
         );
 
-        await saveProfile({
-          wallpaper:
-            wallpaper
-        });
-
-      }
-    );
-
-  }
-);
-
-
-/* =========================================================
-   CHANGE PASSWORD
-   ========================================================= */
-
-$("changePasswordButton").addEventListener(
-  "click",
-  async () => {
-
-    if (!currentUser) return;
-
-    const oldPassword =
-      prompt(
-        "Enter your current password:"
-      );
-
-    if (!oldPassword) return;
-
-    const newPassword =
-      prompt(
-        "Enter your new password:"
-      );
-
-    if (!newPassword) return;
-
-    if (newPassword.length < 6) {
-
-      alert(
-        "Your new password must be at least 6 characters."
-      );
-
-      return;
-
-    }
-
-    try {
-
-      const credential =
-        EmailAuthProvider.credential(
-          currentUser.email,
-          oldPassword
+    const wrapper =
+        body.querySelector(
+            ".paint-canvas-wrapper"
         );
 
-      await reauthenticateWithCredential(
-        currentUser,
-        credential
-      );
+    function resizeCanvas() {
 
-      await updatePassword(
-        currentUser,
-        newPassword
-      );
+        const oldCanvas =
+            document.createElement(
+                "canvas"
+            );
 
-      showNotification(
-        "Password Changed",
-        "Your password was successfully changed."
-      );
+        oldCanvas.width =
+            canvas.width;
 
-    } catch (error) {
+        oldCanvas.height =
+            canvas.height;
 
-      console.error(error);
+        const oldContext =
+            oldCanvas.getContext(
+                "2d"
+            );
 
-      alert(
-        readableAuthError(error)
-      );
+        if (
+            canvas.width &&
+            canvas.height
+        ) {
 
-    }
+            oldContext.drawImage(
+                canvas,
+                0,
+                0
+            );
+        }
 
-  }
-);
+        canvas.width =
+            wrapper.clientWidth;
 
+        canvas.height =
+            wrapper.clientHeight;
 
-/* =========================================================
-   LOGOUT BUTTONS
-   ========================================================= */
+        const context =
+            canvas.getContext(
+                "2d"
+            );
 
-$("logoutButton").addEventListener(
-  "click",
-  logout
-);
+        context.fillStyle =
+            "white";
 
-$("startLogoutButton").addEventListener(
-  "click",
-  logout
-);
-
-
-/* =========================================================
-   NOTIFICATIONS
-   ========================================================= */
-
-let notificationTimer = null;
-
-function showNotification(
-  title,
-  message
-) {
-
-  $("notificationTitle").textContent =
-    title;
-
-  $("notificationMessage").textContent =
-    message;
-
-  $("notification").classList.remove(
-    "hidden"
-  );
-
-  clearTimeout(
-    notificationTimer
-  );
-
-  notificationTimer =
-    setTimeout(
-      () => {
-
-        $("notification").classList.add(
-          "hidden"
+        context.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
         );
 
-      },
-      3500
+        if (
+            oldCanvas.width &&
+            oldCanvas.height
+        ) {
+
+            context.drawImage(
+                oldCanvas,
+                0,
+                0,
+                oldCanvas.width,
+                oldCanvas.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        }
+    }
+
+    resizeCanvas();
+
+    let drawing = false;
+
+    function getPosition(
+        event
+    ) {
+
+        const rect =
+            canvas.getBoundingClientRect();
+
+        return {
+
+            x:
+                event.clientX -
+                rect.left,
+
+            y:
+                event.clientY -
+                rect.top
+        };
+    }
+
+    function startDrawing(event) {
+
+        drawing = true;
+
+        const position =
+            getPosition(event);
+
+        const context =
+            canvas.getContext(
+                "2d"
+            );
+
+        context.beginPath();
+
+        context.moveTo(
+            position.x,
+            position.y
+        );
+    }
+
+    function draw(event) {
+
+        if (!drawing) {
+            return;
+        }
+
+        const position =
+            getPosition(event);
+
+        const context =
+            canvas.getContext(
+                "2d"
+            );
+
+        context.lineWidth =
+            Number(
+                body.querySelector(
+                    "#paintSize"
+                ).value
+            );
+
+        context.lineCap =
+            "round";
+
+        context.strokeStyle =
+            body.querySelector(
+                "#paintColor"
+            ).value;
+
+        context.lineTo(
+            position.x,
+            position.y
+        );
+
+        context.stroke();
+    }
+
+    function stopDrawing() {
+
+        drawing = false;
+    }
+
+    canvas.addEventListener(
+        "pointerdown",
+        startDrawing
     );
 
+    canvas.addEventListener(
+        "pointermove",
+        draw
+    );
+
+    canvas.addEventListener(
+        "pointerup",
+        stopDrawing
+    );
+
+    canvas.addEventListener(
+        "pointerleave",
+        stopDrawing
+    );
+
+    body.querySelector(
+        "#clearPaint"
+    )
+        .addEventListener(
+            "click",
+            () => {
+
+                const context =
+                    canvas.getContext(
+                        "2d"
+                    );
+
+                context.fillStyle =
+                    "white";
+
+                context.fillRect(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+            }
+        );
+
+    body.querySelector(
+        "#savePaint"
+    )
+        .addEventListener(
+            "click",
+            () => {
+
+                const link =
+                    document.createElement(
+                        "a"
+                    );
+
+                link.download =
+                    "nexus-paint.png";
+
+                link.href =
+                    canvas.toDataURL(
+                        "image/png"
+                    );
+
+                link.click();
+
+                showToast(
+                    "Paint",
+                    "Your drawing was saved."
+                );
+            }
+        );
+
+    paintState = {
+        canvas
+    };
 }
 
 
 /* =========================================================
-   LOGIN / SIGNUP BUTTONS
-   ========================================================= */
+   CATCH NEXUS GAME
+========================================================= */
 
-$("loginButton").addEventListener(
-  "click",
-  login
-);
+function buildGame(body) {
 
-$("signupButton").addEventListener(
-  "click",
-  signup
-);
+    gameState = {
 
-$("showSignupButton").addEventListener(
-  "click",
-  showSignup
-);
+        running: false,
 
-$("showLoginButton").addEventListener(
-  "click",
-  showLogin
-);
+        score: 0,
 
-$("forgotPasswordButton").addEventListener(
-  "click",
-  resetPassword
-);
+        timeLeft: 30,
+
+        interval: null,
+
+        target: null
+
+    };
+
+    body.innerHTML = `
+
+        <div class="game-container">
+
+            <div class="game-info">
+
+                <span>
+                    Score:
+                    <strong id="gameScore">
+                        0
+                    </strong>
+                </span>
+
+                <span>
+                    Time:
+                    <strong id="gameTime">
+                        30
+                    </strong>
+                </span>
+
+                <span>
+                    Best:
+                    <strong id="gameBest">
+                        ${currentAccount.highScore || 0}
+                    </strong>
+                </span>
+
+            </div>
+
+            <div class="game-board">
+
+                <button
+                    id="gameTarget"
+                    class="game-target"
+                >
+                    N
+                </button>
+
+            </div>
+
+            <button
+                id="gameStart"
+                class="small-button game-start"
+            >
+                ▶ Start Game
+            </button>
+
+        </div>
+
+    `;
+
+    const target =
+        body.querySelector(
+            "#gameTarget"
+        );
+
+    gameState.target =
+        target;
+
+    target.addEventListener(
+        "click",
+        () => {
+
+            if (!gameState.running) {
+                return;
+            }
+
+            gameState.score++;
+
+            body.querySelector(
+                "#gameScore"
+            ).textContent =
+                gameState.score;
+
+            moveGameTarget(
+                body
+            );
+        }
+    );
+
+    body.querySelector(
+        "#gameStart"
+    )
+        .addEventListener(
+            "click",
+            () => startGame(body)
+        );
+}
 
 
-/* =========================================================
-   ENTER KEY LOGIN
-   ========================================================= */
+function startGame(body) {
 
-$("loginPassword").addEventListener(
-  "keydown",
-  event => {
+    stopGame();
 
-    if (event.key === "Enter") {
-      login();
+    gameState = {
+
+        running: true,
+
+        score: 0,
+
+        timeLeft: 30,
+
+        interval: null,
+
+        target:
+            body.querySelector(
+                "#gameTarget"
+            )
+    };
+
+    body.querySelector(
+        "#gameScore"
+    ).textContent = "0";
+
+    body.querySelector(
+        "#gameTime"
+    ).textContent = "30";
+
+    gameState.target.style.display =
+        "flex";
+
+    moveGameTarget(body);
+
+    gameState.interval =
+        setInterval(
+            () => {
+
+                gameState.timeLeft--;
+
+                body.querySelector(
+                    "#gameTime"
+                ).textContent =
+                    gameState.timeLeft;
+
+                if (
+                    gameState.timeLeft <= 0
+                ) {
+
+                    endGame(body);
+                }
+
+            },
+            1000
+        );
+}
+
+
+function moveGameTarget(body) {
+
+    const board =
+        body.querySelector(
+            ".game-board"
+        );
+
+    const target =
+        gameState.target;
+
+    const maxX =
+        Math.max(
+            0,
+            board.clientWidth -
+            target.offsetWidth
+        );
+
+    const maxY =
+        Math.max(
+            0,
+            board.clientHeight -
+            target.offsetHeight
+        );
+
+    target.style.left =
+        Math.random() * maxX +
+        "px";
+
+    target.style.top =
+        Math.random() * maxY +
+        "px";
+}
+
+
+function endGame(body) {
+
+    if (!gameState) {
+        return;
     }
 
-  }
-);
+    clearInterval(
+        gameState.interval
+    );
+
+    gameState.running =
+        false;
+
+    gameState.target.style.display =
+        "none";
+
+    if (
+        gameState.score >
+        (currentAccount.highScore || 0)
+    ) {
+
+        currentAccount.highScore =
+            gameState.score;
+
+        saveCurrentAccount();
+
+        body.querySelector(
+            "#gameBest"
+        ).textContent =
+            gameState.score;
+
+        showToast(
+            "New High Score!",
+            `${gameState.score} points`
+        );
+
+    } else {
+
+        showToast(
+            "Game Over",
+            `You scored ${gameState.score}.`
+        );
+    }
+}
 
 
-$("signupPasswordConfirm").addEventListener(
-  "keydown",
-  event => {
+function stopGame() {
 
-    if (event.key === "Enter") {
-      signup();
+    if (!gameState) {
+        return;
     }
 
-  }
+    if (gameState.interval) {
+
+        clearInterval(
+            gameState.interval
+        );
+    }
+
+    if (gameState.target) {
+
+        gameState.target.style.display =
+            "none";
+    }
+
+    gameState.running =
+        false;
+}
+
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+
+function buildSettings(body) {
+
+    body.innerHTML = `
+
+        <div>
+
+            <div class="settings-section">
+
+                <h3>
+                    👤 Account
+                </h3>
+
+                <div class="settings-row">
+
+                    <div>
+
+                        <div class="settings-label">
+                            Username
+                        </div>
+
+                        <div class="settings-description">
+                            Your NEXUS account name
+                        </div>
+
+                    </div>
+
+                    <input
+                        id="settingsUsername"
+                        class="settings-input"
+                        maxlength="24"
+                        value="${escapeHTML(
+                            currentAccount.username
+                        )}"
+                    >
+
+                </div>
+
+                <button
+                    id="saveUsername"
+                    class="small-button"
+                >
+                    Save Username
+                </button>
+
+            </div>
+
+
+            <div class="settings-section">
+
+                <h3>
+                    🎨 Appearance
+                </h3>
+
+                <div class="settings-row">
+
+                    <div>
+
+                        <div class="settings-label">
+                            Theme
+                        </div>
+
+                        <div class="settings-description">
+                            Choose your interface theme
+                        </div>
+
+                    </div>
+
+                    <select
+                        id="themeSelect"
+                        class="settings-select"
+                    >
+
+                        <option
+                            value="dark"
+                            ${
+                                currentAccount.theme ===
+                                "dark"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Dark
+                        </option>
+
+                        <option
+                            value="light"
+                            ${
+                                currentAccount.theme ===
+                                "light"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Light
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="settings-row">
+
+                    <div>
+
+                        <div class="settings-label">
+                            Wallpaper
+                        </div>
+
+                        <div class="settings-description">
+                            Choose your desktop style
+                        </div>
+
+                    </div>
+
+                    <select
+                        id="wallpaperSelect"
+                        class="settings-select"
+                    >
+
+                        <option value="default">
+                            NEXUS Default
+                        </option>
+
+                        <option
+                            value="blue"
+                            ${
+                                currentAccount.wallpaper ===
+                                "blue"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Blue
+                        </option>
+
+                        <option
+                            value="purple"
+                            ${
+                                currentAccount.wallpaper ===
+                                "purple"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Purple
+                        </option>
+
+                        <option
+                            value="green"
+                            ${
+                                currentAccount.wallpaper ===
+                                "green"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Green
+                        </option>
+
+                        <option
+                            value="sunset"
+                            ${
+                                currentAccount.wallpaper ===
+                                "sunset"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Sunset
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <div class="settings-section">
+
+                <h3>
+                    💾 Account Data
+                </h3>
+
+                <p class="settings-description">
+
+                    Your notes, files, settings,
+                    and game score are stored
+                    separately for this account
+                    in this browser.
+
+                </p>
+
+                <button
+                    id="logoutSettings"
+                    class="small-button"
+                >
+                    🚪 Sign Out
+                </button>
+
+            </div>
+
+
+            <div class="settings-section">
+
+                <h3>
+                    ⚠️ Danger Zone
+                </h3>
+
+                <p class="settings-description">
+
+                    Deleting your account permanently
+                    removes its local NEXUS data
+                    from this browser.
+
+                </p>
+
+                <button
+                    id="deleteAccount"
+                    class="danger-button"
+                >
+                    🗑️ Delete This Account
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    body.querySelector(
+        "#saveUsername"
+    )
+        .addEventListener(
+            "click",
+            () => {
+
+                const input =
+                    body.querySelector(
+                        "#settingsUsername"
+                    );
+
+                const newUsername =
+                    input.value.trim();
+
+                if (
+                    newUsername.length < 3
+                ) {
+
+                    showToast(
+                        "Settings",
+                        "Username is too short."
+                    );
+
+                    return;
+                }
+
+                const existing =
+                    findAccountByUsername(
+                        newUsername
+                    );
+
+                if (
+                    existing &&
+                    existing.id !==
+                    currentAccount.id
+                ) {
+
+                    showToast(
+                        "Settings",
+                        "That username is already taken."
+                    );
+
+                    return;
+                }
+
+                currentAccount.username =
+                    newUsername;
+
+                saveCurrentAccount();
+
+                updateUserUI();
+
+                showToast(
+                    "Settings",
+                    "Username updated."
+                );
+            }
+        );
+
+
+    body.querySelector(
+        "#themeSelect"
+    )
+        .addEventListener(
+            "change",
+            event => {
+
+                currentAccount.theme =
+                    event.target.value;
+
+                saveCurrentAccount();
+
+                applyAccountSettings();
+
+                showToast(
+                    "Theme changed",
+                    `Theme: ${event.target.value}`
+                );
+            }
+        );
+
+
+    body.querySelector(
+        "#wallpaperSelect"
+    )
+        .addEventListener(
+            "change",
+            event => {
+
+                currentAccount.wallpaper =
+                    event.target.value;
+
+                saveCurrentAccount();
+
+                applyAccountSettings();
+
+                showToast(
+                    "Wallpaper changed",
+                    "Your desktop has been updated."
+                );
+            }
+        );
+
+
+    body.querySelector(
+        "#logoutSettings"
+    )
+        .addEventListener(
+            "click",
+            logout
+        );
+
+
+    body.querySelector(
+        "#deleteAccount"
+    )
+        .addEventListener(
+            "click",
+            deleteCurrentAccount
+        );
+}
+
+
+/* =========================================================
+   DELETE ACCOUNT
+========================================================= */
+
+async function deleteCurrentAccount() {
+
+    if (!currentAccount) {
+        return;
+    }
+
+    const firstConfirm =
+        confirm(
+            `Delete the account "${currentAccount.username}"?`
+        );
+
+    if (!firstConfirm) {
+        return;
+    }
+
+    const password =
+        prompt(
+            "Enter your password to confirm account deletion:"
+        );
+
+    if (password === null) {
+        return;
+    }
+
+    const passwordHash =
+        await hashPassword(password);
+
+    if (
+        passwordHash !==
+        currentAccount.passwordHash
+    ) {
+
+        showToast(
+            "Account deletion",
+            "Incorrect password."
+        );
+
+        return;
+    }
+
+    const accounts =
+        getAccounts();
+
+    delete accounts[
+        currentAccount.id
+    ];
+
+    saveAccounts(accounts);
+
+    clearSession();
+
+    currentAccount = null;
+
+    closeAllWindows();
+
+    showAuth();
+
+    showToast(
+        "Account deleted",
+        "The local account has been removed."
+    );
+}
+
+
+/* =========================================================
+   ABOUT
+========================================================= */
+
+function buildAbout(body) {
+
+    body.innerHTML = `
+
+        <div class="about">
+
+            <div class="nexus-logo-large about-logo">
+                N
+            </div>
+
+            <h2>
+                NEXUS
+            </h2>
+
+            <div class="about-version">
+                Version 1.2
+            </div>
+
+            <div class="about-card">
+
+                <p>
+                    NEXUS is a browser-based
+                    operating environment built
+                    with HTML, CSS and JavaScript.
+                </p>
+
+                <p>
+                    It includes a desktop,
+                    applications, local accounts,
+                    file storage, settings,
+                    games and more.
+                </p>
+
+            </div>
+
+            <div class="about-card">
+
+                <strong>
+                    Current User
+                </strong>
+
+                <p>
+                    ${escapeHTML(
+                        currentAccount.username
+                    )}
+                </p>
+
+            </div>
+
+            <div class="about-card">
+
+                <strong>
+                    System
+                </strong>
+
+                <p>
+                    NEXUS v1.2
+                    <br>
+                    Browser Environment
+                    <br>
+                    Local Storage System
+                </p>
+
+            </div>
+
+        </div>
+
+    `;
+}
+
+
+/* =========================================================
+   EVENT LISTENERS
+========================================================= */
+
+
+/* Login */
+
+$("loginForm")
+    .addEventListener(
+        "submit",
+        async event => {
+
+            event.preventDefault();
+
+            await login(
+                $("loginUsername").value,
+                $("loginPassword").value
+            );
+        }
+    );
+
+
+/* Sign Up */
+
+$("signupForm")
+    .addEventListener(
+        "submit",
+        async event => {
+
+            event.preventDefault();
+
+            await createAccount(
+                $("signupUsername").value,
+                $("signupPassword").value,
+                $("signupConfirm").value
+            );
+        }
+    );
+
+
+/* Switch Auth Panels */
+
+$("showSignup")
+    .addEventListener(
+        "click",
+        showSignupPanel
+    );
+
+
+$("showLogin")
+    .addEventListener(
+        "click",
+        showLoginPanel
+    );
+
+
+/* Start Button */
+
+$("startButton")
+    .addEventListener(
+        "click",
+        event => {
+
+            event.stopPropagation();
+
+            toggleStartMenu();
+        }
+    );
+
+
+/* Start Logout */
+
+$("startLogout")
+    .addEventListener(
+        "click",
+        logout
+    );
+
+
+/* Desktop App Icons */
+
+qsa(
+    ".desktop-icon"
+)
+    .forEach(
+        button => {
+
+            button.addEventListener(
+                "dblclick",
+                () => {
+
+                    openApp(
+                        button.dataset.app
+                    );
+                }
+            );
+
+            /*
+               Single click also works so mobile
+               devices can open applications.
+            */
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    if (
+                        window.innerWidth <=
+                        650
+                    ) {
+
+                        openApp(
+                            button.dataset.app
+                        );
+                    }
+                }
+            );
+        }
+    );
+
+
+/* Start Menu Apps */
+
+qsa(
+    ".start-apps button"
+)
+    .forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    openApp(
+                        button.dataset.app
+                    );
+                }
+            );
+        }
+    );
+
+
+/* Close Start Menu when clicking desktop */
+
+$("desktop")
+    .addEventListener(
+        "click",
+        event => {
+
+            if (
+                !event.target.closest(
+                    "#startMenu"
+                ) &&
+                !event.target.closest(
+                    "#startButton"
+                )
+            ) {
+
+                closeStartMenu();
+            }
+        }
+    );
+
+
+/* =========================================================
+   KEYBOARD SHORTCUTS
+========================================================= */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        /*
+           Escape closes the Start menu.
+        */
+
+        if (
+            event.key ===
+            "Escape"
+        ) {
+
+            closeStartMenu();
+        }
+
+        /*
+           Ctrl + Alt + N opens Notepad.
+        */
+
+        if (
+            event.ctrlKey &&
+            event.altKey &&
+            event.key.toLowerCase() === "n"
+        ) {
+
+            event.preventDefault();
+
+            if (currentAccount) {
+                openApp("notepad");
+            }
+        }
+
+        /*
+           Ctrl + Alt + C opens Calculator.
+        */
+
+        if (
+            event.ctrlKey &&
+            event.altKey &&
+            event.key.toLowerCase() === "c"
+        ) {
+
+            event.preventDefault();
+
+            if (currentAccount) {
+                openApp("calculator");
+            }
+        }
+    }
 );
 
 
 /* =========================================================
-   PREVENT CONTEXT MENU ON PAINT
-   ========================================================= */
+   START SYSTEM
+========================================================= */
 
-canvas.addEventListener(
-  "contextmenu",
-  event => event.preventDefault()
-);
-
-
-/* =========================================================
-   INITIAL STATE
-   ========================================================= */
-
-console.log(
-  "NEXUS v1.2 loaded."
-);
-
-console.log(
-  "Firebase multi-user system initialized."
-);
+bootNexus();
