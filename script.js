@@ -1,263 +1,294 @@
 /* =========================================================
-   NEXUS v1.2
+   NEXUS v1.4
    COMPLETE FIREBASE-FREE SYSTEM
-   Corrected authentication + stable initialization
 ========================================================= */
 
 "use strict";
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  /* =========================================================
+  /* =====================================================
      STORAGE
-  ========================================================= */
+  ====================================================== */
 
-  const ACCOUNTS_KEY = "nexus_v12_accounts";
-  const SESSION_KEY = "nexus_v12_session";
+  const ACCOUNTS_KEY = "nexus_v14_accounts";
+  const SESSION_KEY = "nexus_v14_session";
+  const HISTORY_KEY = "nexus_v14_history";
 
   let accounts = {};
   let currentUser = null;
-
   let selectedFile = null;
+
   let calculatorValue = "";
-  let saveNotesTimer = null;
+
+  let browserCurrentURL = "";
+  let browserPreviousURL = "";
+  let browserForwardURL = "";
+  let browserExternalURL = "";
+
   let notificationTimer = null;
 
-  let gameScore = 0;
-  let gameRunning = false;
-  let gameTimer = null;
+  let paintCanvas = null;
+  let paintContext = null;
+  let painting = false;
+
+  let catchRunning = false;
+  let catchScore = 0;
+  let catchTimer = null;
+
+  let clickRunning = false;
+  let clickScore = 0;
+  let clickTime = 10;
+  let clickTimer = null;
+
+  let memoryCards = [];
+  let memoryFlipped = [];
+  let memoryLocked = false;
+  let memoryMoves = 0;
+
+  let snakeRunning = false;
+  let snakeTimer = null;
+  let snakeDirection = "right";
+  let snakeNextDirection = "right";
+  let snakeBody = [];
+  let snakeFood = {};
+  let snakeScore = 0;
 
 
-  /* =========================================================
+  /* =====================================================
      HELPERS
-  ========================================================= */
+  ====================================================== */
 
-  const $ = id => document.getElementById(id);
+  const $ = id =>
+    document.getElementById(id);
 
   const qsa = selector =>
     document.querySelectorAll(selector);
 
 
-  function safeElement(id) {
-    return $(id);
-  }
-
-
-  /* =========================================================
+  /* =====================================================
      STORAGE
-  ========================================================= */
+  ====================================================== */
 
   function loadAccounts() {
+
     try {
-      const saved = localStorage.getItem(ACCOUNTS_KEY);
-      accounts = saved ? JSON.parse(saved) : {};
-    } catch (error) {
-      console.error("Could not load NEXUS accounts:", error);
+
+      accounts =
+        JSON.parse(
+          localStorage.getItem(
+            ACCOUNTS_KEY
+          )
+        ) || {};
+
+    } catch {
+
       accounts = {};
     }
   }
 
 
   function saveAccounts() {
-    try {
-      localStorage.setItem(
-        ACCOUNTS_KEY,
-        JSON.stringify(accounts)
-      );
-    } catch (error) {
-      console.error("Could not save NEXUS accounts:", error);
-      showNotification(
-        "Storage Error",
-        "NEXUS could not save your account."
-      );
-    }
-  }
 
-
-  function createID() {
-    return (
-      Date.now().toString(36) +
-      Math.random().toString(36).slice(2)
+    localStorage.setItem(
+      ACCOUNTS_KEY,
+      JSON.stringify(accounts)
     );
   }
 
 
-  /* =========================================================
+  function saveCurrentUser() {
+
+    if (!currentUser)
+      return;
+
+    accounts[
+      currentUser.key
+    ] = currentUser;
+
+    saveAccounts();
+  }
+
+
+  function createID() {
+
+    return (
+      Date.now().toString(36) +
+      Math.random()
+        .toString(36)
+        .slice(2)
+    );
+  }
+
+
+  /* =====================================================
      PASSWORD HASH
-  ========================================================= */
+  ====================================================== */
 
   async function hashPassword(password) {
 
     if (
-      window.crypto &&
-      window.crypto.subtle &&
-      window.TextEncoder
+      crypto &&
+      crypto.subtle
     ) {
 
       try {
 
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
+        const data =
+          new TextEncoder()
+            .encode(password);
 
-        const hash = await window.crypto.subtle.digest(
-          "SHA-256",
-          data
-        );
+        const hash =
+          await crypto.subtle.digest(
+            "SHA-256",
+            data
+          );
 
-        return Array.from(
-          new Uint8Array(hash)
-        )
+        return Array
+          .from(new Uint8Array(hash))
           .map(
-            byte =>
-              byte.toString(16).padStart(2, "0")
+            x =>
+              x.toString(16)
+                .padStart(2, "0")
           )
           .join("");
 
-      } catch (error) {
-        console.warn(
-          "Web Crypto unavailable. Using fallback hash."
-        );
-      }
+      } catch {}
     }
 
 
     let hash = 0;
 
-    for (let i = 0; i < password.length; i++) {
+    for (
+      let i = 0;
+      i < password.length;
+      i++
+    ) {
 
       hash =
         (
-          (hash << 5) -
-          hash +
-          password.charCodeAt(i)
-        ) | 0;
+          hash << 5
+        ) -
+        hash +
+        password.charCodeAt(i);
+
+      hash |= 0;
     }
 
     return String(hash);
   }
 
 
-  /* =========================================================
+  /* =====================================================
      DEFAULT FILES
-  ========================================================= */
+  ====================================================== */
 
   function defaultFiles(username) {
 
     return {
 
       "Welcome.txt":
-`Welcome to NEXUS v1.2!
+`Welcome to NEXUS v1.4!
 
 Hello ${username}!
 
-This is your personal NEXUS desktop.
+NEXUS is your personal browser-based mini OS.
 
-Everything stored here belongs to this browser account.`,
-
-      "About.txt":
-`NEXUS v1.2
-
-A browser-based mini operating system.
-
-Apps:
-- Notepad
-- Calculator
-- File Manager
-- Paint
-- Catch NEXUS
-- Settings`,
+New in v1.4:
+- Game Center
+- NEXUS Browser
+- Updated design
+- More customization`,
 
       "Ideas.txt":
 `NEXUS Ideas
 
-1. More games
-2. More apps
-3. Better wallpapers
-4. More customization
-5. Future NEXUS versions`
+Write your future ideas here!`,
+
+      "About.txt":
+`NEXUS v1.4
+
+Built with:
+HTML
+CSS
+JavaScript
+
+Firebase-free edition.`
 
     };
   }
 
 
-  /* =========================================================
+  /* =====================================================
      BOOT
-  ========================================================= */
+  ====================================================== */
 
   function boot() {
 
-    const bootScreen = $("bootScreen");
-
-    if (!bootScreen) {
-      restoreSession();
-      return;
-    }
-
     let progress = 0;
 
-    const interval = setInterval(() => {
+    const interval =
+      setInterval(() => {
 
-      progress += 5;
+        progress += 5;
 
-      const progressBar = $("bootProgress");
-      const status = $("bootStatus");
+        if ($("bootProgress"))
+          $("bootProgress").style.width =
+            progress + "%";
 
-      if (progressBar) {
-        progressBar.style.width =
-          progress + "%";
-      }
 
-      if (status) {
+        if ($("bootStatus")) {
 
-        if (progress < 35) {
-          status.textContent =
-            "Checking system...";
+          if (progress < 30)
+            $("bootStatus").textContent =
+              "Initializing NEXUS core...";
 
-        } else if (progress < 65) {
-          status.textContent =
-            "Loading NEXUS core...";
+          else if (progress < 60)
+            $("bootStatus").textContent =
+              "Loading applications...";
 
-        } else if (progress < 90) {
-          status.textContent =
-            "Preparing desktop...";
+          else if (progress < 90)
+            $("bootStatus").textContent =
+              "Preparing desktop...";
 
-        } else {
-          status.textContent =
-            "Ready.";
+          else
+            $("bootStatus").textContent =
+              "Ready.";
         }
-      }
 
-      if (progress >= 100) {
 
-        clearInterval(interval);
+        if (progress >= 100) {
 
-        setTimeout(() => {
+          clearInterval(interval);
 
-          bootScreen.classList.add("hidden");
+          setTimeout(() => {
 
-          restoreSession();
+            $("bootScreen")
+              ?.classList
+              .add("hidden");
 
-        }, 350);
-      }
+            restoreSession();
 
-    }, 35);
+          }, 350);
+        }
+
+      }, 35);
   }
 
 
-  /* =========================================================
-     AUTH SCREEN
-  ========================================================= */
+  /* =====================================================
+     AUTH
+  ====================================================== */
 
   function showLogin() {
 
-    const loginPanel = $("loginPanel");
-    const signupPanel = $("signupPanel");
+    $("loginPanel")
+      ?.classList
+      .remove("hidden");
 
-    if (loginPanel)
-      loginPanel.classList.remove("hidden");
-
-    if (signupPanel)
-      signupPanel.classList.add("hidden");
+    $("signupPanel")
+      ?.classList
+      .add("hidden");
 
     if ($("loginError"))
       $("loginError").textContent = "";
@@ -269,14 +300,13 @@ Apps:
 
   function showSignup() {
 
-    const loginPanel = $("loginPanel");
-    const signupPanel = $("signupPanel");
+    $("loginPanel")
+      ?.classList
+      .add("hidden");
 
-    if (loginPanel)
-      loginPanel.classList.add("hidden");
-
-    if (signupPanel)
-      signupPanel.classList.remove("hidden");
+    $("signupPanel")
+      ?.classList
+      .remove("hidden");
 
     if ($("loginError"))
       $("loginError").textContent = "";
@@ -286,224 +316,108 @@ Apps:
   }
 
 
-  /* =========================================================
-     USERNAME VALIDATION
-  ========================================================= */
-
   function validUsername(username) {
 
-    /*
-      Allowed:
-      A-Z
-      a-z
-      0-9
-      spaces
-      underscores
-
-      NOT allowed:
-      @
-      #
-      $
-      %
-      !
-      etc.
-    */
-
-    return /^[A-Za-z0-9_ ]+$/.test(username);
+    return /^[A-Za-z0-9_ ]+$/
+      .test(username);
   }
 
 
-  /* =========================================================
+  /* =====================================================
      SIGN UP
-  ========================================================= */
+  ====================================================== */
 
   async function signup() {
 
-    const usernameInput = $("signupUsername");
-    const passwordInput = $("signupPassword");
-    const confirmInput = $("signupPasswordConfirm");
-    const error = $("signupError");
-
-    if (!usernameInput || !passwordInput || !confirmInput || !error) {
-      console.error("Signup elements are missing.");
-      return;
-    }
-
-
     const username =
-      usernameInput.value.trim();
+      $("signupUsername")
+        .value
+        .trim();
+
+    const email =
+      $("signupEmail")
+        .value
+        .trim();
 
     const password =
-      passwordInput.value;
+      $("signupPassword")
+        .value;
 
     const confirm =
-      confirmInput.value;
+      $("signupPasswordConfirm")
+        .value;
 
 
-    error.textContent = "";
+    $("signupError")
+      .textContent = "";
 
-
-    /* EMPTY USERNAME */
 
     if (!username) {
 
-      error.textContent =
+      $("signupError")
+        .textContent =
         "Please choose a username.";
 
       return;
     }
 
 
-    /* USERNAME LENGTH */
-
     if (username.length < 2) {
 
-      error.textContent =
+      $("signupError")
+        .textContent =
         "Username must be at least 2 characters.";
 
       return;
     }
 
 
-    /* USERNAME CHARACTERS */
-
     if (!validUsername(username)) {
 
-      error.textContent =
+      $("signupError")
+        .textContent =
         "Use letters, numbers, spaces or underscores.";
 
       return;
     }
 
 
-    /* PASSWORD LENGTH */
+    if (!email) {
+
+      $("signupError")
+        .textContent =
+        "Please enter your email.";
+
+      return;
+    }
+
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      .test(email)) {
+
+      $("signupError")
+        .textContent =
+        "Please enter a valid email.";
+
+      return;
+    }
+
 
     if (password.length < 6) {
 
-      error.textContent =
+      $("signupError")
+        .textContent =
         "Password must be at least 6 characters.";
 
       return;
     }
 
 
-    /* PASSWORD MATCH */
-
     if (password !== confirm) {
 
-      error.textContent =
+      $("signupError")
+        .textContent =
         "The passwords do not match.";
-
-      return;
-    }
-
-
-    /*
-      IMPORTANT:
-      The username key is normalized only for storage.
-      The original username is preserved for display.
-    */
-
-    const usernameKey =
-      username.toLowerCase();
-
-
-    /* DUPLICATE USERNAME */
-
-    if (Object.prototype.hasOwnProperty.call(
-      accounts,
-      usernameKey
-    )) {
-
-      error.textContent =
-        "That username is already taken.";
-
-      return;
-    }
-
-
-    /* CREATE ACCOUNT */
-
-    const passwordHash =
-      await hashPassword(password);
-
-
-    accounts[usernameKey] = {
-
-      id: createID(),
-
-      username: username,
-
-      passwordHash: passwordHash,
-
-      createdAt: Date.now(),
-
-      theme: "dark",
-
-      wallpaper: "default",
-
-      notes: "",
-
-      files: defaultFiles(username),
-
-      highScore: 0
-    };
-
-
-    saveAccounts();
-
-
-    /* CREATE SESSION */
-
-    localStorage.setItem(
-      SESSION_KEY,
-      usernameKey
-    );
-
-
-    /* CLEAR FORM */
-
-    usernameInput.value = "";
-    passwordInput.value = "";
-    confirmInput.value = "";
-
-
-    /* ENTER DESKTOP */
-
-    loginUser(usernameKey);
-  }
-
-
-  /* =========================================================
-     LOGIN
-  ========================================================= */
-
-  async function login() {
-
-    const usernameInput = $("loginUsername");
-    const passwordInput = $("loginPassword");
-    const error = $("loginError");
-
-    if (!usernameInput || !passwordInput || !error) {
-      console.error("Login elements are missing.");
-      return;
-    }
-
-
-    const username =
-      usernameInput.value.trim();
-
-    const password =
-      passwordInput.value;
-
-
-    error.textContent = "";
-
-
-    if (!username || !password) {
-
-      error.textContent =
-        "Enter your username and password.";
 
       return;
     }
@@ -513,14 +427,13 @@ Apps:
       username.toLowerCase();
 
 
-    const account =
-      accounts[key];
+    if (
+      accounts[key]
+    ) {
 
-
-    if (!account) {
-
-      error.textContent =
-        "No NEXUS account was found.";
+      $("signupError")
+        .textContent =
+        "That username is already taken.";
 
       return;
     }
@@ -530,16 +443,45 @@ Apps:
       await hashPassword(password);
 
 
-    if (
-      passwordHash !==
-      account.passwordHash
-    ) {
+    currentUser = {
 
-      error.textContent =
-        "Incorrect password.";
+      key,
 
-      return;
-    }
+      id: createID(),
+
+      username,
+
+      email,
+
+      passwordHash,
+
+      createdAt: Date.now(),
+
+      theme: "dark",
+
+      wallpaper: "default",
+
+      notes: "",
+
+      files:
+        defaultFiles(username),
+
+      highScore: 0,
+
+      gameScores: {
+        catch: 0,
+        click: 0,
+        memory: 0,
+        snake: 0
+      }
+    };
+
+
+    accounts[key] =
+      currentUser;
+
+
+    saveAccounts();
 
 
     localStorage.setItem(
@@ -548,44 +490,170 @@ Apps:
     );
 
 
-    passwordInput.value = "";
+    clearAuthFields();
 
+    enterDesktop();
 
-    loginUser(key);
   }
 
 
-  /* =========================================================
-     LOGIN USER
-  ========================================================= */
+  /* =====================================================
+     LOGIN
+  ====================================================== */
 
-  function loginUser(usernameKey) {
+  async function login() {
 
-    currentUser =
-      accounts[usernameKey];
+    const email =
+      $("loginEmail")
+        .value
+        .trim();
+
+    const password =
+      $("loginPassword")
+        .value;
 
 
-    if (!currentUser) {
+    $("loginError")
+      .textContent = "";
 
-      showLogin();
+
+    if (!email || !password) {
+
+      $("loginError")
+        .textContent =
+        "Please enter your email and password.";
 
       return;
     }
 
 
-    const authScreen = $("authScreen");
-    const desktop = $("desktop");
+    const passwordHash =
+      await hashPassword(password);
 
-    if (authScreen)
-      authScreen.classList.add("hidden");
 
-    if (desktop)
-      desktop.classList.remove("hidden");
+    const userKey =
+      Object.keys(accounts)
+        .find(
+          key =>
+            accounts[key].email
+              .toLowerCase() ===
+            email.toLowerCase()
+        );
+
+
+    if (
+      !userKey ||
+      accounts[userKey]
+        .passwordHash !==
+        passwordHash
+    ) {
+
+      $("loginError")
+        .textContent =
+        "The email or password is incorrect.";
+
+      return;
+    }
+
+
+    currentUser =
+      accounts[userKey];
+
+
+    currentUser.key =
+      userKey;
+
+
+    localStorage.setItem(
+      SESSION_KEY,
+      userKey
+    );
+
+
+    clearAuthFields();
+
+    enterDesktop();
+
+  }
+
+
+  function clearAuthFields() {
+
+    if ($("loginEmail"))
+      $("loginEmail").value = "";
+
+    if ($("loginPassword"))
+      $("loginPassword").value = "";
+
+    if ($("signupUsername"))
+      $("signupUsername").value = "";
+
+    if ($("signupEmail"))
+      $("signupEmail").value = "";
+
+    if ($("signupPassword"))
+      $("signupPassword").value = "";
+
+    if ($("signupPasswordConfirm"))
+      $("signupPasswordConfirm").value = "";
+  }
+
+
+  function restoreSession() {
+
+    loadAccounts();
+
+
+    const key =
+      localStorage.getItem(
+        SESSION_KEY
+      );
+
+
+    if (
+      key &&
+      accounts[key]
+    ) {
+
+      currentUser =
+        accounts[key];
+
+      currentUser.key =
+        key;
+
+      enterDesktop();
+
+    } else {
+
+      $("authScreen")
+        ?.classList
+        .remove("hidden");
+
+      $("desktop")
+        ?.classList
+        .add("hidden");
+
+      showLogin();
+    }
+  }
+
+
+  function enterDesktop() {
+
+    $("authScreen")
+      ?.classList
+      .add("hidden");
+
+    $("desktop")
+      ?.classList
+      .remove("hidden");
 
 
     applyUserSettings();
 
     renderFiles();
+
+    updateGameBest();
 
     showNotification(
       "NEXUS Ready",
@@ -593,48 +661,6 @@ Apps:
     );
   }
 
-
-  /* =========================================================
-     RESTORE SESSION
-  ========================================================= */
-
-  function restoreSession() {
-
-    loadAccounts();
-
-
-    const session =
-      localStorage.getItem(
-        SESSION_KEY
-      );
-
-
-    if (
-      session &&
-      Object.prototype.hasOwnProperty.call(
-        accounts,
-        session
-      )
-    ) {
-
-      loginUser(session);
-
-    } else {
-
-      if ($("authScreen"))
-        $("authScreen").classList.remove("hidden");
-
-      if ($("desktop"))
-        $("desktop").classList.add("hidden");
-
-      showLogin();
-    }
-  }
-
-
-  /* =========================================================
-     LOGOUT
-  ========================================================= */
 
   function logout() {
 
@@ -646,50 +672,21 @@ Apps:
 
     closeAllWindows();
 
+    $("desktop")
+      ?.classList
+      .add("hidden");
 
-    if ($("desktop"))
-      $("desktop").classList.add("hidden");
-
-    if ($("authScreen"))
-      $("authScreen").classList.remove("hidden");
-
-
-    if ($("loginUsername"))
-      $("loginUsername").value = "";
-
-    if ($("loginPassword"))
-      $("loginPassword").value = "";
-
+    $("authScreen")
+      ?.classList
+      .remove("hidden");
 
     showLogin();
   }
 
 
-  /* =========================================================
-     SAVE CURRENT USER
-  ========================================================= */
-
-  function saveCurrentUser() {
-
-    if (!currentUser)
-      return;
-
-
-    const key =
-      currentUser.username.toLowerCase();
-
-
-    accounts[key] =
-      currentUser;
-
-
-    saveAccounts();
-  }
-
-
-  /* =========================================================
+  /* =====================================================
      USER SETTINGS
-  ========================================================= */
+  ====================================================== */
 
   function applyUserSettings() {
 
@@ -697,59 +694,54 @@ Apps:
       return;
 
 
-    if ($("settingsUsername"))
-      $("settingsUsername").textContent =
-        currentUser.username;
+    $("settingsUsername")
+      .textContent =
+      currentUser.username;
 
 
-    if ($("settingsAccountInfo"))
-      $("settingsAccountInfo").textContent =
-        "Local NEXUS account";
+    $("settingsEmail")
+      .textContent =
+      currentUser.email;
 
 
-    if ($("startUsername"))
-      $("startUsername").textContent =
-        currentUser.username;
+    $("startUsername")
+      .textContent =
+      currentUser.username;
+
+
+    $("startEmail")
+      .textContent =
+      currentUser.email;
+
+
+    $("notesArea")
+      .value =
+      currentUser.notes || "";
 
 
     applyTheme(
-      currentUser.theme || "dark"
+      currentUser.theme ||
+      "dark"
     );
 
 
     applyWallpaper(
-      currentUser.wallpaper || "default"
+      currentUser.wallpaper ||
+      "default"
     );
-
-
-    if ($("notesArea"))
-      $("notesArea").value =
-        currentUser.notes || "";
   }
 
 
-  /* =========================================================
-     THEME
-  ========================================================= */
-
   function applyTheme(theme) {
 
-    if (!document.body)
-      return;
-
-
-    if (theme === "light") {
-
-      document.body.classList.add(
-        "light-theme"
-      );
-
-    } else {
-
-      document.body.classList.remove(
-        "light-theme"
-      );
-    }
+    if (theme === "light")
+      document.body
+        .classList
+        .add("light-theme");
+    else
+      document.body
+        .classList
+        .remove("light-theme");
   }
 
 
@@ -758,52 +750,31 @@ Apps:
     if (!currentUser)
       return;
 
-
     currentUser.theme =
       theme;
 
-
-    applyTheme(theme);
-
     saveCurrentUser();
 
-
-    showNotification(
-      "Theme Changed",
-      theme === "light"
-        ? "Light theme enabled."
-        : "Dark theme enabled."
-    );
+    applyTheme(theme);
   }
 
-
-  /* =========================================================
-     WALLPAPER
-  ========================================================= */
 
   function applyWallpaper(name) {
 
     const wallpaper =
       $("wallpaper");
 
-
     if (!wallpaper)
       return;
-
 
     wallpaper.className =
       "wallpaper";
 
-
     if (
-      name &&
       name !== "default"
-    ) {
-
-      wallpaper.classList.add(
-        name
-      );
-    }
+    )
+      wallpaper.classList
+        .add(name);
   }
 
 
@@ -812,90 +783,29 @@ Apps:
     if (!currentUser)
       return;
 
-
     currentUser.wallpaper =
       name;
 
-
-    applyWallpaper(name);
-
     saveCurrentUser();
 
-
-    showNotification(
-      "Wallpaper Changed",
-      "Your wallpaper has been updated."
-    );
+    applyWallpaper(name);
   }
 
 
-  /* =========================================================
-     DELETE ACCOUNT
-  ========================================================= */
+  /* =====================================================
+     WINDOWS
+  ====================================================== */
 
-  function deleteAccount() {
+  function openApp(name) {
 
-    if (!currentUser)
-      return;
+    const windowID =
+      name.endsWith("Window")
+        ? name
+        : `${name}Window`;
 
-
-    const confirmed =
-      confirm(
-        `Delete the NEXUS account "${currentUser.username}"? This cannot be undone.`
-      );
-
-
-    if (!confirmed)
-      return;
-
-
-    const key =
-      currentUser.username.toLowerCase();
-
-
-    delete accounts[key];
-
-    saveAccounts();
-
-
-    localStorage.removeItem(
-      SESSION_KEY
-    );
-
-
-    currentUser = null;
-
-    selectedFile = null;
-
-
-    closeAllWindows();
-
-
-    if ($("desktop"))
-      $("desktop").classList.add("hidden");
-
-    if ($("authScreen"))
-      $("authScreen").classList.remove("hidden");
-
-
-    showLogin();
-
-
-    showNotification(
-      "Account Deleted",
-      "Your local NEXUS account was deleted."
-    );
-  }
-
-
-  /* =========================================================
-     OPEN APP
-  ========================================================= */
-
-  function openApp(appID) {
 
     const windowElement =
-      $(appID);
+      $(windowID);
 
 
     if (!windowElement)
@@ -903,61 +813,45 @@ Apps:
 
 
     qsa(".app-window")
-      .forEach(win => {
-
-        win.classList.remove(
-          "open"
-        );
-
-      });
-
-
-    windowElement.classList.add(
-      "open"
-    );
-
-
-    if ($("startMenu"))
-      $("startMenu").classList.add(
-        "hidden"
+      .forEach(win =>
+        win.classList
+          .remove("open")
       );
+
+
+    windowElement
+      .classList
+      .add("open");
+
+
+    $("startMenu")
+      ?.classList
+      .add("hidden");
 
 
     updateTaskbar();
 
 
-    if (appID === "filesWindow")
+    if (name === "files")
       renderFiles();
 
 
-    if (appID === "paintWindow")
-      prepareCanvas();
+    if (name === "games")
+      showGameMenu();
 
 
-    if (appID === "gameWindow") {
-      const target = $("gameTarget");
-
-      if (target && !gameRunning) {
-        target.style.display = "none";
-      }
-    }
+    if (name === "paint")
+      preparePaint();
   }
 
 
-  /* =========================================================
-     CLOSE APP
-  ========================================================= */
+  function closeApp(win) {
 
-  function closeApp(windowElement) {
-
-    if (!windowElement)
+    if (!win)
       return;
 
-
-    windowElement.classList.remove(
-      "open"
-    );
-
+    win.classList
+      .remove("open");
 
     updateTaskbar();
   }
@@ -966,34 +860,25 @@ Apps:
   function closeAllWindows() {
 
     qsa(".app-window")
-      .forEach(win => {
-
-        win.classList.remove(
-          "open"
-        );
-
-      });
-
+      .forEach(win =>
+        win.classList
+          .remove("open")
+      );
 
     updateTaskbar();
   }
 
 
-  /* =========================================================
-     TASKBAR
-  ========================================================= */
-
   function updateTaskbar() {
 
-    const container =
+    const taskbar =
       $("taskbarApps");
 
-
-    if (!container)
+    if (!taskbar)
       return;
 
 
-    container.innerHTML = "";
+    taskbar.innerHTML = "";
 
 
     qsa(".app-window.open")
@@ -1011,7 +896,7 @@ Apps:
 
         const title =
           win.querySelector(
-            ".window-header span"
+            ".window-title strong"
           );
 
 
@@ -1021,59 +906,24 @@ Apps:
             : "App";
 
 
-        button.addEventListener(
-          "click",
-          () => {
-
-            win.classList.toggle(
-              "open"
-            );
-
-            updateTaskbar();
-          }
-        );
+        button.onclick = () =>
+          win.classList.toggle(
+            "open"
+          );
 
 
-        container.appendChild(
+        taskbar.appendChild(
           button
         );
       });
   }
 
 
-  /* =========================================================
-     START MENU
-  ========================================================= */
-
-  function toggleStartMenu() {
-
-    const menu =
-      $("startMenu");
-
-
-    if (!menu)
-      return;
-
-
-    menu.classList.toggle(
-      "hidden"
-    );
-  }
-
-
-  /* =========================================================
+  /* =====================================================
      CLOCK
-  ========================================================= */
+  ====================================================== */
 
   function updateClock() {
-
-    const clock =
-      $("clock");
-
-
-    if (!clock)
-      return;
-
 
     const now =
       new Date();
@@ -1091,48 +941,75 @@ Apps:
       ).padStart(2, "0");
 
 
-    clock.textContent =
-      `${hours}:${minutes}`;
+    const seconds =
+      String(
+        now.getSeconds()
+      ).padStart(2, "0");
+
+
+    const date =
+      now.toLocaleDateString(
+        undefined,
+        {
+          weekday: "short",
+          month: "short",
+          day: "numeric"
+        }
+      );
+
+
+    if ($("clock"))
+      $("clock").textContent =
+        `${hours}:${minutes}`;
+
+
+    if ($("bigClock"))
+      $("bigClock").textContent =
+        `${hours}:${minutes}:${seconds}`;
+
+
+    if ($("bigDate"))
+      $("bigDate").textContent =
+        date;
   }
 
 
-  /* =========================================================
+  setInterval(
+    updateClock,
+    1000
+  );
+
+  updateClock();
+
+
+  /* =====================================================
      NOTIFICATIONS
-  ========================================================= */
+  ====================================================== */
 
   function showNotification(
     title,
     message
   ) {
 
-    const notification =
-      $("notification");
-
-    const titleElement =
-      $("notificationTitle");
-
-    const messageElement =
-      $("notificationMessage");
-
-
     if (
-      !notification ||
-      !titleElement ||
-      !messageElement
+      !$("notification")
     )
       return;
 
 
-    titleElement.textContent =
+    $("notificationTitle")
+      .textContent =
       title;
 
-    messageElement.textContent =
+
+    $("notificationMessage")
+      .textContent =
       message;
 
 
-    notification.classList.remove(
-      "hidden"
-    );
+    $("notification")
+      .classList
+      .remove("hidden");
 
 
     clearTimeout(
@@ -1143,29 +1020,23 @@ Apps:
     notificationTimer =
       setTimeout(() => {
 
-        notification.classList.add(
-          "hidden"
-        );
+        $("notification")
+          .classList
+          .add("hidden");
 
-      }, 3000);
+      }, 3500);
   }
 
 
-  /* =========================================================
+  /* =====================================================
      NOTEPAD
-  ========================================================= */
+  ====================================================== */
 
-  function setupNotepad() {
-
-    const notes =
-      $("notesArea");
+  let notesSaveTimer;
 
 
-    if (!notes)
-      return;
-
-
-    notes.addEventListener(
+  $("notesArea")
+    ?.addEventListener(
       "input",
       () => {
 
@@ -1173,175 +1044,155 @@ Apps:
           return;
 
 
-        if ($("notesStatus"))
-          $("notesStatus").textContent =
-            "Saving...";
+        $("notesStatus")
+          .textContent =
+          "Saving...";
 
 
         clearTimeout(
-          saveNotesTimer
+          notesSaveTimer
         );
 
 
-        saveNotesTimer =
+        notesSaveTimer =
           setTimeout(() => {
 
-            if (!currentUser)
-              return;
-
-
             currentUser.notes =
-              notes.value;
-
+              $("notesArea")
+                .value;
 
             saveCurrentUser();
 
 
-            if ($("notesStatus"))
-              $("notesStatus").textContent =
-                "Saved";
+            $("notesStatus")
+              .textContent =
+              "Saved";
 
           }, 500);
       }
     );
 
 
-    if ($("clearNotesButton")) {
+  $("clearNotesButton")
+    ?.addEventListener(
+      "click",
+      () => {
 
-      $("clearNotesButton")
-        .addEventListener(
-          "click",
-          () => {
+        $("notesArea").value =
+          "";
 
-            if (!currentUser)
-              return;
+        currentUser.notes =
+          "";
 
+        saveCurrentUser();
 
-            notes.value = "";
-
-            currentUser.notes = "";
-
-            saveCurrentUser();
-
-
-            if ($("notesStatus"))
-              $("notesStatus").textContent =
-                "Saved";
-          }
-        );
-    }
-  }
+        $("notesStatus")
+          .textContent =
+          "Saved";
+      }
+    );
 
 
-  /* =========================================================
+  /* =====================================================
      CALCULATOR
-  ========================================================= */
+  ====================================================== */
 
-  function setupCalculator() {
+  qsa("[data-calc]")
+    .forEach(button => {
 
-    qsa("[data-calc]")
-      .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => {
 
-        button.addEventListener(
-          "click",
-          () => {
-
-            const value =
-              button.dataset.calc;
+          const value =
+            button.dataset.calc;
 
 
-            if (value === "clear") {
-
-              calculatorValue = "";
-            }
+          if (value === "clear")
+            calculatorValue = "";
 
 
-            else if (
-              value === "backspace"
-            ) {
-
-              calculatorValue =
-                calculatorValue.slice(
-                  0,
-                  -1
-                );
-            }
+          else if (
+            value === "backspace"
+          )
+            calculatorValue =
+              calculatorValue.slice(
+                0,
+                -1
+              );
 
 
-            else if (
-              value === "="
-            ) {
+          else if (
+            value === "="
+          ) {
 
-              try {
-
-                if (
-                  !/^[0-9+\-*/().\s]+$/
-                    .test(
-                      calculatorValue
-                    )
-                ) {
-                  throw new Error();
-                }
-
-
-                const result =
-                  Function(
-                    `"use strict"; return (${calculatorValue})`
-                  )();
-
-
-                if (
-                  typeof result !== "number" ||
-                  !Number.isFinite(result)
-                ) {
-                  throw new Error();
-                }
-
-
-                calculatorValue =
-                  String(result);
-
-              } catch {
-
-                calculatorValue =
-                  "Error";
-              }
-            }
-
-
-            else {
+            try {
 
               if (
-                calculatorValue ===
-                "Error"
-              ) {
+                !/^[0-9+\-*/().\s]+$/
+                  .test(
+                    calculatorValue
+                  )
+              )
+                throw new Error();
 
-                calculatorValue = "";
-              }
+
+              const result =
+                Function(
+                  `"use strict"; return (${calculatorValue})`
+                )();
 
 
-              calculatorValue +=
-                value;
+              if (
+                !Number.isFinite(
+                  result
+                )
+              )
+                throw new Error();
+
+
+              calculatorValue =
+                String(result);
+
+            } catch {
+
+              calculatorValue =
+                "Error";
             }
 
+          } else {
 
-            if ($("calculatorDisplay"))
-              $("calculatorDisplay").value =
-                calculatorValue;
+            if (
+              calculatorValue ===
+              "Error"
+            )
+              calculatorValue = "";
+
+            calculatorValue +=
+              value;
           }
-        );
-      });
-  }
 
 
-  /* =========================================================
-     FILE MANAGER
-  ========================================================= */
+          $("calculatorDisplay")
+            .value =
+            calculatorValue;
+        }
+      );
+    });
+
+
+  /* =====================================================
+     FILES
+  ====================================================== */
 
   function renderFiles() {
 
     if (!currentUser)
       return;
+
+
+    if (!currentUser.files)
+      currentUser.files = {};
 
 
     const list =
@@ -1353,10 +1204,6 @@ Apps:
 
 
     list.innerHTML = "";
-
-
-    if (!currentUser.files)
-      currentUser.files = {};
 
 
     Object.keys(
@@ -1375,271 +1222,233 @@ Apps:
 
 
         if (
-          selectedFile === filename
-        ) {
-
-          item.classList.add(
-            "selected"
-          );
-        }
+          filename ===
+          selectedFile
+        )
+          item.classList
+            .add("selected");
 
 
         item.textContent =
           `📄 ${filename}`;
 
 
-        item.addEventListener(
-          "click",
-          () => {
+        item.onclick = () => {
 
-            selectedFile =
-              filename;
+          selectedFile =
+            filename;
 
+          $("fileEditor")
+            .value =
+            currentUser.files[
+              filename
+            ];
 
-            if ($("fileEditor"))
-              $("fileEditor").value =
-                currentUser.files[
-                  filename
-                ];
-
-
-            renderFiles();
-          }
-        );
+          renderFiles();
+        };
 
 
-        list.appendChild(
-          item
-        );
+        list.appendChild(item);
       });
   }
 
 
-  function createFile() {
+  $("newFileButton")
+    ?.addEventListener(
+      "click",
+      () => {
 
-    if (!currentUser)
-      return;
-
-
-    const filename =
-      prompt(
-        "Enter a name for your new file:"
-      );
-
-
-    if (!filename)
-      return;
+        const name =
+          prompt(
+            "Enter a file name:"
+          );
 
 
-    const cleanName =
-      filename.trim();
+        if (!name)
+          return;
 
 
-    if (!cleanName)
-      return;
+        const filename =
+          name.trim();
 
 
-    if (
-      Object.prototype.hasOwnProperty.call(
-        currentUser.files,
-        cleanName
-      )
-    ) {
-
-      showNotification(
-        "File Exists",
-        "A file with that name already exists."
-      );
-
-      return;
-    }
+        if (!filename)
+          return;
 
 
-    currentUser.files[
-      cleanName
-    ] = "";
+        if (
+          currentUser.files[
+            filename
+          ]
+        !== undefined
+        ) {
+
+          showNotification(
+            "File Exists",
+            "That file already exists."
+          );
+
+          return;
+        }
 
 
-    selectedFile =
-      cleanName;
+        currentUser.files[
+          filename
+        ] = "";
 
 
-    if ($("fileEditor"))
-      $("fileEditor").value = "";
+        selectedFile =
+          filename;
 
 
-    saveCurrentUser();
+        $("fileEditor")
+          .value = "";
 
-    renderFiles();
 
+        saveCurrentUser();
 
-    showNotification(
-      "File Created",
-      cleanName
+        renderFiles();
+      }
     );
-  }
 
 
-  function saveFile() {
+  $("saveFileButton")
+    ?.addEventListener(
+      "click",
+      () => {
 
-    if (
-      !currentUser ||
-      !selectedFile
-    ) {
+        if (!selectedFile) {
 
-      showNotification(
-        "No File Selected",
-        "Select a file first."
-      );
+          showNotification(
+            "No File",
+            "Select a file first."
+          );
 
-      return;
-    }
-
-
-    currentUser.files[
-      selectedFile
-    ] =
-      $("fileEditor")
-        ? $("fileEditor").value
-        : "";
+          return;
+        }
 
 
-    saveCurrentUser();
+        currentUser.files[
+          selectedFile
+        ] =
+          $("fileEditor")
+            .value;
 
-    renderFiles();
+
+        saveCurrentUser();
 
 
-    showNotification(
-      "File Saved",
-      selectedFile
+        showNotification(
+          "File Saved",
+          selectedFile
+        );
+      }
     );
-  }
 
 
-  function deleteFile() {
+  $("deleteFileButton")
+    ?.addEventListener(
+      "click",
+      () => {
 
-    if (
-      !currentUser ||
-      !selectedFile
-    ) {
-
-      showNotification(
-        "No File Selected",
-        "Select a file first."
-      );
-
-      return;
-    }
+        if (!selectedFile)
+          return;
 
 
-    const confirmed =
-      confirm(
-        `Delete "${selectedFile}"?`
-      );
+        if (
+          !confirm(
+            `Delete "${selectedFile}"?`
+          )
+        )
+          return;
 
 
-    if (!confirmed)
-      return;
+        delete currentUser.files[
+          selectedFile
+        ];
 
 
-    delete currentUser.files[
-      selectedFile
-    ];
+        selectedFile = null;
 
 
-    selectedFile = null;
+        $("fileEditor")
+          .value = "";
 
 
-    if ($("fileEditor"))
-      $("fileEditor").value = "";
+        saveCurrentUser();
 
-
-    saveCurrentUser();
-
-    renderFiles();
-
-
-    showNotification(
-      "File Deleted",
-      "The file was deleted."
+        renderFiles();
+      }
     );
-  }
 
 
-  /* =========================================================
+  /* =====================================================
      PAINT
-  ========================================================= */
+  ====================================================== */
 
-  let canvas = null;
-  let ctx = null;
-  let drawing = false;
+  function preparePaint() {
 
-
-  function prepareCanvas() {
-
-    canvas =
+    paintCanvas =
       $("paintCanvas");
 
 
-    if (!canvas)
+    if (!paintCanvas)
       return;
 
 
-    if (!ctx)
-      ctx =
-        canvas.getContext("2d");
+    if (!paintContext)
+      paintContext =
+        paintCanvas
+          .getContext("2d");
   }
 
 
-  function canvasPosition(event) {
-
-    if (!canvas)
-      return {
-        x: 0,
-        y: 0
-      };
-
+  function paintPosition(event) {
 
     const rect =
-      canvas.getBoundingClientRect();
+      paintCanvas
+        .getBoundingClientRect();
 
 
     return {
 
       x:
-        (event.clientX - rect.left) *
-        (canvas.width / rect.width),
+        (event.clientX -
+          rect.left) *
+        (
+          paintCanvas.width /
+          rect.width
+        ),
 
       y:
-        (event.clientY - rect.top) *
-        (canvas.height / rect.height)
+        (event.clientY -
+          rect.top) *
+        (
+          paintCanvas.height /
+          rect.height
+        )
     };
   }
 
 
-  function setupPaint() {
-
-    prepareCanvas();
+  preparePaint();
 
 
-    if (!canvas || !ctx)
-      return;
-
-
-    canvas.addEventListener(
+  $("paintCanvas")
+    ?.addEventListener(
       "pointerdown",
       event => {
 
-        drawing = true;
+        painting = true;
 
 
         const pos =
-          canvasPosition(event);
+          paintPosition(event);
 
 
-        ctx.beginPath();
+        paintContext.beginPath();
 
-        ctx.moveTo(
+        paintContext.moveTo(
           pos.x,
           pos.y
         );
@@ -1647,132 +1456,220 @@ Apps:
     );
 
 
-    canvas.addEventListener(
+  $("paintCanvas")
+    ?.addEventListener(
       "pointermove",
       event => {
 
-        if (!drawing)
+        if (!painting)
           return;
 
 
         const pos =
-          canvasPosition(event);
+          paintPosition(event);
 
 
-        ctx.lineWidth =
+        paintContext.lineWidth =
           Number(
             $("brushSize")
-              ? $("brushSize").value
-              : 5
+              .value
           );
 
 
-        ctx.lineCap =
+        paintContext.lineCap =
           "round";
 
 
-        ctx.strokeStyle =
-          "#000000";
+        paintContext.strokeStyle =
+          "#111111";
 
 
-        ctx.lineTo(
+        paintContext.lineTo(
           pos.x,
           pos.y
         );
 
 
-        ctx.stroke();
+        paintContext.stroke();
       }
     );
 
 
-    const stopDrawing =
+  ["pointerup", "pointerleave"]
+    .forEach(type =>
+      $("paintCanvas")
+        ?.addEventListener(
+          type,
+          () => {
+            painting = false;
+          }
+        )
+    );
+
+
+  $("clearCanvasButton")
+    ?.addEventListener(
+      "click",
       () => {
-        drawing = false;
-      };
+
+        preparePaint();
 
 
-    canvas.addEventListener(
-      "pointerup",
-      stopDrawing
-    );
-
-
-    canvas.addEventListener(
-      "pointerleave",
-      stopDrawing
-    );
-
-
-    canvas.addEventListener(
-      "contextmenu",
-      event => {
-        event.preventDefault();
+        paintContext.clearRect(
+          0,
+          0,
+          paintCanvas.width,
+          paintCanvas.height
+        );
       }
     );
-  }
 
 
-  function clearCanvas() {
+  $("saveDrawingButton")
+    ?.addEventListener(
+      "click",
+      () => {
 
-    prepareCanvas();
-
-    if (!canvas || !ctx)
-      return;
+        preparePaint();
 
 
-    ctx.clearRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
+        const link =
+          document.createElement(
+            "a"
+          );
+
+
+        link.href =
+          paintCanvas.toDataURL(
+            "image/png"
+          );
+
+
+        link.download =
+          "nexus-v14-drawing.png";
+
+
+        link.click();
+      }
     );
+
+
+  /* =====================================================
+     GAME CENTER
+  ====================================================== */
+
+  function showGameMenu() {
+
+    $("gameMenu")
+      .classList
+      .remove("hidden");
+
+
+    qsa(".game-screen")
+      .forEach(screen =>
+        screen.classList
+          .add("hidden")
+      );
   }
 
 
-  function saveDrawing() {
+  function openGame(id) {
 
-    prepareCanvas();
+    $("gameMenu")
+      .classList
+      .add("hidden");
 
-    if (!canvas)
+
+    qsa(".game-screen")
+      .forEach(screen =>
+        screen.classList
+          .add("hidden")
+      );
+
+
+    $(id + "Game")
+      ?.classList
+      .remove("hidden");
+  }
+
+
+  function updateGameBest() {
+
+    if (!currentUser)
       return;
 
 
-    const image =
-      canvas.toDataURL(
-        "image/png"
+    const scores =
+      currentUser.gameScores || {};
+
+
+    const best =
+      Math.max(
+        scores.catch || 0,
+        scores.click || 0,
+        scores.memory || 0,
+        scores.snake || 0,
+        currentUser.highScore || 0
       );
 
 
-    const link =
-      document.createElement(
-        "a"
-      );
-
-
-    link.href =
-      image;
-
-
-    link.download =
-      "nexus-drawing.png";
-
-
-    link.click();
+    $("globalBestScore")
+      .textContent =
+      best;
   }
 
 
-  /* =========================================================
-     CATCH NEXUS GAME
-  ========================================================= */
+  function saveGameScore(
+    game,
+    score
+  ) {
 
-  function moveGameTarget() {
+    if (!currentUser)
+      return;
+
+
+    if (!currentUser.gameScores)
+      currentUser.gameScores = {};
+
+
+    if (
+      score >
+      (
+        currentUser.gameScores[
+          game
+        ] || 0
+      )
+    ) {
+
+      currentUser.gameScores[
+        game
+      ] = score;
+
+
+      saveCurrentUser();
+
+      updateGameBest();
+
+
+      showNotification(
+        "New High Score!",
+        `${score} points`
+      );
+    }
+  }
+
+
+  /* =====================================================
+     CATCH NEXUS
+  ====================================================== */
+
+  function moveCatchTarget() {
 
     const area =
-      $("gameArea");
+      $("catchArea");
 
     const target =
-      $("gameTarget");
+      $("catchTarget");
 
 
     if (!area || !target)
@@ -1808,233 +1705,1515 @@ Apps:
   }
 
 
-  function startGame() {
+  $("startCatch")
+    ?.addEventListener(
+      "click",
+      () => {
 
-    const target =
-      $("gameTarget");
+        clearTimeout(
+          catchTimer
+        );
 
-    if (!target)
+
+        catchScore = 0;
+
+        catchRunning = true;
+
+
+        $("catchScore")
+          .textContent = "0";
+
+
+        $("catchTarget")
+          .style.display =
+          "block";
+
+
+        moveCatchTarget();
+
+
+        catchTimer =
+          setTimeout(
+            () => {
+
+              catchRunning =
+                false;
+
+
+              $("catchTarget")
+                .style.display =
+                "none";
+
+
+              saveGameScore(
+                "catch",
+                catchScore
+              );
+
+
+              showNotification(
+                "Game Over",
+                `You scored ${catchScore}!`
+              );
+
+            },
+            30000
+          );
+      }
+    );
+
+
+  $("catchTarget")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        if (!catchRunning)
+          return;
+
+
+        catchScore++;
+
+
+        $("catchScore")
+          .textContent =
+          catchScore;
+
+
+        moveCatchTarget();
+      }
+    );
+
+
+  /* =====================================================
+     CLICK RUSH
+  ====================================================== */
+
+  $("startClick")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        clearInterval(
+          clickTimer
+        );
+
+
+        clickRunning = true;
+
+        clickScore = 0;
+
+        clickTime = 10;
+
+
+        $("clickScore")
+          .textContent = "0";
+
+
+        $("clickTime")
+          .textContent = "10";
+
+
+        clickTimer =
+          setInterval(
+            () => {
+
+              clickTime--;
+
+
+              $("clickTime")
+                .textContent =
+                clickTime;
+
+
+              if (
+                clickTime <= 0
+              ) {
+
+                clearInterval(
+                  clickTimer
+                );
+
+
+                clickRunning =
+                  false;
+
+
+                saveGameScore(
+                  "click",
+                  clickScore
+                );
+
+
+                showNotification(
+                  "Click Rush Finished",
+                  `${clickScore} clicks!`
+                );
+              }
+
+            },
+            1000
+          );
+      }
+    );
+
+
+  $("clickButton")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        if (!clickRunning)
+          return;
+
+
+        clickScore++;
+
+
+        $("clickScore")
+          .textContent =
+          clickScore;
+      }
+    );
+
+
+  /* =====================================================
+     MEMORY MATCH
+  ====================================================== */
+
+  function createMemoryGame() {
+
+    const icons = [
+      "🚀",
+      "🎮",
+      "🌐",
+      "🎨",
+      "🧠",
+      "⚡",
+      "📝",
+      "🪐"
+    ];
+
+
+    memoryCards =
+      [
+        ...icons,
+        ...icons
+      ]
+        .sort(
+          () =>
+            Math.random() - 0.5
+        );
+
+
+    memoryFlipped = [];
+
+    memoryLocked = false;
+
+    memoryMoves = 0;
+
+
+    $("memoryMoves")
+      .textContent = "0";
+
+
+    const board =
+      $("memoryBoard");
+
+
+    board.innerHTML = "";
+
+
+    memoryCards
+      .forEach(
+        (icon, index) => {
+
+          const card =
+            document.createElement(
+              "button"
+            );
+
+
+          card.className =
+            "memory-card";
+
+
+          card.dataset.index =
+            index;
+
+
+          card.textContent =
+            "❔";
+
+
+          card.onclick = () =>
+            flipMemoryCard(
+              card,
+              index
+            );
+
+
+          board.appendChild(
+            card
+          );
+        }
+      );
+  }
+
+
+  function flipMemoryCard(
+    card,
+    index
+  ) {
+
+    if (
+      memoryLocked ||
+      memoryFlipped
+        .some(
+          item =>
+            item.index === index
+        ) ||
+      card.classList.contains(
+        "matched"
+      )
+    )
       return;
+
+
+    card.textContent =
+      memoryCards[index];
+
+
+    card.classList.add(
+      "flipped"
+    );
+
+
+    memoryFlipped.push({
+      card,
+      index
+    });
+
+
+    if (
+      memoryFlipped.length !== 2
+    )
+      return;
+
+
+    memoryMoves++;
+
+
+    $("memoryMoves")
+      .textContent =
+      memoryMoves;
+
+
+    const [a, b] =
+      memoryFlipped;
+
+
+    if (
+      memoryCards[a.index] ===
+      memoryCards[b.index]
+    ) {
+
+      a.card.classList.add(
+        "matched"
+      );
+
+      b.card.classList.add(
+        "matched"
+      );
+
+
+      memoryFlipped = [];
+
+
+      const matched =
+        qsa(
+          ".memory-card.matched"
+        );
+
+
+      if (
+        matched.length ===
+        memoryCards.length
+      ) {
+
+        const score =
+          Math.max(
+            100 -
+            memoryMoves * 5,
+            10
+          );
+
+
+        saveGameScore(
+          "memory",
+          score
+        );
+
+
+        showNotification(
+          "Memory Complete!",
+          `Score: ${score}`
+        );
+      }
+
+    } else {
+
+      memoryLocked = true;
+
+
+      setTimeout(
+        () => {
+
+          a.card.textContent =
+            "❔";
+
+          b.card.textContent =
+            "❔";
+
+
+          a.card.classList
+            .remove("flipped");
+
+          b.card.classList
+            .remove("flipped");
+
+
+          memoryFlipped = [];
+
+          memoryLocked = false;
+
+        },
+        700
+      );
+    }
+  }
+
+
+  $("startMemory")
+    ?.addEventListener(
+      "click",
+      createMemoryGame
+    );
+
+
+  /* =====================================================
+     SNAKE
+  ====================================================== */
+
+  const snakeCanvas =
+    $("snakeCanvas");
+
+  const snakeCtx =
+    snakeCanvas
+      ?.getContext("2d");
+
+
+  function randomSnakeFood() {
+
+    return {
+
+      x:
+        Math.floor(
+          Math.random() * 24
+        ),
+
+      y:
+        Math.floor(
+          Math.random() * 16
+        )
+    };
+  }
+
+
+  function startSnake() {
+
+    clearInterval(
+      snakeTimer
+    );
+
+
+    snakeRunning = true;
+
+    snakeScore = 0;
+
+
+    snakeDirection =
+      "right";
+
+    snakeNextDirection =
+      "right";
+
+
+    snakeBody = [
+      { x: 8, y: 8 },
+      { x: 7, y: 8 },
+      { x: 6, y: 8 }
+    ];
+
+
+    snakeFood =
+      randomSnakeFood();
+
+
+    $("snakeScore")
+      .textContent = "0";
+
+
+    snakeTimer =
+      setInterval(
+        snakeTick,
+        120
+      );
+
+
+    drawSnake();
+  }
+
+
+  function snakeTick() {
+
+    snakeDirection =
+      snakeNextDirection;
+
+
+    const head = {
+      ...snakeBody[0]
+    };
+
+
+    if (
+      snakeDirection ===
+      "up"
+    )
+      head.y--;
+
+
+    if (
+      snakeDirection ===
+      "down"
+    )
+      head.y++;
+
+
+    if (
+      snakeDirection ===
+      "left"
+    )
+      head.x--;
+
+
+    if (
+      snakeDirection ===
+      "right"
+    )
+      head.x++;
+
+
+    if (
+      head.x < 0 ||
+      head.x >= 24 ||
+      head.y < 0 ||
+      head.y >= 16 ||
+      snakeBody.some(
+        part =>
+          part.x === head.x &&
+          part.y === head.y
+      )
+    ) {
+
+      endSnake();
+
+      return;
+    }
+
+
+    snakeBody.unshift(
+      head
+    );
+
+
+    if (
+      head.x === snakeFood.x &&
+      head.y === snakeFood.y
+    ) {
+
+      snakeScore++;
+
+
+      $("snakeScore")
+        .textContent =
+        snakeScore;
+
+
+      snakeFood =
+        randomSnakeFood();
+
+    } else {
+
+      snakeBody.pop();
+    }
+
+
+    drawSnake();
+  }
+
+
+  function drawSnake() {
+
+    if (!snakeCtx)
+      return;
+
+
+    snakeCtx.clearRect(
+      0,
+      0,
+      snakeCanvas.width,
+      snakeCanvas.height
+    );
+
+
+    const cellW =
+      snakeCanvas.width /
+      24;
+
+    const cellH =
+      snakeCanvas.height /
+      16;
+
+
+    snakeCtx.fillStyle =
+      "#7c5cff";
+
+
+    snakeBody.forEach(
+      part => {
+
+        snakeCtx.fillRect(
+          part.x * cellW + 1,
+          part.y * cellH + 1,
+          cellW - 2,
+          cellH - 2
+        );
+      }
+    );
+
+
+    snakeCtx.fillStyle =
+      "#19d8ff";
+
+
+    snakeCtx.beginPath();
+
+    snakeCtx.arc(
+      snakeFood.x * cellW +
+        cellW / 2,
+      snakeFood.y * cellH +
+        cellH / 2,
+      Math.min(
+        cellW,
+        cellH
+      ) / 3,
+      0,
+      Math.PI * 2
+    );
+
+    snakeCtx.fill();
+  }
+
+
+  function endSnake() {
+
+    snakeRunning = false;
 
 
     clearInterval(
-      gameTimer
+      snakeTimer
     );
 
 
-    gameScore = 0;
-
-    gameRunning = true;
-
-
-    if ($("gameScore"))
-      $("gameScore").textContent =
-        "0";
-
-
-    target.style.display =
-      "block";
-
-
-    if ($("gameMessage"))
-      $("gameMessage").textContent =
-        "";
-
-
-    moveGameTarget();
+    saveGameScore(
+      "snake",
+      snakeScore
+    );
 
 
     showNotification(
-      "Game Started",
-      "Catch the N!"
+      "Snake Over",
+      `Score: ${snakeScore}`
     );
-
-
-    gameTimer =
-      setTimeout(() => {
-
-        gameRunning = false;
-
-
-        target.style.display =
-          "none";
-
-
-        if ($("gameMessage"))
-          $("gameMessage").textContent =
-            `Time's up! Score: ${gameScore}`;
-
-
-        if (
-          currentUser &&
-          gameScore >
-          (currentUser.highScore || 0)
-        ) {
-
-          currentUser.highScore =
-            gameScore;
-
-
-          saveCurrentUser();
-
-
-          showNotification(
-            "New High Score!",
-            `${gameScore} points!`
-          );
-        }
-
-      }, 30000);
   }
 
 
-  function catchTarget() {
+  $("startSnake")
+    ?.addEventListener(
+      "click",
+      startSnake
+    );
 
-    if (!gameRunning)
+
+  document.addEventListener(
+    "keydown",
+    event => {
+
+      if (!snakeRunning)
+        return;
+
+
+      const key =
+        event.key.toLowerCase();
+
+
+      const directions = {
+
+        arrowup: "up",
+        w: "up",
+
+        arrowdown: "down",
+        s: "down",
+
+        arrowleft: "left",
+        a: "left",
+
+        arrowright: "right",
+        d: "right"
+      };
+
+
+      const direction =
+        directions[key];
+
+
+      if (!direction)
+        return;
+
+
+      event.preventDefault();
+
+
+      const opposite = {
+
+        up: "down",
+        down: "up",
+        left: "right",
+        right: "left"
+
+      };
+
+
+      if (
+        opposite[
+          snakeDirection
+        ] !== direction
+      )
+        snakeNextDirection =
+          direction;
+    }
+  );
+
+
+  /* =====================================================
+     GAME BUTTONS
+  ====================================================== */
+
+  qsa(".game-card")
+    .forEach(card => {
+
+      card.addEventListener(
+        "click",
+        () =>
+          openGame(
+            card.dataset.game
+          )
+      );
+    });
+
+
+  qsa(".back-games")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        showGameMenu
+      );
+    });
+
+
+  /* =====================================================
+     BROWSER
+  ====================================================== */
+
+  function normalizeURL(value) {
+
+    value =
+      value.trim();
+
+
+    if (!value)
+      return null;
+
+
+    if (
+      value.startsWith(
+        "http://"
+      ) ||
+      value.startsWith(
+        "https://"
+      )
+    ) {
+
+      return value;
+    }
+
+
+    if (
+      value.includes(".") &&
+      !value.includes(" ")
+    ) {
+
+      return (
+        "https://" +
+        value
+      );
+    }
+
+
+    return (
+      "https://www.google.com/search?q=" +
+      encodeURIComponent(value)
+    );
+  }
+
+
+  function loadBrowserURL(
+    input,
+    addHistory = true
+  ) {
+
+    const url =
+      normalizeURL(input);
+
+
+    if (!url)
       return;
 
 
-    gameScore++;
+    browserCurrentURL =
+      url;
 
 
-    if ($("gameScore"))
-      $("gameScore").textContent =
-        gameScore;
+    if (
+      addHistory
+    )
+      addBrowserHistory(url);
 
 
-    moveGameTarget();
-  }
+    $("browserAddress")
+      .value =
+      url;
 
 
-  /* =========================================================
-     EVENT LISTENERS
-  ========================================================= */
-
-  /* AUTH */
-
-  if ($("loginButton")) {
-    $("loginButton").addEventListener(
-      "click",
-      login
-    );
-  }
+    $("browserHomePage")
+      .classList
+      .add("hidden");
 
 
-  if ($("signupButton")) {
-    $("signupButton").addEventListener(
-      "click",
-      signup
-    );
-  }
+    $("browserBlocked")
+      .classList
+      .add("hidden");
 
 
-  if ($("showSignupButton")) {
-    $("showSignupButton").addEventListener(
-      "click",
-      showSignup
-    );
-  }
+    const frame =
+      $("browserFrame");
 
 
-  if ($("showLoginButton")) {
-    $("showLoginButton").addEventListener(
-      "click",
-      showLogin
-    );
-  }
+    frame.classList
+      .remove("hidden");
 
 
-  if ($("forgotPasswordButton")) {
+    frame.src =
+      url;
 
-    $("forgotPasswordButton")
-      .addEventListener(
-        "click",
+
+    $("browserTabTitle")
+      .textContent =
+      getDomain(url);
+
+
+    frame.onload = () => {
+
+      /*
+        Some pages may still refuse
+        to be embedded. The browser
+        cannot override that.
+      */
+
+      setTimeout(
         () => {
 
-          showNotification(
-            "Password Reset",
-            "Because NEXUS stores accounts locally, password recovery is not available yet."
+          try {
+
+            if (
+              frame.contentWindow
+                .location
+                .href ===
+              "about:blank"
+            ) {
+
+              showBrowserBlocked(url);
+            }
+
+          } catch {
+            /*
+              Cross-origin pages are
+              expected and are allowed.
+            */
+          }
+
+        },
+        900
+      );
+    };
+  }
+
+
+  function getDomain(url) {
+
+    try {
+
+      return new URL(url)
+        .hostname
+        .replace(
+          "www.",
+          ""
+        );
+
+    } catch {
+
+      return "Web";
+    }
+  }
+
+
+  function showBrowserBlocked(url) {
+
+    $("browserFrame")
+      .classList
+      .add("hidden");
+
+
+    $("browserBlocked")
+      .classList
+      .remove("hidden");
+
+
+    browserExternalURL =
+      url;
+  }
+
+
+  function browserHome() {
+
+    $("browserFrame")
+      .classList
+      .add("hidden");
+
+
+    $("browserBlocked")
+      .classList
+      .add("hidden");
+
+
+    $("browserHomePage")
+      .classList
+      .remove("hidden");
+
+
+    $("browserAddress")
+      .value = "";
+
+
+    $("browserTabTitle")
+      .textContent =
+      "New Tab";
+  }
+
+
+  function addBrowserHistory(url) {
+
+    let history = [];
+
+
+    try {
+
+      history =
+        JSON.parse(
+          localStorage.getItem(
+            HISTORY_KEY
+          )
+        ) || [];
+
+    } catch {}
+
+
+    history =
+      history.filter(
+        item =>
+          item !== url
+      );
+
+
+    history.unshift(url);
+
+
+    history =
+      history.slice(
+        0,
+        30
+      );
+
+
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify(history)
+    );
+
+
+    renderBrowserHistory();
+  }
+
+
+  function renderBrowserHistory() {
+
+    const list =
+      $("historyList");
+
+
+    if (!list)
+      return;
+
+
+    let history = [];
+
+
+    try {
+
+      history =
+        JSON.parse(
+          localStorage.getItem(
+            HISTORY_KEY
+          )
+        ) || [];
+
+    } catch {}
+
+
+    list.innerHTML = "";
+
+
+    if (!history.length) {
+
+      list.innerHTML =
+        `<div style="padding:15px;color:#9da7c2;font-size:11px">
+          No browsing history yet.
+        </div>`;
+
+      return;
+    }
+
+
+    history.forEach(url => {
+
+      const button =
+        document.createElement(
+          "button"
+        );
+
+
+      button.className =
+        "history-item";
+
+
+      button.textContent =
+        getDomain(url);
+
+
+      button.title =
+        url;
+
+
+      button.onclick = () => {
+
+        $("browserHistoryPanel")
+          .classList
+          .add("hidden");
+
+
+        loadBrowserURL(url);
+      };
+
+
+      list.appendChild(
+        button
+      );
+    });
+  }
+
+
+  function searchBrowser(value) {
+
+    if (!value)
+      return;
+
+
+    loadBrowserURL(
+      value
+    );
+  }
+
+
+  $("browserAddress")
+    ?.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key === "Enter"
+        ) {
+
+          searchBrowser(
+            $("browserAddress")
+              .value
           );
         }
-      );
-  }
+      }
+    );
 
 
-  /* ENTER KEY LOGIN */
+  $("browserHomeSearch")
+    ?.addEventListener(
+      "keydown",
+      event => {
 
-  if ($("loginPassword")) {
+        if (
+          event.key === "Enter"
+        ) {
 
-    $("loginPassword")
-      .addEventListener(
-        "keydown",
-        event => {
-
-          if (
-            event.key === "Enter"
-          ) {
-            login();
-          }
+          searchBrowser(
+            $("browserHomeSearch")
+              .value
+          );
         }
+      }
+    );
+
+
+  $("browserHomeSearchButton")
+    ?.addEventListener(
+      "click",
+      () =>
+        searchBrowser(
+          $("browserHomeSearch")
+            .value
+        )
+    );
+
+
+  qsa(".quick-links button")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () =>
+          loadBrowserURL(
+            button.dataset.url
+          )
       );
-  }
+    });
 
 
-  /* ENTER KEY SIGNUP */
+  $("browserHome")
+    ?.addEventListener(
+      "click",
+      browserHome
+    );
 
-  if ($("signupPasswordConfirm")) {
 
-    $("signupPasswordConfirm")
-      .addEventListener(
-        "keydown",
-        event => {
+  $("browserRefresh")
+    ?.addEventListener(
+      "click",
+      () => {
 
-          if (
-            event.key === "Enter"
-          ) {
-            signup();
-          }
+        if (
+          browserCurrentURL
+        ) {
+
+          $("browserFrame")
+            .src =
+            browserCurrentURL;
         }
+      }
+    );
+
+
+  $("browserBack")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        if (
+          browserPreviousURL
+        ) {
+
+          const current =
+            browserCurrentURL;
+
+          browserCurrentURL =
+            browserPreviousURL;
+
+          browserPreviousURL =
+            current;
+
+          $("browserFrame")
+            .src =
+            browserCurrentURL;
+
+          $("browserAddress")
+            .value =
+            browserCurrentURL;
+        }
+      }
+    );
+
+
+  $("browserForward")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        if (
+          browserForwardURL
+        ) {
+
+          loadBrowserURL(
+            browserForwardURL
+          );
+        }
+      }
+    );
+
+
+  $("browserHistoryButton")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        $("browserHistoryPanel")
+          .classList
+          .toggle("hidden");
+
+
+        renderBrowserHistory();
+      }
+    );
+
+
+  $("clearHistory")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        localStorage.removeItem(
+          HISTORY_KEY
+        );
+
+        renderBrowserHistory();
+      }
+    );
+
+
+  $("browserFavorite")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        if (!browserCurrentURL)
+          return;
+
+
+        let favorites =
+          JSON.parse(
+            localStorage.getItem(
+              "nexus_v14_favorites"
+            )
+          ) || [];
+
+
+        if (
+          !favorites.includes(
+            browserCurrentURL
+          )
+        ) {
+
+          favorites.push(
+            browserCurrentURL
+          );
+
+
+          localStorage.setItem(
+            "nexus_v14_favorites",
+            JSON.stringify(
+              favorites
+            )
+          );
+
+
+          $("browserFavorite")
+            .textContent =
+            "★";
+
+
+          showNotification(
+            "Favorite Added",
+            getDomain(
+              browserCurrentURL
+            )
+          );
+
+        } else {
+
+          showNotification(
+            "Already Saved",
+            "This page is already a favorite."
+          );
+        }
+      }
+    );
+
+
+  $("openExternalButton")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        if (
+          browserExternalURL
+        ) {
+
+          window.open(
+            browserExternalURL,
+            "_blank"
+          );
+        }
+      }
+    );
+
+
+  $("newBrowserTab")
+    ?.addEventListener(
+      "click",
+      browserHome
+    );
+
+
+  $("closeBrowserTab")
+    ?.addEventListener(
+      "click",
+      browserHome
+    );
+
+
+  /* =====================================================
+     SETTINGS
+  ====================================================== */
+
+  $("darkThemeButton")
+    ?.addEventListener(
+      "click",
+      () =>
+        setTheme("dark")
+    );
+
+
+  $("lightThemeButton")
+    ?.addEventListener(
+      "click",
+      () =>
+        setTheme("light")
+    );
+
+
+  qsa("[data-wallpaper]")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () =>
+          setWallpaper(
+            button.dataset.wallpaper
+          )
       );
-  }
+    });
 
 
-  /* DESKTOP APPS */
+  $("logoutButton")
+    ?.addEventListener(
+      "click",
+      logout
+    );
+
+
+  $("startLogoutButton")
+    ?.addEventListener(
+      "click",
+      logout
+    );
+
+
+  $("deleteAccountButton")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        if (!currentUser)
+          return;
+
+
+        if (
+          !confirm(
+            `Delete "${currentUser.username}"? This cannot be undone.`
+          )
+        )
+          return;
+
+
+        delete accounts[
+          currentUser.key
+        ];
+
+
+        saveAccounts();
+
+
+        localStorage.removeItem(
+          SESSION_KEY
+        );
+
+
+        currentUser = null;
+
+
+        closeAllWindows();
+
+
+        $("desktop")
+          .classList
+          .add("hidden");
+
+
+        $("authScreen")
+          .classList
+          .remove("hidden");
+
+
+        showLogin();
+      }
+    );
+
+
+  /* =====================================================
+     START MENU
+  ====================================================== */
+
+  $("startButton")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        $("startMenu")
+          .classList
+          .toggle("hidden");
+      }
+    );
+
+
+  qsa(
+    "#startApps [data-app]"
+  )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () =>
+          openApp(
+            button.dataset.app
+          )
+      );
+    });
+
+
+  $("appSearch")
+    ?.addEventListener(
+      "input",
+      () => {
+
+        const query =
+          $("appSearch")
+            .value
+            .toLowerCase();
+
+
+        qsa(
+          "#startApps button"
+        )
+          .forEach(button => {
+
+            button.style.display =
+              button.textContent
+                .toLowerCase()
+                .includes(query)
+                  ? "flex"
+                  : "none";
+          });
+      }
+    );
+
+
+  /* =====================================================
+     WINDOW CONTROLS
+  ====================================================== */
 
   qsa("[data-app]")
     .forEach(button => {
 
       button.addEventListener(
         "click",
-        () => {
-
+        () =>
           openApp(
             button.dataset.app
-          );
-        }
+          )
       );
     });
 
-
-  /* WINDOW CLOSE */
 
   qsa(".close-button")
     .forEach(button => {
 
       button.addEventListener(
         "click",
-        () => {
-
+        () =>
           closeApp(
             button.closest(
               ".app-window"
             )
-          );
-        }
+          )
       );
     });
 
-
-  /* WINDOW MINIMIZE */
 
   qsa(".minimize-button")
     .forEach(button => {
@@ -2050,9 +3229,8 @@ Apps:
 
 
           if (win)
-            win.classList.remove(
-              "open"
-            );
+            win.classList
+              .remove("open");
 
 
           updateTaskbar();
@@ -2061,238 +3239,106 @@ Apps:
     });
 
 
-  /* START BUTTON */
-
-  if ($("startButton")) {
-
-    $("startButton")
-      .addEventListener(
-        "click",
-        toggleStartMenu
-      );
-  }
-
-
-  /* START LOGOUT */
-
-  if ($("startLogoutButton")) {
-
-    $("startLogoutButton")
-      .addEventListener(
-        "click",
-        logout
-      );
-  }
-
-
-  /* SETTINGS */
-
-  if ($("darkThemeButton")) {
-
-    $("darkThemeButton")
-      .addEventListener(
-        "click",
-        () => setTheme("dark")
-      );
-  }
-
-
-  if ($("lightThemeButton")) {
-
-    $("lightThemeButton")
-      .addEventListener(
-        "click",
-        () => setTheme("light")
-      );
-  }
-
-
-  qsa("[data-wallpaper]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          setWallpaper(
-            button.dataset.wallpaper
-          );
-        }
-      );
-    });
-
-
-  if ($("logoutButton")) {
-
-    $("logoutButton")
-      .addEventListener(
-        "click",
-        logout
-      );
-  }
-
-
-  if ($("deleteAccountButton")) {
-
-    $("deleteAccountButton")
-      .addEventListener(
-        "click",
-        deleteAccount
-      );
-  }
-
-
-  /* FILE MANAGER */
-
-  if ($("newFileButton")) {
-
-    $("newFileButton")
-      .addEventListener(
-        "click",
-        createFile
-      );
-  }
-
-
-  if ($("saveFileButton")) {
-
-    $("saveFileButton")
-      .addEventListener(
-        "click",
-        saveFile
-      );
-  }
-
-
-  if ($("deleteFileButton")) {
-
-    $("deleteFileButton")
-      .addEventListener(
-        "click",
-        deleteFile
-      );
-  }
-
-
-  /* PAINT */
-
-  setupPaint();
-
-
-  if ($("clearCanvasButton")) {
-
-    $("clearCanvasButton")
-      .addEventListener(
-        "click",
-        clearCanvas
-      );
-  }
-
-
-  if ($("saveDrawingButton")) {
-
-    $("saveDrawingButton")
-      .addEventListener(
-        "click",
-        saveDrawing
-      );
-  }
-
-
-  /* GAME */
-
-  if ($("gameTarget")) {
-
-    $("gameTarget")
-      .addEventListener(
-        "click",
-        catchTarget
-      );
-  }
-
-
-  if ($("startGameButton")) {
-
-    $("startGameButton")
-      .addEventListener(
-        "click",
-        startGame
-      );
-  }
-
-
-  /* NOTEPAD */
-
-  setupNotepad();
-
-
-  /* CALCULATOR */
-
-  setupCalculator();
-
-
-  /* CLOCK */
-
-  updateClock();
-
-  setInterval(
-    updateClock,
-    1000
-  );
-
-
-  /* =========================================================
-     KEYBOARD SHORTCUTS
-  ========================================================= */
-
-  document.addEventListener(
-    "keydown",
-    event => {
-
-      /*
-        Escape closes the start menu.
-      */
-
-      if (
-        event.key === "Escape"
-      ) {
-
-        if ($("startMenu"))
-          $("startMenu").classList.add(
-            "hidden"
-          );
+  /* =====================================================
+     NOTIFICATION CLOSE
+  ====================================================== */
+
+  $("closeNotification")
+    ?.addEventListener(
+      "click",
+      () =>
+        $("notification")
+          .classList
+          .add("hidden")
+    );
+
+
+  /* =====================================================
+     AUTH BUTTONS
+  ====================================================== */
+
+  $("showSignupButton")
+    ?.addEventListener(
+      "click",
+      showSignup
+    );
+
+
+  $("showLoginButton")
+    ?.addEventListener(
+      "click",
+      showLogin
+    );
+
+
+  $("loginButton")
+    ?.addEventListener(
+      "click",
+      login
+    );
+
+
+  $("signupButton")
+    ?.addEventListener(
+      "click",
+      signup
+    );
+
+
+  $("loginPassword")
+    ?.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key === "Enter"
+        )
+          login();
       }
+    );
 
 
-      /*
-        Ctrl + L logs out.
-      */
+  $("signupPasswordConfirm")
+    ?.addEventListener(
+      "keydown",
+      event => {
 
-      if (
-        event.ctrlKey &&
-        event.key.toLowerCase() === "l"
-      ) {
-
-        /*
-          Do not interfere with browser
-          address-bar shortcut.
-        */
-
-        event.preventDefault();
-
-        if (currentUser)
-          logout();
+        if (
+          event.key === "Enter"
+        )
+          signup();
       }
-    }
-  );
+    );
 
 
-  /* =========================================================
-     START NEXUS
-  ========================================================= */
+  $("forgotPasswordButton")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        showNotification(
+          "Password Recovery",
+          "NEXUS v1.4 stores accounts locally, so automatic email password recovery is unavailable."
+        );
+      }
+    );
+
+
+  /* =====================================================
+     INITIALIZE
+  ====================================================== */
 
   loadAccounts();
 
+  createMemoryGame();
+
+  renderBrowserHistory();
+
   boot();
+
+
+  console.log(
+    "NEXUS v1.4 loaded — Firebase-free."
+  );
 
 });
