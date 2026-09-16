@@ -1,2298 +1,1140 @@
-/* =========================================================
-   NEXUS v1.2
-   COMPLETE FIREBASE-FREE SYSTEM
-   Corrected authentication + stable initialization
-========================================================= */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-"use strict";
+  <title>NEXUS v1.4</title>
 
-document.addEventListener("DOMContentLoaded", () => {
+  <link rel="stylesheet" href="style.css">
+</head>
 
-  /* =========================================================
-     STORAGE
-  ========================================================= */
-
-  const ACCOUNTS_KEY = "nexus_v12_accounts";
-  const SESSION_KEY = "nexus_v12_session";
+<body>
 
-  let accounts = {};
-  let currentUser = null;
-
-  let selectedFile = null;
-  let calculatorValue = "";
-  let saveNotesTimer = null;
-  let notificationTimer = null;
+  <!-- =======================================================
+       WALLPAPER
+  ======================================================== -->
 
-  let gameScore = 0;
-  let gameRunning = false;
-  let gameTimer = null;
+  <div id="wallpaper" class="wallpaper"></div>
 
 
-  /* =========================================================
-     HELPERS
-  ========================================================= */
-
-  const $ = id => document.getElementById(id);
+  <!-- =======================================================
+       BOOT SCREEN
+  ======================================================== -->
 
-  const qsa = selector =>
-    document.querySelectorAll(selector);
+  <section id="bootScreen" class="boot-screen">
 
+    <div class="boot-logo">N</div>
 
-  function safeElement(id) {
-    return $(id);
-  }
+    <h1>NEXUS</h1>
 
+    <p id="bootStatus">Checking system...</p>
 
-  /* =========================================================
-     STORAGE
-  ========================================================= */
+    <div class="boot-progress-container">
+      <div id="bootProgress" class="boot-progress"></div>
+    </div>
 
-  function loadAccounts() {
-    try {
-      const saved = localStorage.getItem(ACCOUNTS_KEY);
-      accounts = saved ? JSON.parse(saved) : {};
-    } catch (error) {
-      console.error("Could not load NEXUS accounts:", error);
-      accounts = {};
-    }
-  }
+    <small>NEXUS v1.4</small>
 
+  </section>
 
-  function saveAccounts() {
-    try {
-      localStorage.setItem(
-        ACCOUNTS_KEY,
-        JSON.stringify(accounts)
-      );
-    } catch (error) {
-      console.error("Could not save NEXUS accounts:", error);
-      showNotification(
-        "Storage Error",
-        "NEXUS could not save your account."
-      );
-    }
-  }
 
+  <!-- =======================================================
+       AUTHENTICATION
+  ======================================================== -->
 
-  function createID() {
-    return (
-      Date.now().toString(36) +
-      Math.random().toString(36).slice(2)
-    );
-  }
+  <section id="authScreen" class="auth-screen hidden">
 
+    <div class="auth-container">
 
-  /* =========================================================
-     PASSWORD HASH
-  ========================================================= */
+      <div class="auth-logo">
+        <span>N</span>
+      </div>
 
-  async function hashPassword(password) {
+      <h1>NEXUS</h1>
 
-    if (
-      window.crypto &&
-      window.crypto.subtle &&
-      window.TextEncoder
-    ) {
+      <p class="version-label">v1.4</p>
 
-      try {
 
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
+      <!-- LOGIN -->
 
-        const hash = await window.crypto.subtle.digest(
-          "SHA-256",
-          data
-        );
+      <div id="loginPanel" class="auth-panel">
 
-        return Array.from(
-          new Uint8Array(hash)
-        )
-          .map(
-            byte =>
-              byte.toString(16).padStart(2, "0")
-          )
-          .join("");
+        <h2>Welcome Back</h2>
 
-      } catch (error) {
-        console.warn(
-          "Web Crypto unavailable. Using fallback hash."
-        );
-      }
-    }
+        <p>Log in to your NEXUS account.</p>
 
+        <div class="input-group">
+          <label for="loginEmail">Email</label>
 
-    let hash = 0;
+          <input
+            id="loginEmail"
+            type="email"
+            placeholder="you@example.com"
+            autocomplete="username"
+          >
+        </div>
 
-    for (let i = 0; i < password.length; i++) {
+        <div class="input-group">
+          <label for="loginUsername">Username</label>
 
-      hash =
-        (
-          (hash << 5) -
-          hash +
-          password.charCodeAt(i)
-        ) | 0;
-    }
+          <input
+            id="loginUsername"
+            type="text"
+            placeholder="Username"
+            autocomplete="username"
+          >
+        </div>
 
-    return String(hash);
-  }
+        <div class="input-group">
+          <label for="loginPassword">Password</label>
 
+          <input
+            id="loginPassword"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+          >
+        </div>
 
-  /* =========================================================
-     DEFAULT FILES
-  ========================================================= */
+        <p id="loginError" class="auth-error"></p>
 
-  function defaultFiles(username) {
+        <button id="loginButton" class="primary-button">
+          🔐 Login
+        </button>
 
-    return {
+        <button id="forgotPasswordButton" class="text-button">
+          Forgot password?
+        </button>
 
-      "Welcome.txt":
-`Welcome to NEXUS v1.2!
+        <p class="auth-switch">
+          Don't have an account?
+          <button id="showSignupButton" class="link-button">
+            Create one
+          </button>
+        </p>
 
-Hello ${username}!
+      </div>
 
-This is your personal NEXUS desktop.
 
-Everything stored here belongs to this browser account.`,
+      <!-- SIGN UP -->
 
-      "About.txt":
-`NEXUS v1.2
+      <div id="signupPanel" class="auth-panel hidden">
 
-A browser-based mini operating system.
+        <h2>Create Account</h2>
 
-Apps:
-- Notepad
-- Calculator
-- File Manager
-- Paint
-- Catch NEXUS
-- Settings`,
+        <p>Create your own NEXUS profile.</p>
 
-      "Ideas.txt":
-`NEXUS Ideas
+        <div class="input-group">
+          <label for="signupEmail">Email</label>
 
-1. More games
-2. More apps
-3. Better wallpapers
-4. More customization
-5. Future NEXUS versions`
+          <input
+            id="signupEmail"
+            type="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+          >
+        </div>
 
-    };
-  }
+        <div class="input-group">
+          <label for="signupUsername">Username</label>
 
+          <input
+            id="signupUsername"
+            type="text"
+            placeholder="Username"
+            autocomplete="username"
+          >
+        </div>
 
-  /* =========================================================
-     BOOT
-  ========================================================= */
+        <div class="input-group">
+          <label for="signupPassword">Password</label>
 
-  function boot() {
+          <input
+            id="signupPassword"
+            type="password"
+            placeholder="At least 6 characters"
+            autocomplete="new-password"
+          >
+        </div>
 
-    const bootScreen = $("bootScreen");
+        <div class="input-group">
+          <label for="signupPasswordConfirm">
+            Confirm Password
+          </label>
 
-    if (!bootScreen) {
-      restoreSession();
-      return;
-    }
+          <input
+            id="signupPasswordConfirm"
+            type="password"
+            placeholder="Confirm password"
+            autocomplete="new-password"
+          >
+        </div>
 
-    let progress = 0;
+        <p id="signupError" class="auth-error"></p>
 
-    const interval = setInterval(() => {
+        <button id="signupButton" class="primary-button">
+          🚀 Create Account
+        </button>
 
-      progress += 5;
+        <p class="auth-switch">
+          Already have an account?
+          <button id="showLoginButton" class="link-button">
+            Log in
+          </button>
+        </p>
 
-      const progressBar = $("bootProgress");
-      const status = $("bootStatus");
+      </div>
 
-      if (progressBar) {
-        progressBar.style.width =
-          progress + "%";
-      }
 
-      if (status) {
+      <div class="local-account-notice">
+        🔒 Your NEXUS account is stored locally in this browser.
+      </div>
 
-        if (progress < 35) {
-          status.textContent =
-            "Checking system...";
+    </div>
 
-        } else if (progress < 65) {
-          status.textContent =
-            "Loading NEXUS core...";
+  </section>
 
-        } else if (progress < 90) {
-          status.textContent =
-            "Preparing desktop...";
 
-        } else {
-          status.textContent =
-            "Ready.";
-        }
-      }
+  <!-- =======================================================
+       DESKTOP
+  ======================================================== -->
 
-      if (progress >= 100) {
+  <main id="desktop" class="desktop hidden">
 
-        clearInterval(interval);
+    <!-- DESKTOP ICONS -->
 
-        setTimeout(() => {
+    <div class="desktop-icons">
 
-          bootScreen.classList.add("hidden");
+      <button class="desktop-icon" data-app="notepadWindow">
+        <span>📝</span>
+        <small>Notepad</small>
+      </button>
 
-          restoreSession();
+      <button class="desktop-icon" data-app="calculatorWindow">
+        <span>🧮</span>
+        <small>Calculator</small>
+      </button>
 
-        }, 350);
-      }
+      <button class="desktop-icon" data-app="filesWindow">
+        <span>📁</span>
+        <small>Files</small>
+      </button>
 
-    }, 35);
-  }
+      <button class="desktop-icon" data-app="paintWindow">
+        <span>🎨</span>
+        <small>Paint</small>
+      </button>
 
+      <button class="desktop-icon" data-app="gameWindow">
+        <span>🎮</span>
+        <small>Game Center</small>
+      </button>
 
-  /* =========================================================
-     AUTH SCREEN
-  ========================================================= */
+      <button class="desktop-icon" data-app="browserWindow">
+        <span>🌐</span>
+        <small>NEXUS Browser</small>
+      </button>
 
-  function showLogin() {
+      <button class="desktop-icon" data-app="settingsWindow">
+        <span>⚙️</span>
+        <small>Settings</small>
+      </button>
 
-    const loginPanel = $("loginPanel");
-    const signupPanel = $("signupPanel");
+      <button class="desktop-icon" data-app="aboutWindow">
+        <span>💠</span>
+        <small>About</small>
+      </button>
 
-    if (loginPanel)
-      loginPanel.classList.remove("hidden");
+    </div>
 
-    if (signupPanel)
-      signupPanel.classList.add("hidden");
 
-    if ($("loginError"))
-      $("loginError").textContent = "";
+    <!-- =====================================================
+         NOTEPAD
+    ====================================================== -->
 
-    if ($("signupError"))
-      $("signupError").textContent = "";
-  }
+    <section id="notepadWindow" class="app-window">
 
+      <header class="window-header">
 
-  function showSignup() {
+        <span>📝 Notepad</span>
 
-    const loginPanel = $("loginPanel");
-    const signupPanel = $("signupPanel");
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
 
-    if (loginPanel)
-      loginPanel.classList.add("hidden");
+      </header>
 
-    if (signupPanel)
-      signupPanel.classList.remove("hidden");
+      <div class="window-content">
 
-    if ($("loginError"))
-      $("loginError").textContent = "";
+        <div class="notepad-toolbar">
+          <span id="notesStatus">Ready</span>
 
-    if ($("signupError"))
-      $("signupError").textContent = "";
-  }
+          <button id="clearNotesButton">
+            Clear
+          </button>
+        </div>
 
+        <textarea
+          id="notesArea"
+          class="notes-area"
+          placeholder="Start writing..."
+        ></textarea>
 
-  /* =========================================================
-     USERNAME VALIDATION
-  ========================================================= */
+      </div>
 
-  function validUsername(username) {
+    </section>
 
-    /*
-      Allowed:
-      A-Z
-      a-z
-      0-9
-      spaces
-      underscores
 
-      NOT allowed:
-      @
-      #
-      $
-      %
-      !
-      etc.
-    */
+    <!-- =====================================================
+         CALCULATOR
+    ====================================================== -->
 
-    return /^[A-Za-z0-9_ ]+$/.test(username);
-  }
+    <section id="calculatorWindow" class="app-window">
 
+      <header class="window-header">
 
-  /* =========================================================
-     SIGN UP
-  ========================================================= */
+        <span>🧮 Calculator</span>
 
-  async function signup() {
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
 
-    const usernameInput = $("signupUsername");
-    const passwordInput = $("signupPassword");
-    const confirmInput = $("signupPasswordConfirm");
-    const error = $("signupError");
+      </header>
 
-    if (!usernameInput || !passwordInput || !confirmInput || !error) {
-      console.error("Signup elements are missing.");
-      return;
-    }
+      <div class="window-content">
 
+        <input
+          id="calculatorDisplay"
+          class="calculator-display"
+          type="text"
+          readonly
+        >
 
-    const username =
-      usernameInput.value.trim();
+        <div class="calculator-grid">
 
-    const password =
-      passwordInput.value;
+          <button data-calc="clear">C</button>
+          <button data-calc="backspace">⌫</button>
+          <button data-calc="/">÷</button>
+          <button data-calc="*">×</button>
 
-    const confirm =
-      confirmInput.value;
+          <button data-calc="7">7</button>
+          <button data-calc="8">8</button>
+          <button data-calc="9">9</button>
+          <button data-calc="-">−</button>
 
+          <button data-calc="4">4</button>
+          <button data-calc="5">5</button>
+          <button data-calc="6">6</button>
+          <button data-calc="+">+</button>
 
-    error.textContent = "";
+          <button data-calc="1">1</button>
+          <button data-calc="2">2</button>
+          <button data-calc="3">3</button>
+          <button data-calc="(">(</button>
 
+          <button data-calc="0">0</button>
+          <button data-calc=".">.</button>
+          <button data-calc=")">)</button>
+          <button data-calc="=">=</button>
 
-    /* EMPTY USERNAME */
+        </div>
 
-    if (!username) {
+      </div>
 
-      error.textContent =
-        "Please choose a username.";
+    </section>
 
-      return;
-    }
 
+    <!-- =====================================================
+         FILE MANAGER
+    ====================================================== -->
 
-    /* USERNAME LENGTH */
+    <section id="filesWindow" class="app-window">
 
-    if (username.length < 2) {
+      <header class="window-header">
 
-      error.textContent =
-        "Username must be at least 2 characters.";
+        <span>📁 File Manager</span>
 
-      return;
-    }
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
 
+      </header>
 
-    /* USERNAME CHARACTERS */
+      <div class="window-content files-layout">
 
-    if (!validUsername(username)) {
+        <div class="files-sidebar">
 
-      error.textContent =
-        "Use letters, numbers, spaces or underscores.";
+          <h3>Your Files</h3>
 
-      return;
-    }
+          <button id="newFileButton">
+            ➕ New File
+          </button>
 
+          <div id="fileList" class="file-list"></div>
 
-    /* PASSWORD LENGTH */
+        </div>
 
-    if (password.length < 6) {
+        <div class="file-editor-area">
 
-      error.textContent =
-        "Password must be at least 6 characters.";
+          <textarea
+            id="fileEditor"
+            placeholder="Select a file..."
+          ></textarea>
 
-      return;
-    }
+          <div class="file-actions">
 
+            <button id="saveFileButton">
+              💾 Save
+            </button>
 
-    /* PASSWORD MATCH */
+            <button id="deleteFileButton">
+              🗑️ Delete
+            </button>
 
-    if (password !== confirm) {
+          </div>
 
-      error.textContent =
-        "The passwords do not match.";
+        </div>
 
-      return;
-    }
+      </div>
 
+    </section>
 
-    /*
-      IMPORTANT:
-      The username key is normalized only for storage.
-      The original username is preserved for display.
-    */
 
-    const usernameKey =
-      username.toLowerCase();
+    <!-- =====================================================
+         PAINT
+    ====================================================== -->
 
+    <section id="paintWindow" class="app-window">
 
-    /* DUPLICATE USERNAME */
+      <header class="window-header">
 
-    if (Object.prototype.hasOwnProperty.call(
-      accounts,
-      usernameKey
-    )) {
+        <span>🎨 NEXUS Paint</span>
 
-      error.textContent =
-        "That username is already taken.";
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
 
-      return;
-    }
+      </header>
 
+      <div class="window-content">
 
-    /* CREATE ACCOUNT */
+        <div class="paint-toolbar">
 
-    const passwordHash =
-      await hashPassword(password);
+          <label for="brushSize">
+            Brush
+          </label>
 
+          <input
+            id="brushSize"
+            type="range"
+            min="1"
+            max="40"
+            value="5"
+          >
 
-    accounts[usernameKey] = {
+          <button id="clearCanvasButton">
+            🧹 Clear
+          </button>
 
-      id: createID(),
+          <button id="saveDrawingButton">
+            💾 Save PNG
+          </button>
 
-      username: username,
+        </div>
 
-      passwordHash: passwordHash,
+        <div class="canvas-container">
 
-      createdAt: Date.now(),
+          <canvas
+            id="paintCanvas"
+            width="900"
+            height="500"
+          ></canvas>
 
-      theme: "dark",
+        </div>
 
-      wallpaper: "default",
+      </div>
 
-      notes: "",
+    </section>
 
-      files: defaultFiles(username),
 
-      highScore: 0
-    };
+    <!-- =====================================================
+         GAME CENTER
+    ====================================================== -->
 
+    <section id="gameWindow" class="app-window">
 
-    saveAccounts();
+      <header class="window-header">
 
+        <span>🎮 NEXUS Game Center</span>
 
-    /* CREATE SESSION */
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
 
-    localStorage.setItem(
-      SESSION_KEY,
-      usernameKey
-    );
+      </header>
 
+      <div class="window-content">
 
-    /* CLEAR FORM */
+        <!-- GAME MENU -->
 
-    usernameInput.value = "";
-    passwordInput.value = "";
-    confirmInput.value = "";
+        <div id="gameMenu" class="game-menu">
 
+          <h2>🎮 Game Center</h2>
 
-    /* ENTER DESKTOP */
+          <p>Choose a game.</p>
 
-    loginUser(usernameKey);
-  }
+          <div class="game-selection">
 
+            <button data-game="catch">
+              🎯 Catch NEXUS
+            </button>
 
-  /* =========================================================
-     LOGIN
-  ========================================================= */
+            <button data-game="click">
+              ⚡ Click Rush
+            </button>
 
-  async function login() {
+            <button data-game="memory">
+              🧠 Memory Match
+            </button>
 
-    const usernameInput = $("loginUsername");
-    const passwordInput = $("loginPassword");
-    const error = $("loginError");
+            <button data-game="snake">
+              🐍 Snake
+            </button>
 
-    if (!usernameInput || !passwordInput || !error) {
-      console.error("Login elements are missing.");
-      return;
-    }
+          </div>
 
+        </div>
 
-    const username =
-      usernameInput.value.trim();
 
-    const password =
-      passwordInput.value;
+        <!-- CATCH NEXUS -->
 
+        <div id="catchGameScreen" class="game-screen hidden">
 
-    error.textContent = "";
+          <div class="game-topbar">
 
+            <button class="game-back">
+              ← Games
+            </button>
 
-    if (!username || !password) {
+            <h2>🎯 Catch NEXUS</h2>
 
-      error.textContent =
-        "Enter your username and password.";
+            <span>
+              Score:
+              <strong id="gameScore">0</strong>
+            </span>
 
-      return;
-    }
+          </div>
 
+          <button id="startGameButton" class="primary-button">
+            ▶ Start Game
+          </button>
 
-    const key =
-      username.toLowerCase();
+          <div id="gameArea" class="game-area">
 
+            <button
+              id="gameTarget"
+              class="game-target"
+              style="display:none;"
+            >
+              N
+            </button>
 
-    const account =
-      accounts[key];
+          </div>
 
+          <p id="gameMessage" class="game-message">
+            Press Start Game!
+          </p>
 
-    if (!account) {
+        </div>
 
-      error.textContent =
-        "No NEXUS account was found.";
 
-      return;
-    }
+        <!-- CLICK RUSH -->
 
+        <div id="clickGameScreen" class="game-screen hidden">
 
-    const passwordHash =
-      await hashPassword(password);
+          <div class="game-topbar">
 
+            <button class="game-back">
+              ← Games
+            </button>
 
-    if (
-      passwordHash !==
-      account.passwordHash
-    ) {
+            <h2>⚡ Click Rush</h2>
 
-      error.textContent =
-        "Incorrect password.";
+            <span>
+              Score:
+              <strong id="clickScore">0</strong>
+            </span>
 
-      return;
-    }
+          </div>
 
+          <button id="startClick" class="primary-button">
+            ▶ Start
+          </button>
 
-    localStorage.setItem(
-      SESSION_KEY,
-      key
-    );
+          <button
+            id="clickButton"
+            class="big-game-button"
+            disabled
+          >
+            CLICK!
+          </button>
 
+          <p id="clickMessage">
+            Click as fast as you can!
+          </p>
 
-    passwordInput.value = "";
+        </div>
 
 
-    loginUser(key);
-  }
+        <!-- MEMORY -->
 
+        <div id="memoryGameScreen" class="game-screen hidden">
 
-  /* =========================================================
-     LOGIN USER
-  ========================================================= */
+          <div class="game-topbar">
 
-  function loginUser(usernameKey) {
+            <button class="game-back">
+              ← Games
+            </button>
 
-    currentUser =
-      accounts[usernameKey];
+            <h2>🧠 Memory Match</h2>
 
+            <span>
+              Moves:
+              <strong id="memoryMoves">0</strong>
+            </span>
 
-    if (!currentUser) {
+          </div>
 
-      showLogin();
+          <button id="startMemory" class="primary-button">
+            ▶ New Game
+          </button>
 
-      return;
-    }
+          <div
+            id="memoryBoard"
+            class="memory-board"
+          ></div>
 
+          <p id="memoryMessage">
+            Match all the pairs!
+          </p>
 
-    const authScreen = $("authScreen");
-    const desktop = $("desktop");
+        </div>
 
-    if (authScreen)
-      authScreen.classList.add("hidden");
 
-    if (desktop)
-      desktop.classList.remove("hidden");
+        <!-- SNAKE -->
 
+        <div id="snakeGameScreen" class="game-screen hidden">
 
-    applyUserSettings();
+          <div class="game-topbar">
 
-    renderFiles();
+            <button class="game-back">
+              ← Games
+            </button>
 
-    showNotification(
-      "NEXUS Ready",
-      `Welcome, ${currentUser.username}!`
-    );
-  }
+            <h2>🐍 Snake</h2>
 
+            <span>
+              Score:
+              <strong id="snakeScore">0</strong>
+            </span>
 
-  /* =========================================================
-     RESTORE SESSION
-  ========================================================= */
+          </div>
 
-  function restoreSession() {
+          <button id="startSnake" class="primary-button">
+            ▶ Start Snake
+          </button>
 
-    loadAccounts();
+          <canvas
+            id="snakeCanvas"
+            width="400"
+            height="400"
+          ></canvas>
 
+          <p id="snakeMessage">
+            Use the arrow keys to move.
+          </p>
 
-    const session =
-      localStorage.getItem(
-        SESSION_KEY
-      );
+        </div>
 
+      </div>
 
-    if (
-      session &&
-      Object.prototype.hasOwnProperty.call(
-        accounts,
-        session
-      )
-    ) {
+    </section>
 
-      loginUser(session);
 
-    } else {
+    <!-- =====================================================
+         NEXUS BROWSER
+    ====================================================== -->
 
-      if ($("authScreen"))
-        $("authScreen").classList.remove("hidden");
+    <section id="browserWindow" class="app-window">
 
-      if ($("desktop"))
-        $("desktop").classList.add("hidden");
+      <header class="window-header">
 
-      showLogin();
-    }
-  }
+        <span id="browserTabTitle">
+          🌐 NEXUS Browser
+        </span>
 
+        <div class="window-controls">
+          <button
+            id="newBrowserTab"
+            title="New Tab"
+          >
+            ＋
+          </button>
 
-  /* =========================================================
-     LOGOUT
-  ========================================================= */
+          <button
+            id="closeBrowserTab"
+            title="Close Tab"
+          >
+            ×
+          </button>
+        </div>
 
-  function logout() {
+      </header>
 
-    localStorage.removeItem(
-      SESSION_KEY
-    );
+      <div class="browser-content">
 
-    currentUser = null;
+        <div class="browser-toolbar">
 
-    closeAllWindows();
+          <button id="browserBack" title="Back">
+            ←
+          </button>
 
+          <button id="browserForward" title="Forward">
+            →
+          </button>
 
-    if ($("desktop"))
-      $("desktop").classList.add("hidden");
+          <button id="browserReload" title="Reload">
+            ↻
+          </button>
 
-    if ($("authScreen"))
-      $("authScreen").classList.remove("hidden");
+          <button id="browserHome" title="Home">
+            🏠
+          </button>
 
+          <input
+            id="browserAddress"
+            type="text"
+            placeholder="Search or enter a web address"
+            autocomplete="off"
+          >
 
-    if ($("loginUsername"))
-      $("loginUsername").value = "";
+          <button id="browserFavorite" title="Favorite">
+            ☆
+          </button>
 
-    if ($("loginPassword"))
-      $("loginPassword").value = "";
+          <button id="openExternalButton">
+            ↗
+          </button>
 
+        </div>
 
-    showLogin();
-  }
+        <div class="browser-main">
 
+          <aside
+            id="browserHistoryPanel"
+            class="browser-history-panel hidden"
+          >
 
-  /* =========================================================
-     SAVE CURRENT USER
-  ========================================================= */
+            <h3>History</h3>
 
-  function saveCurrentUser() {
+            <div id="historyList"></div>
 
-    if (!currentUser)
-      return;
+          </aside>
 
+          <div class="browser-page">
 
-    const key =
-      currentUser.username.toLowerCase();
+            <div id="browserHomePage" class="browser-home-page">
 
+              <div class="browser-logo">
+                N
+              </div>
 
-    accounts[key] =
-      currentUser;
+              <h1>NEXUS Browser</h1>
 
+              <p>
+                Search the web or enter a website address.
+              </p>
 
-    saveAccounts();
-  }
+              <input
+                id="browserHomeSearch"
+                type="text"
+                placeholder="Search the web..."
+              >
 
+              <div class="browser-shortcuts">
 
-  /* =========================================================
-     USER SETTINGS
-  ========================================================= */
+                <button data-url="https://www.google.com">
+                  Google
+                </button>
 
-  function applyUserSettings() {
+                <button data-url="https://www.bing.com">
+                  Bing
+                </button>
 
-    if (!currentUser)
-      return;
+                <button data-url="https://www.wikipedia.org">
+                  Wikipedia
+                </button>
 
+              </div>
 
-    if ($("settingsUsername"))
-      $("settingsUsername").textContent =
-        currentUser.username;
+            </div>
 
 
-    if ($("settingsAccountInfo"))
-      $("settingsAccountInfo").textContent =
-        "Local NEXUS account";
+            <div
+              id="browserBlocked"
+              class="browser-blocked hidden"
+            >
 
+              <div class="blocked-icon">
+                ⚠️
+              </div>
 
-    if ($("startUsername"))
-      $("startUsername").textContent =
-        currentUser.username;
+              <h2>This website can't be displayed here</h2>
 
+              <p>
+                Some websites block embedded browsers.
+                You can open the page in a new browser tab.
+              </p>
 
-    applyTheme(
-      currentUser.theme || "dark"
-    );
+              <button id="openBlockedExternal">
+                ↗ Open Externally
+              </button>
 
+            </div>
 
-    applyWallpaper(
-      currentUser.wallpaper || "default"
-    );
 
+            <iframe
+              id="browserFrame"
+              title="NEXUS Browser"
+              class="browser-frame hidden"
+              sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
+            ></iframe>
 
-    if ($("notesArea"))
-      $("notesArea").value =
-        currentUser.notes || "";
-  }
+          </div>
 
+        </div>
 
-  /* =========================================================
-     THEME
-  ========================================================= */
+      </div>
 
-  function applyTheme(theme) {
+    </section>
 
-    if (!document.body)
-      return;
 
+    <!-- =====================================================
+         SETTINGS
+    ====================================================== -->
 
-    if (theme === "light") {
+    <section id="settingsWindow" class="app-window">
 
-      document.body.classList.add(
-        "light-theme"
-      );
+      <header class="window-header">
 
-    } else {
+        <span>⚙️ Settings</span>
 
-      document.body.classList.remove(
-        "light-theme"
-      );
-    }
-  }
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
 
+      </header>
 
-  function setTheme(theme) {
+      <div class="window-content settings-content">
 
-    if (!currentUser)
-      return;
+        <div class="settings-profile">
 
+          <div class="profile-avatar">
+            👤
+          </div>
 
-    currentUser.theme =
-      theme;
+          <div>
 
+            <h2 id="settingsUsername">
+              User
+            </h2>
 
-    applyTheme(theme);
+            <p id="settingsAccountInfo">
+              Local NEXUS account
+            </p>
 
-    saveCurrentUser();
+          </div>
 
+        </div>
 
-    showNotification(
-      "Theme Changed",
-      theme === "light"
-        ? "Light theme enabled."
-        : "Dark theme enabled."
-    );
-  }
 
+        <div class="settings-section">
 
-  /* =========================================================
-     WALLPAPER
-  ========================================================= */
+          <h3>Appearance</h3>
 
-  function applyWallpaper(name) {
+          <div class="settings-buttons">
 
-    const wallpaper =
-      $("wallpaper");
+            <button id="darkThemeButton">
+              🌙 Dark Theme
+            </button>
 
+            <button id="lightThemeButton">
+              ☀️ Light Theme
+            </button>
 
-    if (!wallpaper)
-      return;
+          </div>
 
+        </div>
 
-    wallpaper.className =
-      "wallpaper";
 
+        <div class="settings-section">
 
-    if (
-      name &&
-      name !== "default"
-    ) {
+          <h3>Wallpaper</h3>
 
-      wallpaper.classList.add(
-        name
-      );
-    }
-  }
+          <div class="settings-buttons">
 
+            <button data-wallpaper="default">
+              🌌 NEXUS
+            </button>
 
-  function setWallpaper(name) {
+            <button data-wallpaper="purple">
+              🟣 Purple
+            </button>
 
-    if (!currentUser)
-      return;
+            <button data-wallpaper="blue">
+              🔵 Blue
+            </button>
 
+            <button data-wallpaper="green">
+              🟢 Green
+            </button>
 
-    currentUser.wallpaper =
-      name;
+          </div>
 
+        </div>
 
-    applyWallpaper(name);
 
-    saveCurrentUser();
+        <div class="settings-section">
 
+          <h3>Account</h3>
 
-    showNotification(
-      "Wallpaper Changed",
-      "Your wallpaper has been updated."
-    );
-  }
+          <button id="logoutButton">
+            🚪 Log Out
+          </button>
 
+          <button id="deleteAccountButton" class="danger-button">
+            🗑️ Delete Account
+          </button>
 
-  /* =========================================================
-     DELETE ACCOUNT
-  ========================================================= */
+        </div>
 
-  function deleteAccount() {
+      </div>
 
-    if (!currentUser)
-      return;
+    </section>
 
 
-    const confirmed =
-      confirm(
-        `Delete the NEXUS account "${currentUser.username}"? This cannot be undone.`
-      );
+    <!-- =====================================================
+         ABOUT
+    ====================================================== -->
 
+    <section id="aboutWindow" class="app-window">
 
-    if (!confirmed)
-      return;
+      <header class="window-header">
 
+        <span>💠 About NEXUS</span>
 
-    const key =
-      currentUser.username.toLowerCase();
+        <div class="window-controls">
+          <button class="minimize-button">−</button>
+          <button class="close-button">×</button>
+        </div>
 
+      </header>
 
-    delete accounts[key];
+      <div class="window-content about-content">
 
-    saveAccounts();
+        <div class="about-logo">
+          N
+        </div>
 
+        <h1>NEXUS</h1>
 
-    localStorage.removeItem(
-      SESSION_KEY
-    );
+        <p class="about-version">
+          Version 1.4
+        </p>
 
+        <p>
+          A browser-based mini operating system.
+        </p>
 
-    currentUser = null;
+        <div class="feature-list">
 
-    selectedFile = null;
+          <div>🔐 Firebase-free local accounts</div>
+          <div>🌐 NEXUS Browser</div>
+          <div>📝 Notepad</div>
+          <div>🧮 Calculator</div>
+          <div>📁 File Manager</div>
+          <div>🎨 Paint</div>
+          <div>🎮 Game Center</div>
+          <div>⚙️ Settings</div>
 
+        </div>
 
-    closeAllWindows();
+        <p class="about-footer">
+          Built with HTML, CSS and JavaScript.
+        </p>
 
+      </div>
 
-    if ($("desktop"))
-      $("desktop").classList.add("hidden");
+    </section>
 
-    if ($("authScreen"))
-      $("authScreen").classList.remove("hidden");
 
+    <!-- =====================================================
+         START MENU
+    ====================================================== -->
 
-    showLogin();
+    <aside id="startMenu" class="start-menu hidden">
 
+      <div class="start-header">
 
-    showNotification(
-      "Account Deleted",
-      "Your local NEXUS account was deleted."
-    );
-  }
+        <div class="profile-avatar">
+          👤
+        </div>
 
+        <div>
 
-  /* =========================================================
-     OPEN APP
-  ========================================================= */
+          <strong id="startUsername">
+            User
+          </strong>
 
-  function openApp(appID) {
+          <small>NEXUS User</small>
 
-    const windowElement =
-      $(appID);
+        </div>
 
+      </div>
 
-    if (!windowElement)
-      return;
 
+      <div class="start-apps">
 
-    qsa(".app-window")
-      .forEach(win => {
+        <button data-app="notepadWindow">
+          📝 Notepad
+        </button>
 
-        win.classList.remove(
-          "open"
-        );
+        <button data-app="calculatorWindow">
+          🧮 Calculator
+        </button>
 
-      });
+        <button data-app="filesWindow">
+          📁 Files
+        </button>
 
+        <button data-app="paintWindow">
+          🎨 Paint
+        </button>
 
-    windowElement.classList.add(
-      "open"
-    );
+        <button data-app="gameWindow">
+          🎮 Game Center
+        </button>
 
+        <button data-app="browserWindow">
+          🌐 NEXUS Browser
+        </button>
 
-    if ($("startMenu"))
-      $("startMenu").classList.add(
-        "hidden"
-      );
+        <button data-app="settingsWindow">
+          ⚙️ Settings
+        </button>
 
+        <button data-app="aboutWindow">
+          💠 About
+        </button>
 
-    updateTaskbar();
+      </div>
 
 
-    if (appID === "filesWindow")
-      renderFiles();
+      <div class="start-footer">
 
+        <button id="startLogoutButton">
+          🚪 Log Out
+        </button>
 
-    if (appID === "paintWindow")
-      prepareCanvas();
+      </div>
 
+    </aside>
 
-    if (appID === "gameWindow") {
-      const target = $("gameTarget");
 
-      if (target && !gameRunning) {
-        target.style.display = "none";
-      }
-    }
-  }
+    <!-- =====================================================
+         TASKBAR
+    ====================================================== -->
 
+    <footer class="taskbar">
 
-  /* =========================================================
-     CLOSE APP
-  ========================================================= */
+      <button
+        id="startButton"
+        class="start-button"
+        title="Start"
+      >
+        ◈
+        <span>NEXUS</span>
+      </button>
 
-  function closeApp(windowElement) {
+      <div
+        id="taskbarApps"
+        class="taskbar-apps"
+      ></div>
 
-    if (!windowElement)
-      return;
+      <div class="taskbar-right">
 
+        <div
+          id="taskbarUser"
+          class="taskbar-user"
+        >
+          👤
+        </div>
 
-    windowElement.classList.remove(
-      "open"
-    );
+        <div
+          id="clock"
+          class="clock"
+        >
+          00:00
+        </div>
 
+      </div>
 
-    updateTaskbar();
-  }
+    </footer>
 
 
-  function closeAllWindows() {
+    <!-- =====================================================
+         NOTIFICATION
+    ====================================================== -->
 
-    qsa(".app-window")
-      .forEach(win => {
+    <div
+      id="notification"
+      class="notification hidden"
+    >
 
-        win.classList.remove(
-          "open"
-        );
+      <div class="notification-icon">
+        ◈
+      </div>
 
-      });
+      <div>
 
+        <strong id="notificationTitle">
+          NEXUS
+        </strong>
 
-    updateTaskbar();
-  }
+        <p id="notificationMessage">
+          Ready.
+        </p>
 
+      </div>
 
-  /* =========================================================
-     TASKBAR
-  ========================================================= */
+    </div>
 
-  function updateTaskbar() {
 
-    const container =
-      $("taskbarApps");
+  </main>
 
 
-    if (!container)
-      return;
+  <!-- =======================================================
+       JAVASCRIPT
+  ======================================================== -->
 
+  <script src="script.js"></script>
 
-    container.innerHTML = "";
-
-
-    qsa(".app-window.open")
-      .forEach(win => {
-
-        const button =
-          document.createElement(
-            "button"
-          );
-
-
-        button.className =
-          "taskbar-app";
-
-
-        const title =
-          win.querySelector(
-            ".window-header span"
-          );
-
-
-        button.textContent =
-          title
-            ? title.textContent
-            : "App";
-
-
-        button.addEventListener(
-          "click",
-          () => {
-
-            win.classList.toggle(
-              "open"
-            );
-
-            updateTaskbar();
-          }
-        );
-
-
-        container.appendChild(
-          button
-        );
-      });
-  }
-
-
-  /* =========================================================
-     START MENU
-  ========================================================= */
-
-  function toggleStartMenu() {
-
-    const menu =
-      $("startMenu");
-
-
-    if (!menu)
-      return;
-
-
-    menu.classList.toggle(
-      "hidden"
-    );
-  }
-
-
-  /* =========================================================
-     CLOCK
-  ========================================================= */
-
-  function updateClock() {
-
-    const clock =
-      $("clock");
-
-
-    if (!clock)
-      return;
-
-
-    const now =
-      new Date();
-
-
-    const hours =
-      String(
-        now.getHours()
-      ).padStart(2, "0");
-
-
-    const minutes =
-      String(
-        now.getMinutes()
-      ).padStart(2, "0");
-
-
-    clock.textContent =
-      `${hours}:${minutes}`;
-  }
-
-
-  /* =========================================================
-     NOTIFICATIONS
-  ========================================================= */
-
-  function showNotification(
-    title,
-    message
-  ) {
-
-    const notification =
-      $("notification");
-
-    const titleElement =
-      $("notificationTitle");
-
-    const messageElement =
-      $("notificationMessage");
-
-
-    if (
-      !notification ||
-      !titleElement ||
-      !messageElement
-    )
-      return;
-
-
-    titleElement.textContent =
-      title;
-
-    messageElement.textContent =
-      message;
-
-
-    notification.classList.remove(
-      "hidden"
-    );
-
-
-    clearTimeout(
-      notificationTimer
-    );
-
-
-    notificationTimer =
-      setTimeout(() => {
-
-        notification.classList.add(
-          "hidden"
-        );
-
-      }, 3000);
-  }
-
-
-  /* =========================================================
-     NOTEPAD
-  ========================================================= */
-
-  function setupNotepad() {
-
-    const notes =
-      $("notesArea");
-
-
-    if (!notes)
-      return;
-
-
-    notes.addEventListener(
-      "input",
-      () => {
-
-        if (!currentUser)
-          return;
-
-
-        if ($("notesStatus"))
-          $("notesStatus").textContent =
-            "Saving...";
-
-
-        clearTimeout(
-          saveNotesTimer
-        );
-
-
-        saveNotesTimer =
-          setTimeout(() => {
-
-            if (!currentUser)
-              return;
-
-
-            currentUser.notes =
-              notes.value;
-
-
-            saveCurrentUser();
-
-
-            if ($("notesStatus"))
-              $("notesStatus").textContent =
-                "Saved";
-
-          }, 500);
-      }
-    );
-
-
-    if ($("clearNotesButton")) {
-
-      $("clearNotesButton")
-        .addEventListener(
-          "click",
-          () => {
-
-            if (!currentUser)
-              return;
-
-
-            notes.value = "";
-
-            currentUser.notes = "";
-
-            saveCurrentUser();
-
-
-            if ($("notesStatus"))
-              $("notesStatus").textContent =
-                "Saved";
-          }
-        );
-    }
-  }
-
-
-  /* =========================================================
-     CALCULATOR
-  ========================================================= */
-
-  function setupCalculator() {
-
-    qsa("[data-calc]")
-      .forEach(button => {
-
-        button.addEventListener(
-          "click",
-          () => {
-
-            const value =
-              button.dataset.calc;
-
-
-            if (value === "clear") {
-
-              calculatorValue = "";
-            }
-
-
-            else if (
-              value === "backspace"
-            ) {
-
-              calculatorValue =
-                calculatorValue.slice(
-                  0,
-                  -1
-                );
-            }
-
-
-            else if (
-              value === "="
-            ) {
-
-              try {
-
-                if (
-                  !/^[0-9+\-*/().\s]+$/
-                    .test(
-                      calculatorValue
-                    )
-                ) {
-                  throw new Error();
-                }
-
-
-                const result =
-                  Function(
-                    `"use strict"; return (${calculatorValue})`
-                  )();
-
-
-                if (
-                  typeof result !== "number" ||
-                  !Number.isFinite(result)
-                ) {
-                  throw new Error();
-                }
-
-
-                calculatorValue =
-                  String(result);
-
-              } catch {
-
-                calculatorValue =
-                  "Error";
-              }
-            }
-
-
-            else {
-
-              if (
-                calculatorValue ===
-                "Error"
-              ) {
-
-                calculatorValue = "";
-              }
-
-
-              calculatorValue +=
-                value;
-            }
-
-
-            if ($("calculatorDisplay"))
-              $("calculatorDisplay").value =
-                calculatorValue;
-          }
-        );
-      });
-  }
-
-
-  /* =========================================================
-     FILE MANAGER
-  ========================================================= */
-
-  function renderFiles() {
-
-    if (!currentUser)
-      return;
-
-
-    const list =
-      $("fileList");
-
-
-    if (!list)
-      return;
-
-
-    list.innerHTML = "";
-
-
-    if (!currentUser.files)
-      currentUser.files = {};
-
-
-    Object.keys(
-      currentUser.files
-    )
-      .forEach(filename => {
-
-        const item =
-          document.createElement(
-            "div"
-          );
-
-
-        item.className =
-          "file-item";
-
-
-        if (
-          selectedFile === filename
-        ) {
-
-          item.classList.add(
-            "selected"
-          );
-        }
-
-
-        item.textContent =
-          `📄 ${filename}`;
-
-
-        item.addEventListener(
-          "click",
-          () => {
-
-            selectedFile =
-              filename;
-
-
-            if ($("fileEditor"))
-              $("fileEditor").value =
-                currentUser.files[
-                  filename
-                ];
-
-
-            renderFiles();
-          }
-        );
-
-
-        list.appendChild(
-          item
-        );
-      });
-  }
-
-
-  function createFile() {
-
-    if (!currentUser)
-      return;
-
-
-    const filename =
-      prompt(
-        "Enter a name for your new file:"
-      );
-
-
-    if (!filename)
-      return;
-
-
-    const cleanName =
-      filename.trim();
-
-
-    if (!cleanName)
-      return;
-
-
-    if (
-      Object.prototype.hasOwnProperty.call(
-        currentUser.files,
-        cleanName
-      )
-    ) {
-
-      showNotification(
-        "File Exists",
-        "A file with that name already exists."
-      );
-
-      return;
-    }
-
-
-    currentUser.files[
-      cleanName
-    ] = "";
-
-
-    selectedFile =
-      cleanName;
-
-
-    if ($("fileEditor"))
-      $("fileEditor").value = "";
-
-
-    saveCurrentUser();
-
-    renderFiles();
-
-
-    showNotification(
-      "File Created",
-      cleanName
-    );
-  }
-
-
-  function saveFile() {
-
-    if (
-      !currentUser ||
-      !selectedFile
-    ) {
-
-      showNotification(
-        "No File Selected",
-        "Select a file first."
-      );
-
-      return;
-    }
-
-
-    currentUser.files[
-      selectedFile
-    ] =
-      $("fileEditor")
-        ? $("fileEditor").value
-        : "";
-
-
-    saveCurrentUser();
-
-    renderFiles();
-
-
-    showNotification(
-      "File Saved",
-      selectedFile
-    );
-  }
-
-
-  function deleteFile() {
-
-    if (
-      !currentUser ||
-      !selectedFile
-    ) {
-
-      showNotification(
-        "No File Selected",
-        "Select a file first."
-      );
-
-      return;
-    }
-
-
-    const confirmed =
-      confirm(
-        `Delete "${selectedFile}"?`
-      );
-
-
-    if (!confirmed)
-      return;
-
-
-    delete currentUser.files[
-      selectedFile
-    ];
-
-
-    selectedFile = null;
-
-
-    if ($("fileEditor"))
-      $("fileEditor").value = "";
-
-
-    saveCurrentUser();
-
-    renderFiles();
-
-
-    showNotification(
-      "File Deleted",
-      "The file was deleted."
-    );
-  }
-
-
-  /* =========================================================
-     PAINT
-  ========================================================= */
-
-  let canvas = null;
-  let ctx = null;
-  let drawing = false;
-
-
-  function prepareCanvas() {
-
-    canvas =
-      $("paintCanvas");
-
-
-    if (!canvas)
-      return;
-
-
-    if (!ctx)
-      ctx =
-        canvas.getContext("2d");
-  }
-
-
-  function canvasPosition(event) {
-
-    if (!canvas)
-      return {
-        x: 0,
-        y: 0
-      };
-
-
-    const rect =
-      canvas.getBoundingClientRect();
-
-
-    return {
-
-      x:
-        (event.clientX - rect.left) *
-        (canvas.width / rect.width),
-
-      y:
-        (event.clientY - rect.top) *
-        (canvas.height / rect.height)
-    };
-  }
-
-
-  function setupPaint() {
-
-    prepareCanvas();
-
-
-    if (!canvas || !ctx)
-      return;
-
-
-    canvas.addEventListener(
-      "pointerdown",
-      event => {
-
-        drawing = true;
-
-
-        const pos =
-          canvasPosition(event);
-
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-          pos.x,
-          pos.y
-        );
-      }
-    );
-
-
-    canvas.addEventListener(
-      "pointermove",
-      event => {
-
-        if (!drawing)
-          return;
-
-
-        const pos =
-          canvasPosition(event);
-
-
-        ctx.lineWidth =
-          Number(
-            $("brushSize")
-              ? $("brushSize").value
-              : 5
-          );
-
-
-        ctx.lineCap =
-          "round";
-
-
-        ctx.strokeStyle =
-          "#000000";
-
-
-        ctx.lineTo(
-          pos.x,
-          pos.y
-        );
-
-
-        ctx.stroke();
-      }
-    );
-
-
-    const stopDrawing =
-      () => {
-        drawing = false;
-      };
-
-
-    canvas.addEventListener(
-      "pointerup",
-      stopDrawing
-    );
-
-
-    canvas.addEventListener(
-      "pointerleave",
-      stopDrawing
-    );
-
-
-    canvas.addEventListener(
-      "contextmenu",
-      event => {
-        event.preventDefault();
-      }
-    );
-  }
-
-
-  function clearCanvas() {
-
-    prepareCanvas();
-
-    if (!canvas || !ctx)
-      return;
-
-
-    ctx.clearRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-  }
-
-
-  function saveDrawing() {
-
-    prepareCanvas();
-
-    if (!canvas)
-      return;
-
-
-    const image =
-      canvas.toDataURL(
-        "image/png"
-      );
-
-
-    const link =
-      document.createElement(
-        "a"
-      );
-
-
-    link.href =
-      image;
-
-
-    link.download =
-      "nexus-drawing.png";
-
-
-    link.click();
-  }
-
-
-  /* =========================================================
-     CATCH NEXUS GAME
-  ========================================================= */
-
-  function moveGameTarget() {
-
-    const area =
-      $("gameArea");
-
-    const target =
-      $("gameTarget");
-
-
-    if (!area || !target)
-      return;
-
-
-    const maxX =
-      Math.max(
-        0,
-        area.clientWidth -
-        target.offsetWidth
-      );
-
-
-    const maxY =
-      Math.max(
-        0,
-        area.clientHeight -
-        target.offsetHeight
-      );
-
-
-    target.style.left =
-      Math.random() *
-      maxX +
-      "px";
-
-
-    target.style.top =
-      Math.random() *
-      maxY +
-      "px";
-  }
-
-
-  function startGame() {
-
-    const target =
-      $("gameTarget");
-
-    if (!target)
-      return;
-
-
-    clearInterval(
-      gameTimer
-    );
-
-
-    gameScore = 0;
-
-    gameRunning = true;
-
-
-    if ($("gameScore"))
-      $("gameScore").textContent =
-        "0";
-
-
-    target.style.display =
-      "block";
-
-
-    if ($("gameMessage"))
-      $("gameMessage").textContent =
-        "";
-
-
-    moveGameTarget();
-
-
-    showNotification(
-      "Game Started",
-      "Catch the N!"
-    );
-
-
-    gameTimer =
-      setTimeout(() => {
-
-        gameRunning = false;
-
-
-        target.style.display =
-          "none";
-
-
-        if ($("gameMessage"))
-          $("gameMessage").textContent =
-            `Time's up! Score: ${gameScore}`;
-
-
-        if (
-          currentUser &&
-          gameScore >
-          (currentUser.highScore || 0)
-        ) {
-
-          currentUser.highScore =
-            gameScore;
-
-
-          saveCurrentUser();
-
-
-          showNotification(
-            "New High Score!",
-            `${gameScore} points!`
-          );
-        }
-
-      }, 30000);
-  }
-
-
-  function catchTarget() {
-
-    if (!gameRunning)
-      return;
-
-
-    gameScore++;
-
-
-    if ($("gameScore"))
-      $("gameScore").textContent =
-        gameScore;
-
-
-    moveGameTarget();
-  }
-
-
-  /* =========================================================
-     EVENT LISTENERS
-  ========================================================= */
-
-  /* AUTH */
-
-  if ($("loginButton")) {
-    $("loginButton").addEventListener(
-      "click",
-      login
-    );
-  }
-
-
-  if ($("signupButton")) {
-    $("signupButton").addEventListener(
-      "click",
-      signup
-    );
-  }
-
-
-  if ($("showSignupButton")) {
-    $("showSignupButton").addEventListener(
-      "click",
-      showSignup
-    );
-  }
-
-
-  if ($("showLoginButton")) {
-    $("showLoginButton").addEventListener(
-      "click",
-      showLogin
-    );
-  }
-
-
-  if ($("forgotPasswordButton")) {
-
-    $("forgotPasswordButton")
-      .addEventListener(
-        "click",
-        () => {
-
-          showNotification(
-            "Password Reset",
-            "Because NEXUS stores accounts locally, password recovery is not available yet."
-          );
-        }
-      );
-  }
-
-
-  /* ENTER KEY LOGIN */
-
-  if ($("loginPassword")) {
-
-    $("loginPassword")
-      .addEventListener(
-        "keydown",
-        event => {
-
-          if (
-            event.key === "Enter"
-          ) {
-            login();
-          }
-        }
-      );
-  }
-
-
-  /* ENTER KEY SIGNUP */
-
-  if ($("signupPasswordConfirm")) {
-
-    $("signupPasswordConfirm")
-      .addEventListener(
-        "keydown",
-        event => {
-
-          if (
-            event.key === "Enter"
-          ) {
-            signup();
-          }
-        }
-      );
-  }
-
-
-  /* DESKTOP APPS */
-
-  qsa("[data-app]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          openApp(
-            button.dataset.app
-          );
-        }
-      );
-    });
-
-
-  /* WINDOW CLOSE */
-
-  qsa(".close-button")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          closeApp(
-            button.closest(
-              ".app-window"
-            )
-          );
-        }
-      );
-    });
-
-
-  /* WINDOW MINIMIZE */
-
-  qsa(".minimize-button")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const win =
-            button.closest(
-              ".app-window"
-            );
-
-
-          if (win)
-            win.classList.remove(
-              "open"
-            );
-
-
-          updateTaskbar();
-        }
-      );
-    });
-
-
-  /* START BUTTON */
-
-  if ($("startButton")) {
-
-    $("startButton")
-      .addEventListener(
-        "click",
-        toggleStartMenu
-      );
-  }
-
-
-  /* START LOGOUT */
-
-  if ($("startLogoutButton")) {
-
-    $("startLogoutButton")
-      .addEventListener(
-        "click",
-        logout
-      );
-  }
-
-
-  /* SETTINGS */
-
-  if ($("darkThemeButton")) {
-
-    $("darkThemeButton")
-      .addEventListener(
-        "click",
-        () => setTheme("dark")
-      );
-  }
-
-
-  if ($("lightThemeButton")) {
-
-    $("lightThemeButton")
-      .addEventListener(
-        "click",
-        () => setTheme("light")
-      );
-  }
-
-
-  qsa("[data-wallpaper]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          setWallpaper(
-            button.dataset.wallpaper
-          );
-        }
-      );
-    });
-
-
-  if ($("logoutButton")) {
-
-    $("logoutButton")
-      .addEventListener(
-        "click",
-        logout
-      );
-  }
-
-
-  if ($("deleteAccountButton")) {
-
-    $("deleteAccountButton")
-      .addEventListener(
-        "click",
-        deleteAccount
-      );
-  }
-
-
-  /* FILE MANAGER */
-
-  if ($("newFileButton")) {
-
-    $("newFileButton")
-      .addEventListener(
-        "click",
-        createFile
-      );
-  }
-
-
-  if ($("saveFileButton")) {
-
-    $("saveFileButton")
-      .addEventListener(
-        "click",
-        saveFile
-      );
-  }
-
-
-  if ($("deleteFileButton")) {
-
-    $("deleteFileButton")
-      .addEventListener(
-        "click",
-        deleteFile
-      );
-  }
-
-
-  /* PAINT */
-
-  setupPaint();
-
-
-  if ($("clearCanvasButton")) {
-
-    $("clearCanvasButton")
-      .addEventListener(
-        "click",
-        clearCanvas
-      );
-  }
-
-
-  if ($("saveDrawingButton")) {
-
-    $("saveDrawingButton")
-      .addEventListener(
-        "click",
-        saveDrawing
-      );
-  }
-
-
-  /* GAME */
-
-  if ($("gameTarget")) {
-
-    $("gameTarget")
-      .addEventListener(
-        "click",
-        catchTarget
-      );
-  }
-
-
-  if ($("startGameButton")) {
-
-    $("startGameButton")
-      .addEventListener(
-        "click",
-        startGame
-      );
-  }
-
-
-  /* NOTEPAD */
-
-  setupNotepad();
-
-
-  /* CALCULATOR */
-
-  setupCalculator();
-
-
-  /* CLOCK */
-
-  updateClock();
-
-  setInterval(
-    updateClock,
-    1000
-  );
-
-
-  /* =========================================================
-     KEYBOARD SHORTCUTS
-  ========================================================= */
-
-  document.addEventListener(
-    "keydown",
-    event => {
-
-      /*
-        Escape closes the start menu.
-      */
-
-      if (
-        event.key === "Escape"
-      ) {
-
-        if ($("startMenu"))
-          $("startMenu").classList.add(
-            "hidden"
-          );
-      }
-
-
-      /*
-        Ctrl + L logs out.
-      */
-
-      if (
-        event.ctrlKey &&
-        event.key.toLowerCase() === "l"
-      ) {
-
-        /*
-          Do not interfere with browser
-          address-bar shortcut.
-        */
-
-        event.preventDefault();
-
-        if (currentUser)
-          logout();
-      }
-    }
-  );
-
-
-  /* =========================================================
-     START NEXUS
-  ========================================================= */
-
-  loadAccounts();
-
-  boot();
-
-});
+</body>
+</html>
