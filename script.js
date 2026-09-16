@@ -1,92 +1,411 @@
 /* =========================================================
-   NEXUS OS v1.0
-   Main JavaScript
+   NEXUS OS v1.1
 ========================================================= */
 
 
 /* =========================================================
-   BOOT SCREEN
+   PASSWORD SYSTEM
 ========================================================= */
 
-let loading = 0;
+const passwordScreen =
+    document.getElementById("passwordScreen");
 
-const loadingProgress = document.getElementById("loadingProgress");
-const bootScreen = document.getElementById("bootScreen");
+const passwordSetup =
+    document.getElementById("passwordSetup");
 
-const bootInterval = setInterval(() => {
+const passwordLogin =
+    document.getElementById("passwordLogin");
 
-    loading += 5;
+const passwordTitle =
+    document.getElementById("passwordTitle");
 
-    loadingProgress.style.width = loading + "%";
+const passwordError =
+    document.getElementById("passwordError");
 
-    if (loading >= 100) {
 
-        clearInterval(bootInterval);
+function hasPassword() {
 
-        setTimeout(() => {
-            bootScreen.style.display = "none";
-        }, 500);
+    return localStorage.getItem("nexus_password") !== null;
+
+}
+
+
+function setupPasswordScreen() {
+
+    if (hasPassword()) {
+
+        passwordSetup.style.display = "none";
+        passwordLogin.style.display = "flex";
+
+        passwordTitle.textContent =
+            "Enter your password to continue";
+
+    } else {
+
+        passwordSetup.style.display = "flex";
+        passwordLogin.style.display = "none";
+
+        passwordTitle.textContent =
+            "Create your NEXUS password";
 
     }
 
-}, 80);
+}
+
+
+function createPassword() {
+
+    const password =
+        document.getElementById("newPassword").value;
+
+    const confirm =
+        document.getElementById("confirmPassword").value;
+
+
+    passwordError.textContent = "";
+
+
+    if (password.length < 4) {
+
+        passwordError.textContent =
+            "Password must be at least 4 characters.";
+
+        return;
+
+    }
+
+
+    if (password !== confirm) {
+
+        passwordError.textContent =
+            "Passwords do not match.";
+
+        return;
+
+    }
+
+
+    localStorage.setItem(
+        "nexus_password",
+        password
+    );
+
+
+    document.getElementById("newPassword").value = "";
+    document.getElementById("confirmPassword").value = "";
+
+    startNexus();
+
+}
+
+
+function unlockNexus() {
+
+    const entered =
+        document.getElementById("passwordInput").value;
+
+    const saved =
+        localStorage.getItem("nexus_password");
+
+
+    if (entered === saved) {
+
+        document.getElementById("passwordInput").value = "";
+
+        passwordError.textContent = "";
+
+        startNexus();
+
+    } else {
+
+        passwordError.textContent =
+            "❌ Incorrect password.";
+
+    }
+
+}
+
+
+function passwordEnter(event) {
+
+    if (event.key === "Enter") {
+
+        unlockNexus();
+
+    }
+
+}
+
+
+function changePassword() {
+
+    const current =
+        prompt("Enter your current password:");
+
+    const saved =
+        localStorage.getItem("nexus_password");
+
+
+    if (current !== saved) {
+
+        showNotification(
+            "🔐 Security",
+            "Current password is incorrect.",
+            "❌"
+        );
+
+        return;
+
+    }
+
+
+    const newPassword =
+        prompt("Enter your new password:");
+
+    if (!newPassword || newPassword.length < 4) {
+
+        showNotification(
+            "🔐 Security",
+            "Password must be at least 4 characters.",
+            "❌"
+        );
+
+        return;
+
+    }
+
+
+    localStorage.setItem(
+        "nexus_password",
+        newPassword
+    );
+
+
+    showNotification(
+        "🔐 Security",
+        "Password changed successfully.",
+        "✅"
+    );
+
+}
+
+
+function lockNexus() {
+
+    closeAllApps();
+
+    document.getElementById("startMenu").style.display =
+        "none";
+
+    passwordScreen.style.display = "flex";
+
+    passwordSetup.style.display = "none";
+    passwordLogin.style.display = "flex";
+
+    passwordTitle.textContent =
+        "Enter your password to continue";
+
+    passwordError.textContent = "";
+
+}
+
+
+function startNexus() {
+
+    passwordScreen.style.display = "none";
+
+    bootScreen.style.display = "flex";
+
+    let progress = 0;
+
+    const interval = setInterval(() => {
+
+        progress += 5;
+
+        loadingProgress.style.width =
+            progress + "%";
+
+
+        if (progress >= 100) {
+
+            clearInterval(interval);
+
+            setTimeout(() => {
+
+                bootScreen.style.display = "none";
+
+            }, 300);
+
+        }
+
+    }, 50);
+
+}
+
+
+setupPasswordScreen();
 
 
 /* =========================================================
-   APP WINDOWS
+   WINDOWS
 ========================================================= */
+
+let highestZ = 20;
+
+const appNames = {
+
+    notepad: "📝 Notepad",
+    calculator: "🧮 Calculator",
+    files: "📁 Files",
+    paint: "🎨 Paint",
+    game: "🎮 Game",
+    settings: "⚙️ Settings",
+    about: "💻 About"
+
+};
+
 
 function openApp(appId) {
 
-    const app = document.getElementById(appId);
+    const app =
+        document.getElementById(appId);
 
     if (!app) return;
 
+
     app.style.display = "block";
 
-    /* Close Start Menu */
-    document.getElementById("startMenu").style.display = "none";
+    highestZ++;
 
-    /* Bring selected window to front */
-    bringToFront(app);
+    app.style.zIndex = highestZ;
+
+
+    document.getElementById("startMenu").style.display =
+        "none";
+
+
+    updateTaskbar();
+
 }
 
 
 function closeApp(appId) {
 
-    const app = document.getElementById(appId);
+    const app =
+        document.getElementById(appId);
 
     if (!app) return;
 
     app.style.display = "none";
+
+    updateTaskbar();
+
 }
 
 
-/* =========================================================
-   WINDOW LAYERING
-========================================================= */
+function closeAllApps() {
 
-let highestZ = 10;
+    document.querySelectorAll(".window").forEach(app => {
 
-function bringToFront(windowElement) {
+        app.style.display = "none";
 
-    highestZ++;
+    });
 
-    windowElement.style.zIndex = highestZ;
+    updateTaskbar();
+
 }
 
 
-/* Click window to bring it forward */
+function minimizeApp(appId) {
 
-document.querySelectorAll(".window").forEach(windowElement => {
+    closeApp(appId);
 
-    windowElement.addEventListener("mousedown", () => {
+}
 
-        bringToFront(windowElement);
+
+function maximizeApp(appId) {
+
+    const app =
+        document.getElementById(appId);
+
+    if (!app) return;
+
+
+    if (app.classList.contains("maximized")) {
+
+        app.classList.remove("maximized");
+
+        app.style.width = "560px";
+        app.style.height = "";
+        app.style.left = "250px";
+        app.style.top = "100px";
+
+    } else {
+
+        app.classList.add("maximized");
+
+        app.style.left = "0";
+        app.style.top = "0";
+        app.style.width = "100vw";
+        app.style.height = "calc(100vh - 60px)";
+
+    }
+
+}
+
+
+document.querySelectorAll(".window").forEach(app => {
+
+    app.addEventListener("mousedown", () => {
+
+        highestZ++;
+
+        app.style.zIndex = highestZ;
 
     });
 
 });
+
+
+/* =========================================================
+   TASKBAR
+========================================================= */
+
+function updateTaskbar() {
+
+    const taskbar =
+        document.getElementById("taskbarApps");
+
+    taskbar.innerHTML = "";
+
+
+    document.querySelectorAll(".window").forEach(app => {
+
+        if (app.style.display === "block") {
+
+            const button =
+                document.createElement("button");
+
+            button.className = "taskbar-app";
+
+            button.textContent =
+                appNames[app.id] || app.id;
+
+
+            button.onclick = () => {
+
+                openApp(app.id);
+
+            };
+
+
+            taskbar.appendChild(button);
+
+        }
+
+    });
+
+}
 
 
 /* =========================================================
@@ -95,17 +414,39 @@ document.querySelectorAll(".window").forEach(windowElement => {
 
 function toggleStartMenu() {
 
-    const menu = document.getElementById("startMenu");
+    const menu =
+        document.getElementById("startMenu");
 
-    if (menu.style.display === "block") {
 
-        menu.style.display = "none";
+    menu.style.display =
+        menu.style.display === "block"
+            ? "none"
+            : "block";
 
-    } else {
+}
 
-        menu.style.display = "block";
 
-    }
+function searchApps() {
+
+    const search =
+        document.getElementById("appSearch")
+        .value
+        .toLowerCase();
+
+
+    document
+        .querySelectorAll("#appList button")
+        .forEach(button => {
+
+            const text =
+                button.textContent.toLowerCase();
+
+            button.style.display =
+                text.includes(search)
+                    ? "block"
+                    : "none";
+
+        });
 
 }
 
@@ -116,50 +457,79 @@ function toggleStartMenu() {
 
 function updateClock() {
 
-    const clock = document.getElementById("clock");
-
     const now = new Date();
 
-    let hours = now.getHours();
-    let minutes = now.getMinutes();
+    let hours =
+        now.getHours()
+        .toString()
+        .padStart(2, "0");
 
-    hours = hours.toString().padStart(2, "0");
-    minutes = minutes.toString().padStart(2, "0");
+    let minutes =
+        now.getMinutes()
+        .toString()
+        .padStart(2, "0");
 
-    clock.textContent = `${hours}:${minutes}`;
+
+    document.getElementById("clock").textContent =
+        `${hours}:${minutes}`;
+
+
+    document.getElementById("lockTime").textContent =
+        `${hours}:${minutes}`;
+
 
 }
 
 
-updateClock();
-
 setInterval(updateClock, 1000);
+
+updateClock();
 
 
 /* =========================================================
    NOTEPAD
 ========================================================= */
 
-const notes = document.getElementById("notes");
+const notes =
+    document.getElementById("notes");
 
-if (notes) {
 
-    /* Load saved notes */
+notes.value =
+    localStorage.getItem("nexus_notes") || "";
 
-    notes.value = localStorage.getItem("nexus_notes") || "";
 
-    /* Save automatically */
+function updateNoteCount() {
 
-    notes.addEventListener("input", () => {
-
-        localStorage.setItem(
-            "nexus_notes",
-            notes.value
-        );
-
-    });
+    document.getElementById("noteCount").textContent =
+        `${notes.value.length} characters`;
 
 }
+
+
+notes.addEventListener("input", () => {
+
+    localStorage.setItem(
+        "nexus_notes",
+        notes.value
+    );
+
+    updateNoteCount();
+
+});
+
+
+function clearNotes() {
+
+    notes.value = "";
+
+    localStorage.removeItem("nexus_notes");
+
+    updateNoteCount();
+
+}
+
+
+updateNoteCount();
 
 
 /* =========================================================
@@ -168,14 +538,16 @@ if (notes) {
 
 let calculatorExpression = "";
 
-const calcDisplay = document.getElementById("calcDisplay");
+const calcDisplay =
+    document.getElementById("calcDisplay");
 
 
 function calc(value) {
 
     calculatorExpression += value;
 
-    calcDisplay.value = calculatorExpression;
+    calcDisplay.value =
+        calculatorExpression;
 
 }
 
@@ -189,63 +561,80 @@ function clearCalc() {
 }
 
 
+function deleteCalc() {
+
+    calculatorExpression =
+        calculatorExpression.slice(0, -1);
+
+    calcDisplay.value =
+        calculatorExpression;
+
+}
+
+
 function calculate() {
 
     if (!calculatorExpression) return;
 
+
     try {
 
-        /*
-           Only allow numbers and basic operators.
-           This prevents random JavaScript from being executed.
-        */
+        if (
+            !/^[0-9+\-*/%.() ]+$/
+            .test(calculatorExpression)
+        ) {
 
-        if (!/^[0-9+\-*/.() ]+$/.test(calculatorExpression)) {
-
-            throw new Error("Invalid expression");
+            throw new Error();
 
         }
 
-        const result = Function(
-            `"use strict"; return (${calculatorExpression})`
-        )();
 
-        calculatorExpression = String(result);
+        const result =
+            Function(
+                `"use strict"; return (${calculatorExpression})`
+            )();
 
-        calcDisplay.value = calculatorExpression;
+
+        calculatorExpression =
+            String(result);
+
+        calcDisplay.value =
+            calculatorExpression;
 
     } catch {
 
-        calcDisplay.value = "Error";
-
         calculatorExpression = "";
+
+        calcDisplay.value = "Error";
 
     }
 
 }
 
 
-/* Keyboard calculator support */
-
 document.addEventListener("keydown", event => {
 
-    const key = event.key;
-
     if (
-        "0123456789+-*/().".includes(key)
-    ) {
+        document.activeElement.tagName === "INPUT" ||
+        document.activeElement.tagName === "TEXTAREA"
+    ) return;
 
-        calc(key);
+
+    if ("0123456789+-*/.%".includes(event.key)) {
+
+        calc(event.key);
 
     }
 
-    if (key === "Enter") {
+
+    if (event.key === "Enter") {
 
         calculate();
 
     }
 
-    if (key === "Escape") {
+
+    if (event.key === "Escape") {
 
         clearCalc();
 
@@ -258,79 +647,90 @@ document.addEventListener("keydown", event => {
    PAINT
 ========================================================= */
 
-const canvas = document.getElementById("paintCanvas");
+const canvas =
+    document.getElementById("paintCanvas");
 
-const ctx = canvas.getContext("2d");
+const ctx =
+    canvas.getContext("2d");
+
 
 let painting = false;
 
 
-/* Start drawing */
+function getCanvasPosition(event) {
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+
+    return {
+
+        x:
+            (event.clientX - rect.left)
+            * (canvas.width / rect.width),
+
+        y:
+            (event.clientY - rect.top)
+            * (canvas.height / rect.height)
+
+    };
+
+}
+
 
 canvas.addEventListener("mousedown", event => {
 
     painting = true;
 
-    draw(event);
-
-});
-
-
-/* Stop drawing */
-
-canvas.addEventListener("mouseup", () => {
-
-    painting = false;
+    const position =
+        getCanvasPosition(event);
 
     ctx.beginPath();
 
-});
-
-
-canvas.addEventListener("mouseleave", () => {
-
-    painting = false;
-
-    ctx.beginPath();
+    ctx.moveTo(
+        position.x,
+        position.y
+    );
 
 });
 
 
-/* Draw */
-
-canvas.addEventListener("mousemove", draw);
-
-
-function draw(event) {
+canvas.addEventListener("mousemove", event => {
 
     if (!painting) return;
 
-    const rect = canvas.getBoundingClientRect();
 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const position =
+        getCanvasPosition(event);
 
-    const x = (event.clientX - rect.left) * scaleX;
-    const y = (event.clientY - rect.top) * scaleY;
 
-    ctx.lineWidth = 5;
+    ctx.lineWidth =
+        document.getElementById("brushSize").value;
+
 
     ctx.lineCap = "round";
 
-    ctx.strokeStyle = "#7c3aed";
 
-    ctx.lineTo(x, y);
+    ctx.strokeStyle =
+        document.getElementById("paintColor").value;
+
+
+    ctx.lineTo(
+        position.x,
+        position.y
+    );
 
     ctx.stroke();
 
-    ctx.beginPath();
-
-    ctx.moveTo(x, y);
-
-}
+});
 
 
-/* Clear Paint */
+document.addEventListener("mouseup", () => {
+
+    painting = false;
+
+});
+
 
 function clearCanvas() {
 
@@ -349,14 +749,60 @@ function clearCanvas() {
 ========================================================= */
 
 let score = 0;
+let gameTime = 30;
+let gameRunning = false;
+let gameTimer = null;
 
-const gameTarget = document.getElementById("gameTarget");
+
+function startGame() {
+
+    score = 0;
+
+    gameTime = 30;
+
+    gameRunning = true;
+
+
+    document.getElementById("score").textContent =
+        score;
+
+    document.getElementById("gameTime").textContent =
+        gameTime;
+
+
+    clearInterval(gameTimer);
+
+
+    moveTarget();
+
+
+    gameTimer = setInterval(() => {
+
+        gameTime--;
+
+        document.getElementById("gameTime").textContent =
+            gameTime;
+
+
+        if (gameTime <= 0) {
+
+            endGame();
+
+        }
+
+    }, 1000);
+
+}
+
 
 function hitTarget() {
 
+    if (!gameRunning) return;
+
     score++;
 
-    document.getElementById("score").textContent = score;
+    document.getElementById("score").textContent =
+        score;
 
     moveTarget();
 
@@ -365,45 +811,262 @@ function hitTarget() {
 
 function moveTarget() {
 
-    const x = Math.floor(
-        Math.random() * 350 - 175
-    );
+    const board =
+        document.getElementById("gameBoard");
 
-    const y = Math.floor(
-        Math.random() * 150 - 75
-    );
+    const target =
+        document.getElementById("gameTarget");
 
-    gameTarget.style.transform =
-        `translate(${x}px, ${y}px)`;
+
+    const maxX =
+        board.clientWidth - target.offsetWidth;
+
+    const maxY =
+        board.clientHeight - target.offsetHeight;
+
+
+    target.style.left =
+        Math.max(
+            0,
+            Math.random() * maxX
+        ) + "px";
+
+
+    target.style.top =
+        Math.max(
+            0,
+            Math.random() * maxY
+        ) + "px";
+
+
+    target.style.transform =
+        "none";
+
+}
+
+
+function endGame() {
+
+    gameRunning = false;
+
+    clearInterval(gameTimer);
+
+
+    showNotification(
+        "Game Over",
+        `Your score was ${score}!`,
+        "🎮"
+    );
 
 }
 
 
 /* =========================================================
-   SETTINGS — THEME
+   FILE MANAGER
+========================================================= */
+
+let userFiles =
+    JSON.parse(
+        localStorage.getItem("nexus_files") || "[]"
+    );
+
+
+function renderFiles() {
+
+    const area =
+        document.getElementById("fileArea");
+
+
+    area.innerHTML = "";
+
+
+    const defaultFiles = [
+
+        {
+            name: "My Notes.txt",
+            icon: "📄"
+        },
+
+        {
+            name: "My Drawing.png",
+            icon: "🎨"
+        },
+
+        {
+            name: "Game Data",
+            icon: "🎮"
+        }
+
+    ];
+
+
+    [...defaultFiles, ...userFiles]
+        .forEach(file => {
+
+            const element =
+                document.createElement("div");
+
+            element.className = "fake-file";
+
+
+            const icon =
+                document.createElement("div");
+
+            icon.className = "fake-file-icon";
+
+            icon.textContent =
+                file.icon || "📄";
+
+
+            const name =
+                document.createElement("span");
+
+            name.textContent =
+                file.name;
+
+
+            element.appendChild(icon);
+
+            element.appendChild(name);
+
+            area.appendChild(element);
+
+        });
+
+}
+
+
+function createFile() {
+
+    const name =
+        prompt("Enter a file name:");
+
+    if (!name) return;
+
+
+    userFiles.push({
+
+        name: name,
+
+        icon: "📄"
+
+    });
+
+
+    localStorage.setItem(
+        "nexus_files",
+        JSON.stringify(userFiles)
+    );
+
+
+    renderFiles();
+
+
+    showNotification(
+        "File Manager",
+        `${name} was created.`,
+        "📄"
+    );
+
+}
+
+
+function refreshFiles() {
+
+    renderFiles();
+
+    showNotification(
+        "File Manager",
+        "Files refreshed.",
+        "🔄"
+    );
+
+}
+
+
+renderFiles();
+
+
+/* =========================================================
+   USERNAME
+========================================================= */
+
+function loadUsername() {
+
+    const username =
+        localStorage.getItem("nexus_username") ||
+        "User";
+
+
+    document.getElementById("usernameInput").value =
+        username;
+
+
+    document.getElementById("startUsername").textContent =
+        username;
+
+
+    document.getElementById("taskbarUsername").textContent =
+        username;
+
+}
+
+
+function saveUsername() {
+
+    const input =
+        document.getElementById("usernameInput");
+
+    const username =
+        input.value.trim();
+
+
+    if (!username) return;
+
+
+    localStorage.setItem(
+        "nexus_username",
+        username
+    );
+
+
+    loadUsername();
+
+
+    showNotification(
+        "Profile",
+        `Welcome, ${username}!`,
+        "👤"
+    );
+
+}
+
+
+loadUsername();
+
+
+/* =========================================================
+   THEME
 ========================================================= */
 
 function toggleTheme() {
 
     document.body.classList.toggle("light");
 
-    const isLight =
-        document.body.classList.contains("light");
 
     localStorage.setItem(
         "nexus_theme",
-        isLight ? "light" : "dark"
+        document.body.classList.contains("light")
+            ? "light"
+            : "dark"
     );
 
 }
 
 
-/* Load saved theme */
-
-const savedTheme =
-    localStorage.getItem("nexus_theme");
-
-if (savedTheme === "light") {
+if (
+    localStorage.getItem("nexus_theme") === "light"
+) {
 
     document.body.classList.add("light");
 
@@ -411,83 +1074,41 @@ if (savedTheme === "light") {
 
 
 /* =========================================================
-   WALLPAPER
+   WALLPAPERS
 ========================================================= */
 
 const wallpapers = [
 
     `
-    radial-gradient(
-        circle at 30% 20%,
-        #5531a8,
-        transparent 35%
-    ),
-    radial-gradient(
-        circle at 80% 70%,
-        #1c64b8,
-        transparent 35%
-    ),
-    linear-gradient(
-        135deg,
-        #090014,
-        #071b32
-    )
+    radial-gradient(circle at 30% 20%, #5531a8, transparent 35%),
+    radial-gradient(circle at 80% 70%, #1c64b8, transparent 35%),
+    linear-gradient(135deg,#090014,#071b32)
     `,
 
     `
-    radial-gradient(
-        circle at 20% 30%,
-        #be185d,
-        transparent 35%
-    ),
-    radial-gradient(
-        circle at 80% 70%,
-        #7c3aed,
-        transparent 35%
-    ),
-    linear-gradient(
-        135deg,
-        #160016,
-        #090014
-    )
+    radial-gradient(circle at 20% 30%, #be185d, transparent 35%),
+    radial-gradient(circle at 80% 70%, #7c3aed, transparent 35%),
+    linear-gradient(135deg,#160016,#090014)
     `,
 
     `
-    radial-gradient(
-        circle at 70% 20%,
-        #0369a1,
-        transparent 35%
-    ),
-    radial-gradient(
-        circle at 20% 80%,
-        #0f766e,
-        transparent 35%
-    ),
-    linear-gradient(
-        135deg,
-        #00111c,
-        #001f2b
-    )
+    radial-gradient(circle at 70% 20%, #0369a1, transparent 35%),
+    radial-gradient(circle at 20% 80%, #0f766e, transparent 35%),
+    linear-gradient(135deg,#00111c,#001f2b)
     `,
 
     `
-    radial-gradient(
-        circle at 50% 50%,
-        #4c1d95,
-        transparent 40%
-    ),
-    linear-gradient(
-        135deg,
-        #050008,
-        #18002e
-    )
+    radial-gradient(circle at 50% 50%, #4c1d95, transparent 40%),
+    linear-gradient(135deg,#050008,#18002e)
     `
 
 ];
 
 
 let wallpaperIndex =
-    Number(localStorage.getItem("nexus_wallpaper")) || 0;
+    Number(
+        localStorage.getItem("nexus_wallpaper") || 0
+    );
 
 
 function applyWallpaper() {
@@ -508,147 +1129,90 @@ function changeWallpaper() {
 
     }
 
+
     localStorage.setItem(
         "nexus_wallpaper",
         wallpaperIndex
     );
+
 
     applyWallpaper();
 
 }
 
 
-/* Apply saved wallpaper */
-
 applyWallpaper();
 
 
 /* =========================================================
-   DRAGGABLE WINDOWS
+   NOTIFICATIONS
 ========================================================= */
 
-document.querySelectorAll(".window").forEach(windowElement => {
-
-    const header =
-        windowElement.querySelector(".window-header");
-
-    let dragging = false;
-
-    let offsetX = 0;
-    let offsetY = 0;
+let notificationTimer;
 
 
-    header.addEventListener("mousedown", event => {
+function showNotification(
+    title,
+    message,
+    icon = "🔔"
+) {
 
-        dragging = true;
-
-        bringToFront(windowElement);
-
-        const rect =
-            windowElement.getBoundingClientRect();
-
-        offsetX =
-            event.clientX - rect.left;
-
-        offsetY =
-            event.clientY - rect.top;
-
-    });
+    const notification =
+        document.getElementById("notification");
 
 
-    document.addEventListener("mousemove", event => {
-
-        if (!dragging) return;
-
-        const maxX =
-            window.innerWidth -
-            windowElement.offsetWidth;
-
-        const maxY =
-            window.innerHeight -
-            windowElement.offsetHeight -
-            60;
+    document.getElementById("notificationTitle").textContent =
+        title;
 
 
-        let newX =
-            event.clientX - offsetX;
-
-        let newY =
-            event.clientY - offsetY;
+    document.getElementById("notificationMessage").textContent =
+        message;
 
 
-        newX =
-            Math.max(0, Math.min(newX, maxX));
-
-        newY =
-            Math.max(0, Math.min(newY, maxY));
+    document.getElementById("notificationIcon").textContent =
+        icon;
 
 
-        windowElement.style.left =
-            newX + "px";
-
-        windowElement.style.top =
-            newY + "px";
-
-    });
+    notification.style.display =
+        "flex";
 
 
-    document.addEventListener("mouseup", () => {
+    clearTimeout(notificationTimer);
 
-        dragging = false;
 
-    });
+    notificationTimer =
+        setTimeout(() => {
 
-});
+            hideNotification();
+
+        }, 4000);
+
+}
+
+
+function hideNotification() {
+
+    document.getElementById("notification").style.display =
+        "none";
+
+}
+
+
+function testNotification() {
+
+    showNotification(
+        "NEXUS",
+        "Everything is working!",
+        "🟣"
+    );
+
+}
 
 
 /* =========================================================
-   DOUBLE-CLICK DESKTOP
+   FINISH
 ========================================================= */
 
-document.getElementById("desktop").addEventListener(
-    "dblclick",
-    event => {
-
-        /*
-          Double-clicking empty desktop space
-          closes the Start Menu.
-        */
-
-        if (
-            event.target.id === "desktop" ||
-            event.target.classList.contains("desktop-icons")
-        ) {
-
-            document.getElementById(
-                "startMenu"
-            ).style.display = "none";
-
-        }
-
-    }
+console.log(
+    "NEXUS OS v1.1 loaded successfully."
 );
-
-
-/* =========================================================
-   ESCAPE = CLOSE START MENU
-========================================================= */
-
-document.addEventListener("keydown", event => {
-
-    if (event.key === "Escape") {
-
-        document.getElementById(
-            "startMenu"
-        ).style.display = "none";
-
-    }
-
-});
-
-
-/* =========================================================
-   NEXUS READY
-========================================================= */
-
-console.log("NEXUS OS v1.0 loaded successfully.");
