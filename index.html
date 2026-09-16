@@ -1,629 +1,635 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS OS v1.1</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS v1.2</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase -->
+  <script type="module" src="script.js"></script>
 </head>
 
 <body>
 
-<!-- ================= PASSWORD SCREEN ================= -->
+  <!-- =====================================================
+       AUTH SCREEN
+       ===================================================== -->
 
-<div id="passwordScreen">
+  <div id="authScreen" class="screen auth-screen">
 
-    <div class="password-box">
+    <div class="auth-box">
 
-        <div class="password-logo">🟣</div>
+      <div class="nexus-logo">N</div>
 
-        <h1>NEXUS</h1>
+      <h1>NEXUS</h1>
+      <p class="auth-subtitle">Your personal digital space</p>
 
-        <p id="passwordTitle">Create your NEXUS password</p>
+      <!-- LOGIN -->
 
-        <div id="passwordSetup">
+      <div id="loginPanel">
 
-            <input
-                id="newPassword"
-                type="password"
-                placeholder="Create password"
-                autocomplete="new-password"
-            >
+        <h2>Welcome Back</h2>
 
-            <input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm password"
-                autocomplete="new-password"
-            >
+        <input
+          id="loginEmail"
+          type="email"
+          placeholder="Email"
+          autocomplete="email"
+        >
 
-            <button onclick="createPassword()">
-                🔐 Create Password
-            </button>
+        <input
+          id="loginPassword"
+          type="password"
+          placeholder="Password"
+          autocomplete="current-password"
+        >
 
-        </div>
+        <button id="loginButton" class="primary-button">
+          🔐 Login
+        </button>
 
-        <div id="passwordLogin">
+        <button id="forgotPasswordButton" class="text-button">
+          Forgot password?
+        </button>
 
-            <input
-                id="passwordInput"
-                type="password"
-                placeholder="Enter password"
-                autocomplete="current-password"
-                onkeydown="passwordEnter(event)"
-            >
+        <p>
+          Don't have an account?
+          <button id="showSignupButton" class="link-button">
+            Create one
+          </button>
+        </p>
 
-            <button onclick="unlockNexus()">
-                🔓 Unlock
-            </button>
+        <div id="loginError" class="auth-error"></div>
 
-        </div>
+      </div>
 
-        <p id="passwordError"></p>
+      <!-- SIGN UP -->
+
+      <div id="signupPanel" class="hidden">
+
+        <h2>Create Account</h2>
+
+        <input
+          id="signupUsername"
+          type="text"
+          placeholder="Username"
+          maxlength="24"
+        >
+
+        <input
+          id="signupEmail"
+          type="email"
+          placeholder="Email"
+          autocomplete="email"
+        >
+
+        <input
+          id="signupPassword"
+          type="password"
+          placeholder="Password"
+          autocomplete="new-password"
+        >
+
+        <input
+          id="signupPasswordConfirm"
+          type="password"
+          placeholder="Confirm password"
+          autocomplete="new-password"
+        >
+
+        <button id="signupButton" class="primary-button">
+          🚀 Create Account
+        </button>
+
+        <p>
+          Already have an account?
+          <button id="showLoginButton" class="link-button">
+            Login
+          </button>
+        </p>
+
+        <div id="signupError" class="auth-error"></div>
+
+      </div>
 
     </div>
 
-</div>
+  </div>
 
 
-<!-- ================= BOOT SCREEN ================= -->
+  <!-- =====================================================
+       LOADING SCREEN
+       ===================================================== -->
 
-<div id="bootScreen">
+  <div id="loadingScreen" class="screen loading-screen hidden">
 
-    <div class="boot-logo">NEXUS</div>
+    <div class="loading-content">
 
-    <div class="loading-bar">
+      <div class="loading-logo">N</div>
+
+      <h1>NEXUS</h1>
+
+      <p id="loadingText">Connecting...</p>
+
+      <div class="progress-container">
         <div id="loadingProgress"></div>
+      </div>
+
     </div>
 
-    <p id="bootText">Starting NEXUS...</p>
-
-</div>
+  </div>
 
 
-<!-- ================= DESKTOP ================= -->
+  <!-- =====================================================
+       DESKTOP
+       ===================================================== -->
 
-<main id="desktop">
+  <div id="desktop" class="desktop hidden">
 
-    <!-- Desktop icons -->
+    <!-- Wallpaper -->
+
+    <div id="wallpaper" class="wallpaper"></div>
+
+
+    <!-- Desktop Icons -->
 
     <div class="desktop-icons">
 
-        <button class="desktop-icon" ondblclick="openApp('notepad')">
-            <span>📝</span>
-            <label>Notepad</label>
-        </button>
+      <button class="desktop-icon" data-app="notepad">
+        <span>📝</span>
+        <label>Notepad</label>
+      </button>
 
-        <button class="desktop-icon" ondblclick="openApp('calculator')">
-            <span>🧮</span>
-            <label>Calculator</label>
-        </button>
+      <button class="desktop-icon" data-app="calculator">
+        <span>🧮</span>
+        <label>Calculator</label>
+      </button>
 
-        <button class="desktop-icon" ondblclick="openApp('files')">
-            <span>📁</span>
-            <label>Files</label>
-        </button>
+      <button class="desktop-icon" data-app="files">
+        <span>📁</span>
+        <label>Files</label>
+      </button>
 
-        <button class="desktop-icon" ondblclick="openApp('paint')">
-            <span>🎨</span>
-            <label>Paint</label>
-        </button>
+      <button class="desktop-icon" data-app="paint">
+        <span>🎨</span>
+        <label>Paint</label>
+      </button>
 
-        <button class="desktop-icon" ondblclick="openApp('game')">
-            <span>🎮</span>
-            <label>Game</label>
-        </button>
+      <button class="desktop-icon" data-app="game">
+        <span>🎮</span>
+        <label>Game</label>
+      </button>
 
-        <button class="desktop-icon" ondblclick="openApp('settings')">
-            <span>⚙️</span>
-            <label>Settings</label>
-        </button>
+      <button class="desktop-icon" data-app="settings">
+        <span>⚙️</span>
+        <label>Settings</label>
+      </button>
 
-        <button class="desktop-icon" ondblclick="openApp('about')">
-            <span>💻</span>
-            <label>About</label>
-        </button>
+      <button class="desktop-icon" data-app="about">
+        <span>ℹ️</span>
+        <label>About</label>
+      </button>
 
     </div>
 
 
-    <!-- ================= NOTEPAD ================= -->
+    <!-- Windows -->
 
-    <section class="window" id="notepad">
+    <!-- NOTEPAD -->
 
-        <header class="window-header">
+    <section class="app-window" id="notepadWindow">
 
-            <span>📝 Notepad</span>
+      <div class="window-header">
 
-            <div class="window-buttons">
+        <span>📝 Notepad</span>
 
-                <button onclick="minimizeApp('notepad')">─</button>
-                <button onclick="maximizeApp('notepad')">□</button>
-                <button onclick="closeApp('notepad')">✕</button>
+        <div>
+          <button class="window-button minimize-button">−</button>
+          <button class="window-button close-button">×</button>
+        </div>
 
-            </div>
+      </div>
 
-        </header>
+      <div class="window-body notepad-body">
 
-        <div class="window-content notepad-content">
+        <textarea
+          id="notesArea"
+          placeholder="Write something..."
+        ></textarea>
 
-            <textarea
-                id="notes"
-                placeholder="Start typing..."
-            ></textarea>
+        <div class="app-footer">
 
-            <div class="notepad-footer">
+          <span id="notesStatus">Saved</span>
 
-                <span id="noteCount">0 characters</span>
-
-                <button onclick="clearNotes()">
-                    🗑️ Clear
-                </button>
-
-            </div>
+          <button id="clearNotesButton">
+            Clear
+          </button>
 
         </div>
+
+      </div>
 
     </section>
 
 
-    <!-- ================= CALCULATOR ================= -->
+    <!-- CALCULATOR -->
 
-    <section class="window" id="calculator">
+    <section class="app-window" id="calculatorWindow">
 
-        <header class="window-header">
+      <div class="window-header">
 
-            <span>🧮 Calculator</span>
+        <span>🧮 Calculator</span>
 
-            <div class="window-buttons">
+        <div>
+          <button class="window-button close-button">×</button>
+        </div>
 
-                <button onclick="minimizeApp('calculator')">─</button>
-                <button onclick="maximizeApp('calculator')">□</button>
-                <button onclick="closeApp('calculator')">✕</button>
+      </div>
 
-            </div>
+      <div class="window-body calculator-body">
 
-        </header>
+        <input id="calculatorDisplay" readonly>
 
-        <div class="window-content">
+        <div class="calculator-grid">
 
-            <input id="calcDisplay" readonly placeholder="0">
+          <button data-calc="clear">C</button>
+          <button data-calc="backspace">⌫</button>
+          <button data-calc="/">÷</button>
+          <button data-calc="*">×</button>
 
-            <div class="calculator-buttons">
+          <button data-calc="7">7</button>
+          <button data-calc="8">8</button>
+          <button data-calc="9">9</button>
+          <button data-calc="-">−</button>
 
-                <button onclick="clearCalc()">AC</button>
-                <button onclick="deleteCalc()">⌫</button>
-                <button onclick="calc('%')">%</button>
-                <button onclick="calc('/')">÷</button>
+          <button data-calc="4">4</button>
+          <button data-calc="5">5</button>
+          <button data-calc="6">6</button>
+          <button data-calc="+">+</button>
 
-                <button onclick="calc('7')">7</button>
-                <button onclick="calc('8')">8</button>
-                <button onclick="calc('9')">9</button>
-                <button onclick="calc('*')">×</button>
+          <button data-calc="1">1</button>
+          <button data-calc="2">2</button>
+          <button data-calc="3">3</button>
+          <button data-calc="=" class="equals">=</button>
 
-                <button onclick="calc('4')">4</button>
-                <button onclick="calc('5')">5</button>
-                <button onclick="calc('6')">6</button>
-                <button onclick="calc('-')">−</button>
-
-                <button onclick="calc('1')">1</button>
-                <button onclick="calc('2')">2</button>
-                <button onclick="calc('3')">3</button>
-                <button onclick="calc('+')">+</button>
-
-                <button class="zero-button" onclick="calc('0')">0</button>
-                <button onclick="calc('.')">.</button>
-                <button class="equals-button" onclick="calculate()">=</button>
-
-            </div>
+          <button data-calc="0" class="zero">0</button>
+          <button data-calc=".">.</button>
 
         </div>
+
+      </div>
 
     </section>
 
 
-    <!-- ================= FILE MANAGER ================= -->
+    <!-- FILES -->
 
-    <section class="window" id="files">
+    <section class="app-window" id="filesWindow">
 
-        <header class="window-header">
+      <div class="window-header">
 
-            <span>📁 File Manager</span>
+        <span>📁 My Files</span>
 
-            <div class="window-buttons">
+        <div>
+          <button class="window-button close-button">×</button>
+        </div>
 
-                <button onclick="minimizeApp('files')">─</button>
-                <button onclick="maximizeApp('files')">□</button>
-                <button onclick="closeApp('files')">✕</button>
+      </div>
 
-            </div>
+      <div class="window-body">
 
-        </header>
+        <div class="file-toolbar">
 
-        <div class="window-content">
+          <button id="newFileButton">
+            ➕ New File
+          </button>
 
-            <div class="file-toolbar">
-
-                <button onclick="createFile()">
-                    ➕ New File
-                </button>
-
-                <button onclick="refreshFiles()">
-                    🔄 Refresh
-                </button>
-
-            </div>
-
-            <div id="fileArea" class="file-area"></div>
+          <button id="deleteFileButton">
+            🗑️ Delete
+          </button>
 
         </div>
+
+        <div id="fileList" class="file-list"></div>
+
+        <textarea
+          id="fileEditor"
+          class="file-editor"
+          placeholder="Select a file..."
+        ></textarea>
+
+        <button id="saveFileButton" class="primary-button">
+          💾 Save File
+        </button>
+
+      </div>
 
     </section>
 
 
-    <!-- ================= PAINT ================= -->
+    <!-- PAINT -->
 
-    <section class="window" id="paint">
+    <section class="app-window" id="paintWindow">
 
-        <header class="window-header">
+      <div class="window-header">
 
-            <span>🎨 Paint</span>
+        <span>🎨 NEXUS Paint</span>
 
-            <div class="window-buttons">
+        <div>
+          <button class="window-button close-button">×</button>
+        </div>
 
-                <button onclick="minimizeApp('paint')">─</button>
-                <button onclick="maximizeApp('paint')">□</button>
-                <button onclick="closeApp('paint')">✕</button>
+      </div>
 
-            </div>
+      <div class="window-body paint-body">
 
-        </header>
+        <div class="paint-tools">
 
-        <div class="window-content paint-content">
+          <label>
+            Brush
+            <input id="brushSize" type="range" min="1" max="30" value="5">
+          </label>
 
-            <div class="paint-toolbar">
+          <button id="clearCanvasButton">
+            Clear
+          </button>
 
-                <label>
-                    Color
-                    <input type="color" id="paintColor" value="#7c3aed">
-                </label>
-
-                <label>
-                    Size
-                    <input type="range" id="brushSize" min="1" max="30" value="5">
-                </label>
-
-                <button onclick="clearCanvas()">
-                    🗑️ Clear
-                </button>
-
-            </div>
-
-            <canvas id="paintCanvas" width="600" height="350"></canvas>
+          <button id="saveDrawingButton">
+            💾 Save Drawing
+          </button>
 
         </div>
+
+        <canvas id="paintCanvas" width="700" height="400"></canvas>
+
+      </div>
 
     </section>
 
 
-    <!-- ================= GAME ================= -->
+    <!-- GAME -->
 
-    <section class="window" id="game">
+    <section class="app-window" id="gameWindow">
 
-        <header class="window-header">
+      <div class="window-header">
 
-            <span>🎮 NEXUS Game</span>
+        <span>🎮 Catch the NEXUS</span>
 
-            <div class="window-buttons">
+        <div>
+          <button class="window-button close-button">×</button>
+        </div>
 
-                <button onclick="minimizeApp('game')">─</button>
-                <button onclick="maximizeApp('game')">□</button>
-                <button onclick="closeApp('game')">✕</button>
+      </div>
 
-            </div>
+      <div class="window-body game-body">
 
-        </header>
+        <p>
+          Score:
+          <strong id="gameScore">0</strong>
+        </p>
 
-        <div class="window-content game-content">
+        <div id="gameArea">
 
-            <h2>🟣 Catch the NEXUS!</h2>
-
-            <p>Click the circle as many times as possible.</p>
-
-            <div id="gameBoard" class="game-board">
-
-                <button id="gameTarget" onclick="hitTarget()">
-                    🟣
-                </button>
-
-            </div>
-
-            <div class="game-stats">
-
-                <span>
-                    Score:
-                    <strong id="score">0</strong>
-                </span>
-
-                <span>
-                    Time:
-                    <strong id="gameTime">30</strong>
-                </span>
-
-            </div>
-
-            <button class="game-start" onclick="startGame()">
-                ▶ Start Game
-            </button>
+          <button id="gameTarget">N</button>
 
         </div>
+
+        <button id="startGameButton" class="primary-button">
+          ▶ Start Game
+        </button>
+
+      </div>
 
     </section>
 
 
-    <!-- ================= SETTINGS ================= -->
+    <!-- SETTINGS -->
 
-    <section class="window" id="settings">
+    <section class="app-window" id="settingsWindow">
 
-        <header class="window-header">
+      <div class="window-header">
 
-            <span>⚙️ Settings</span>
+        <span>⚙️ Settings</span>
 
-            <div class="window-buttons">
+        <div>
+          <button class="window-button close-button">×</button>
+        </div>
 
-                <button onclick="minimizeApp('settings')">─</button>
-                <button onclick="maximizeApp('settings')">□</button>
-                <button onclick="closeApp('settings')">✕</button>
+      </div>
 
-            </div>
+      <div class="window-body settings-body">
 
-        </header>
+        <h3>👤 Account</h3>
 
-        <div class="window-content settings-area">
+        <p>
+          Username:
+          <strong id="settingsUsername">...</strong>
+        </p>
 
-            <h2>NEXUS Settings</h2>
+        <p>
+          Email:
+          <strong id="settingsEmail">...</strong>
+        </p>
 
-            <div class="setting-card">
+        <button id="logoutButton">
+          🚪 Logout
+        </button>
 
-                <h3>👤 Profile</h3>
+        <button id="changePasswordButton">
+          🔑 Change Password
+        </button>
 
-                <input
-                    id="usernameInput"
-                    type="text"
-                    placeholder="Your username"
-                >
 
-                <button onclick="saveUsername()">
-                    💾 Save Username
-                </button>
+        <h3>🎨 Appearance</h3>
 
-            </div>
+        <button id="darkThemeButton">
+          🌙 Dark Theme
+        </button>
 
-            <div class="setting-card">
+        <button id="lightThemeButton">
+          ☀️ Light Theme
+        </button>
 
-                <h3>🎨 Appearance</h3>
 
-                <button onclick="toggleTheme()">
-                    🌙 Toggle Dark / Light
-                </button>
+        <h3>🖼️ Wallpaper</h3>
 
-                <button onclick="changeWallpaper()">
-                    🖼️ Change Wallpaper
-                </button>
+        <div class="wallpaper-buttons">
 
-            </div>
+          <button data-wallpaper="default">
+            Purple
+          </button>
 
-            <div class="setting-card">
+          <button data-wallpaper="blue">
+            Blue
+          </button>
 
-                <h3>🔐 Security</h3>
+          <button data-wallpaper="green">
+            Green
+          </button>
 
-                <button onclick="lockNexus()">
-                    🔒 Lock NEXUS
-                </button>
-
-                <button onclick="changePassword()">
-                    🔑 Change Password
-                </button>
-
-            </div>
-
-            <div class="setting-card">
-
-                <h3>🔔 Notifications</h3>
-
-                <button onclick="testNotification()">
-                    🔔 Test Notification
-                </button>
-
-            </div>
+          <button data-wallpaper="sunset">
+            Sunset
+          </button>
 
         </div>
+
+      </div>
 
     </section>
 
 
-    <!-- ================= ABOUT ================= -->
+    <!-- ABOUT -->
 
-    <section class="window" id="about">
+    <section class="app-window" id="aboutWindow">
 
-        <header class="window-header">
+      <div class="window-header">
 
-            <span>💻 About NEXUS</span>
+        <span>ℹ️ About NEXUS</span>
 
-            <div class="window-buttons">
-
-                <button onclick="minimizeApp('about')">─</button>
-                <button onclick="maximizeApp('about')">□</button>
-                <button onclick="closeApp('about')">✕</button>
-
-            </div>
-
-        </header>
-
-        <div class="window-content about-content">
-
-            <div class="about-logo">🟣</div>
-
-            <h1>NEXUS OS</h1>
-
-            <p>Version 1.1</p>
-
-            <p>
-                A mini browser-based operating system
-                built with HTML, CSS and JavaScript.
-            </p>
-
-            <hr>
-
-            <p>
-                🚀 Built for creativity, experimentation and learning.
-            </p>
-
+        <div>
+          <button class="window-button close-button">×</button>
         </div>
+
+      </div>
+
+      <div class="window-body about-body">
+
+        <div class="about-logo">N</div>
+
+        <h2>NEXUS v1.2</h2>
+
+        <p>
+          A personal browser-based mini operating system.
+        </p>
+
+        <p>
+          Now with real multi-user accounts powered by Firebase.
+        </p>
+
+        <hr>
+
+        <p>
+          👤 Accounts
+        </p>
+
+        <p>
+          ☁️ Cloud data
+        </p>
+
+        <p>
+          🔐 Authentication
+        </p>
+
+        <p>
+          📝 Personal workspace
+        </p>
+
+      </div>
 
     </section>
 
 
-    <!-- ================= NOTIFICATION ================= -->
+    <!-- START MENU -->
 
-    <div id="notification" class="notification">
+    <div id="startMenu" class="start-menu hidden">
 
-        <div id="notificationIcon">🔔</div>
+      <div class="start-user">
+
+        <div class="user-avatar">
+          👤
+        </div>
 
         <div>
 
-            <strong id="notificationTitle">
-                NEXUS
-            </strong>
+          <strong id="startUsername">
+            User
+          </strong>
 
-            <p id="notificationMessage">
-                Notification
-            </p>
+          <small id="startEmail">
+            user@example.com
+          </small>
 
         </div>
 
-        <button onclick="hideNotification()">✕</button>
+      </div>
+
+      <hr>
+
+      <button data-app="notepad">
+        📝 Notepad
+      </button>
+
+      <button data-app="calculator">
+        🧮 Calculator
+      </button>
+
+      <button data-app="files">
+        📁 Files
+      </button>
+
+      <button data-app="paint">
+        🎨 Paint
+      </button>
+
+      <button data-app="game">
+        🎮 Game
+      </button>
+
+      <button data-app="settings">
+        ⚙️ Settings
+      </button>
+
+      <hr>
+
+      <button id="startLogoutButton">
+        🚪 Logout
+      </button>
 
     </div>
 
 
-    <!-- ================= START MENU ================= -->
+    <!-- TASKBAR -->
 
-    <div id="startMenu">
+    <div class="taskbar">
 
-        <div class="start-header">
+      <button id="startButton" class="start-button">
+        ✦
+      </button>
 
-            <div class="start-avatar">
-                🟣
-            </div>
+      <div id="taskbarApps" class="taskbar-apps"></div>
 
-            <div>
+      <div class="taskbar-right">
 
-                <strong>NEXUS</strong>
+        <span id="onlineStatus">
+          ● Online
+        </span>
 
-                <small id="startUsername">
-                    User
-                </small>
+        <span id="clock">
+          00:00
+        </span>
 
-            </div>
-
-        </div>
-
-
-        <div class="search-box">
-
-            🔍
-
-            <input
-                id="appSearch"
-                type="text"
-                placeholder="Search apps..."
-                oninput="searchApps()"
-            >
-
-        </div>
-
-
-        <div id="appList">
-
-            <button data-app="notepad" onclick="openApp('notepad')">
-                📝 Notepad
-            </button>
-
-            <button data-app="calculator" onclick="openApp('calculator')">
-                🧮 Calculator
-            </button>
-
-            <button data-app="files" onclick="openApp('files')">
-                📁 Files
-            </button>
-
-            <button data-app="paint" onclick="openApp('paint')">
-                🎨 Paint
-            </button>
-
-            <button data-app="game" onclick="openApp('game')">
-                🎮 Game
-            </button>
-
-            <button data-app="settings" onclick="openApp('settings')">
-                ⚙️ Settings
-            </button>
-
-            <button data-app="about" onclick="openApp('about')">
-                💻 About NEXUS
-            </button>
-
-        </div>
-
-
-        <div class="start-footer">
-
-            <button onclick="lockNexus()">
-                🔒 Lock
-            </button>
-
-            <button onclick="openApp('settings')">
-                ⚙️ Settings
-            </button>
-
-        </div>
+      </div>
 
     </div>
 
 
-    <!-- ================= TASKBAR ================= -->
+    <!-- NOTIFICATION -->
 
-    <footer class="taskbar">
+    <div id="notification" class="notification hidden">
 
-        <button
-            class="start-button"
-            onclick="toggleStartMenu()"
-        >
-            🟣
-        </button>
+      <strong id="notificationTitle">
+        NEXUS
+      </strong>
 
-        <div id="taskbarApps" class="taskbar-apps"></div>
+      <p id="notificationMessage">
+        Welcome!
+      </p>
 
-        <div class="taskbar-right">
+    </div>
 
-            <span>🌐</span>
-
-            <span id="taskbarUsername">
-                User
-            </span>
-
-            <span id="clock">
-                00:00
-            </span>
-
-        </div>
-
-    </footer>
-
-</main>
-
-<script src="script.js"></script>
+  </div>
 
 </body>
 </html>
