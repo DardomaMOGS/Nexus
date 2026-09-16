@@ -1,1140 +1,973 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>NEXUS v1.4</title>
+    <title>NEXUS v1.4</title>
 
-  <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-  <!-- =======================================================
-       WALLPAPER
-  ======================================================== -->
+<!-- =====================================================
+     BOOT SCREEN
+===================================================== -->
 
-  <div id="wallpaper" class="wallpaper"></div>
-
-
-  <!-- =======================================================
-       BOOT SCREEN
-  ======================================================== -->
-
-  <section id="bootScreen" class="boot-screen">
-
+<div id="bootScreen" class="boot-screen">
     <div class="boot-logo">N</div>
-
     <h1>NEXUS</h1>
+    <p id="bootText">Starting NEXUS v1.4...</p>
 
-    <p id="bootStatus">Checking system...</p>
-
-    <div class="boot-progress-container">
-      <div id="bootProgress" class="boot-progress"></div>
+    <div class="boot-loader">
+        <div id="bootProgress"></div>
     </div>
-
-    <small>NEXUS v1.4</small>
-
-  </section>
+</div>
 
 
-  <!-- =======================================================
-       AUTHENTICATION
-  ======================================================== -->
+<!-- =====================================================
+     AUTH SCREEN
+===================================================== -->
 
-  <section id="authScreen" class="auth-screen hidden">
+<div id="authScreen" class="auth-screen hidden">
 
-    <div class="auth-container">
+    <div class="auth-card">
 
-      <div class="auth-logo">
-        <span>N</span>
-      </div>
+        <div class="auth-logo">N</div>
 
-      <h1>NEXUS</h1>
+        <h1>NEXUS</h1>
+        <p class="version">v1.4</p>
 
-      <p class="version-label">v1.4</p>
+        <!-- LOGIN -->
+        <div id="loginPanel">
 
+            <h2>Welcome Back</h2>
+            <p>Log in to your NEXUS account.</p>
 
-      <!-- LOGIN -->
+            <input
+                id="loginEmail"
+                type="email"
+                placeholder="Email"
+                autocomplete="email"
+            >
 
-      <div id="loginPanel" class="auth-panel">
+            <input
+                id="loginUsername"
+                type="text"
+                placeholder="Username"
+                autocomplete="username"
+            >
 
-        <h2>Welcome Back</h2>
+            <input
+                id="loginPassword"
+                type="password"
+                placeholder="Password"
+                autocomplete="current-password"
+            >
 
-        <p>Log in to your NEXUS account.</p>
+            <button id="loginButton" class="primary-button">
+                🔐 Login
+            </button>
 
-        <div class="input-group">
-          <label for="loginEmail">Email</label>
+            <button id="forgotPassword" class="text-button">
+                Forgot password?
+            </button>
 
-          <input
-            id="loginEmail"
-            type="email"
-            placeholder="you@example.com"
-            autocomplete="username"
-          >
+            <p>
+                Don't have an account?
+                <button id="showSignup" class="link-button">
+                    Create one
+                </button>
+            </p>
+
         </div>
 
-        <div class="input-group">
-          <label for="loginUsername">Username</label>
 
-          <input
-            id="loginUsername"
-            type="text"
-            placeholder="Username"
-            autocomplete="username"
-          >
+        <!-- SIGNUP -->
+        <div id="signupPanel" class="hidden">
+
+            <h2>Create Account</h2>
+            <p>Create your own NEXUS profile.</p>
+
+            <input
+                id="signupEmail"
+                type="email"
+                placeholder="Email"
+                autocomplete="email"
+            >
+
+            <input
+                id="signupUsername"
+                type="text"
+                placeholder="Username"
+                autocomplete="username"
+            >
+
+            <input
+                id="signupPassword"
+                type="password"
+                placeholder="Password"
+                autocomplete="new-password"
+            >
+
+            <input
+                id="signupConfirm"
+                type="password"
+                placeholder="Confirm password"
+                autocomplete="new-password"
+            >
+
+            <button id="signupButton" class="primary-button">
+                🚀 Create Account
+            </button>
+
+            <p>
+                Already have an account?
+                <button id="showLogin" class="link-button">
+                    Log in
+                </button>
+            </p>
+
         </div>
 
-        <div class="input-group">
-          <label for="loginPassword">Password</label>
-
-          <input
-            id="loginPassword"
-            type="password"
-            placeholder="Password"
-            autocomplete="current-password"
-          >
+        <div class="local-warning">
+            🔒 Accounts are stored locally in this browser.
         </div>
-
-        <p id="loginError" class="auth-error"></p>
-
-        <button id="loginButton" class="primary-button">
-          🔐 Login
-        </button>
-
-        <button id="forgotPasswordButton" class="text-button">
-          Forgot password?
-        </button>
-
-        <p class="auth-switch">
-          Don't have an account?
-          <button id="showSignupButton" class="link-button">
-            Create one
-          </button>
-        </p>
-
-      </div>
-
-
-      <!-- SIGN UP -->
-
-      <div id="signupPanel" class="auth-panel hidden">
-
-        <h2>Create Account</h2>
-
-        <p>Create your own NEXUS profile.</p>
-
-        <div class="input-group">
-          <label for="signupEmail">Email</label>
-
-          <input
-            id="signupEmail"
-            type="email"
-            placeholder="you@example.com"
-            autocomplete="email"
-          >
-        </div>
-
-        <div class="input-group">
-          <label for="signupUsername">Username</label>
-
-          <input
-            id="signupUsername"
-            type="text"
-            placeholder="Username"
-            autocomplete="username"
-          >
-        </div>
-
-        <div class="input-group">
-          <label for="signupPassword">Password</label>
-
-          <input
-            id="signupPassword"
-            type="password"
-            placeholder="At least 6 characters"
-            autocomplete="new-password"
-          >
-        </div>
-
-        <div class="input-group">
-          <label for="signupPasswordConfirm">
-            Confirm Password
-          </label>
-
-          <input
-            id="signupPasswordConfirm"
-            type="password"
-            placeholder="Confirm password"
-            autocomplete="new-password"
-          >
-        </div>
-
-        <p id="signupError" class="auth-error"></p>
-
-        <button id="signupButton" class="primary-button">
-          🚀 Create Account
-        </button>
-
-        <p class="auth-switch">
-          Already have an account?
-          <button id="showLoginButton" class="link-button">
-            Log in
-          </button>
-        </p>
-
-      </div>
-
-
-      <div class="local-account-notice">
-        🔒 Your NEXUS account is stored locally in this browser.
-      </div>
 
     </div>
+</div>
 
-  </section>
+
+<!-- =====================================================
+     DESKTOP
+===================================================== -->
+
+<div id="desktop" class="desktop hidden">
+
+    <!-- WALLPAPER -->
+    <div id="wallpaper" class="wallpaper"></div>
 
 
-  <!-- =======================================================
-       DESKTOP
-  ======================================================== -->
-
-  <main id="desktop" class="desktop hidden">
-
-    <!-- DESKTOP ICONS -->
+    <!-- =================================================
+         DESKTOP ICONS
+    ================================================== -->
 
     <div class="desktop-icons">
 
-      <button class="desktop-icon" data-app="notepadWindow">
-        <span>📝</span>
-        <small>Notepad</small>
-      </button>
+        <button class="desktop-icon" data-open="notepadWindow">
+            <span>📝</span>
+            <label>Notepad</label>
+        </button>
 
-      <button class="desktop-icon" data-app="calculatorWindow">
-        <span>🧮</span>
-        <small>Calculator</small>
-      </button>
+        <button class="desktop-icon" data-open="calculatorWindow">
+            <span>🧮</span>
+            <label>Calculator</label>
+        </button>
 
-      <button class="desktop-icon" data-app="filesWindow">
-        <span>📁</span>
-        <small>Files</small>
-      </button>
+        <button class="desktop-icon" data-open="filesWindow">
+            <span>📁</span>
+            <label>Files</label>
+        </button>
 
-      <button class="desktop-icon" data-app="paintWindow">
-        <span>🎨</span>
-        <small>Paint</small>
-      </button>
+        <button class="desktop-icon" data-open="paintWindow">
+            <span>🎨</span>
+            <label>Paint</label>
+        </button>
 
-      <button class="desktop-icon" data-app="gameWindow">
-        <span>🎮</span>
-        <small>Game Center</small>
-      </button>
+        <button class="desktop-icon" data-open="gamesWindow">
+            <span>🎮</span>
+            <label>Games</label>
+        </button>
 
-      <button class="desktop-icon" data-app="browserWindow">
-        <span>🌐</span>
-        <small>NEXUS Browser</small>
-      </button>
+        <button class="desktop-icon" data-open="browserWindow">
+            <span>🌐</span>
+            <label>NEXUS Browser</label>
+        </button>
 
-      <button class="desktop-icon" data-app="settingsWindow">
-        <span>⚙️</span>
-        <small>Settings</small>
-      </button>
+        <button class="desktop-icon" data-open="settingsWindow">
+            <span>⚙️</span>
+            <label>Settings</label>
+        </button>
 
-      <button class="desktop-icon" data-app="aboutWindow">
-        <span>💠</span>
-        <small>About</small>
-      </button>
+        <button class="desktop-icon" data-open="aboutWindow">
+            <span>💠</span>
+            <label>About NEXUS</label>
+        </button>
 
     </div>
 
 
-    <!-- =====================================================
-         NOTEPAD
-    ====================================================== -->
+    <!-- =================================================
+         WINDOWS
+    ================================================== -->
 
-    <section id="notepadWindow" class="app-window">
+    <!-- NOTEPAD -->
+    <section id="notepadWindow" class="window">
 
-      <header class="window-header">
+        <div class="window-header">
+            <span>📝 Notepad</span>
 
-        <span>📝 Notepad</span>
-
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
+            <div>
+                <button class="minimize-button">−</button>
+                <button class="close-button">×</button>
+            </div>
         </div>
 
-      </header>
+        <div class="window-content notepad-content">
 
-      <div class="window-content">
+            <div class="notepad-toolbar">
 
-        <div class="notepad-toolbar">
-          <span id="notesStatus">Ready</span>
+                <button id="newNote">
+                    📄 New
+                </button>
 
-          <button id="clearNotesButton">
-            Clear
-          </button>
+                <button id="saveNote">
+                    💾 Save
+                </button>
+
+                <button id="clearNote">
+                    🗑️ Clear
+                </button>
+
+            </div>
+
+            <textarea
+                id="notepad"
+                placeholder="Start writing..."
+            ></textarea>
+
+            <div class="status-bar">
+                <span id="noteStatus">Ready</span>
+                <span id="wordCount">0 words</span>
+            </div>
+
         </div>
-
-        <textarea
-          id="notesArea"
-          class="notes-area"
-          placeholder="Start writing..."
-        ></textarea>
-
-      </div>
-
     </section>
 
 
-    <!-- =====================================================
-         CALCULATOR
-    ====================================================== -->
+    <!-- CALCULATOR -->
+    <section id="calculatorWindow" class="window">
 
-    <section id="calculatorWindow" class="app-window">
+        <div class="window-header">
+            <span>🧮 Calculator</span>
 
-      <header class="window-header">
-
-        <span>🧮 Calculator</span>
-
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
+            <div>
+                <button class="minimize-button">−</button>
+                <button class="close-button">×</button>
+            </div>
         </div>
 
-      </header>
-
-      <div class="window-content">
-
-        <input
-          id="calculatorDisplay"
-          class="calculator-display"
-          type="text"
-          readonly
-        >
-
-        <div class="calculator-grid">
-
-          <button data-calc="clear">C</button>
-          <button data-calc="backspace">⌫</button>
-          <button data-calc="/">÷</button>
-          <button data-calc="*">×</button>
-
-          <button data-calc="7">7</button>
-          <button data-calc="8">8</button>
-          <button data-calc="9">9</button>
-          <button data-calc="-">−</button>
-
-          <button data-calc="4">4</button>
-          <button data-calc="5">5</button>
-          <button data-calc="6">6</button>
-          <button data-calc="+">+</button>
-
-          <button data-calc="1">1</button>
-          <button data-calc="2">2</button>
-          <button data-calc="3">3</button>
-          <button data-calc="(">(</button>
-
-          <button data-calc="0">0</button>
-          <button data-calc=".">.</button>
-          <button data-calc=")">)</button>
-          <button data-calc="=">=</button>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         FILE MANAGER
-    ====================================================== -->
-
-    <section id="filesWindow" class="app-window">
-
-      <header class="window-header">
-
-        <span>📁 File Manager</span>
-
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-
-      </header>
-
-      <div class="window-content files-layout">
-
-        <div class="files-sidebar">
-
-          <h3>Your Files</h3>
-
-          <button id="newFileButton">
-            ➕ New File
-          </button>
-
-          <div id="fileList" class="file-list"></div>
-
-        </div>
-
-        <div class="file-editor-area">
-
-          <textarea
-            id="fileEditor"
-            placeholder="Select a file..."
-          ></textarea>
-
-          <div class="file-actions">
-
-            <button id="saveFileButton">
-              💾 Save
-            </button>
-
-            <button id="deleteFileButton">
-              🗑️ Delete
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         PAINT
-    ====================================================== -->
-
-    <section id="paintWindow" class="app-window">
-
-      <header class="window-header">
-
-        <span>🎨 NEXUS Paint</span>
-
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-
-      </header>
-
-      <div class="window-content">
-
-        <div class="paint-toolbar">
-
-          <label for="brushSize">
-            Brush
-          </label>
-
-          <input
-            id="brushSize"
-            type="range"
-            min="1"
-            max="40"
-            value="5"
-          >
-
-          <button id="clearCanvasButton">
-            🧹 Clear
-          </button>
-
-          <button id="saveDrawingButton">
-            💾 Save PNG
-          </button>
-
-        </div>
-
-        <div class="canvas-container">
-
-          <canvas
-            id="paintCanvas"
-            width="900"
-            height="500"
-          ></canvas>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         GAME CENTER
-    ====================================================== -->
-
-    <section id="gameWindow" class="app-window">
-
-      <header class="window-header">
-
-        <span>🎮 NEXUS Game Center</span>
-
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-
-      </header>
-
-      <div class="window-content">
-
-        <!-- GAME MENU -->
-
-        <div id="gameMenu" class="game-menu">
-
-          <h2>🎮 Game Center</h2>
-
-          <p>Choose a game.</p>
-
-          <div class="game-selection">
-
-            <button data-game="catch">
-              🎯 Catch NEXUS
-            </button>
-
-            <button data-game="click">
-              ⚡ Click Rush
-            </button>
-
-            <button data-game="memory">
-              🧠 Memory Match
-            </button>
-
-            <button data-game="snake">
-              🐍 Snake
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <!-- CATCH NEXUS -->
-
-        <div id="catchGameScreen" class="game-screen hidden">
-
-          <div class="game-topbar">
-
-            <button class="game-back">
-              ← Games
-            </button>
-
-            <h2>🎯 Catch NEXUS</h2>
-
-            <span>
-              Score:
-              <strong id="gameScore">0</strong>
-            </span>
-
-          </div>
-
-          <button id="startGameButton" class="primary-button">
-            ▶ Start Game
-          </button>
-
-          <div id="gameArea" class="game-area">
-
-            <button
-              id="gameTarget"
-              class="game-target"
-              style="display:none;"
+        <div class="window-content">
+
+            <input
+                id="calculatorDisplay"
+                class="calculator-display"
+                readonly
             >
-              N
-            </button>
 
-          </div>
+            <div class="calculator-grid">
 
-          <p id="gameMessage" class="game-message">
-            Press Start Game!
-          </p>
+                <button data-calc="C">C</button>
+                <button data-calc="backspace">⌫</button>
+                <button data-calc="/">÷</button>
+                <button data-calc="*">×</button>
+
+                <button data-calc="7">7</button>
+                <button data-calc="8">8</button>
+                <button data-calc="9">9</button>
+                <button data-calc="-">−</button>
+
+                <button data-calc="4">4</button>
+                <button data-calc="5">5</button>
+                <button data-calc="6">6</button>
+                <button data-calc="+">+</button>
+
+                <button data-calc="1">1</button>
+                <button data-calc="2">2</button>
+                <button data-calc="3">3</button>
+                <button data-calc="(">(</button>
+
+                <button data-calc="0">0</button>
+                <button data-calc=".">.</button>
+                <button data-calc=")">)</button>
+                <button data-calc="=" class="equals">=</button>
+
+            </div>
+
+        </div>
+    </section>
+
+
+    <!-- FILE MANAGER -->
+    <section id="filesWindow" class="window">
+
+        <div class="window-header">
+            <span>📁 File Manager</span>
+
+            <div>
+                <button class="minimize-button">−</button>
+                <button class="close-button">×</button>
+            </div>
+        </div>
+
+        <div class="window-content">
+
+            <div class="file-toolbar">
+
+                <button id="newFile">
+                    ➕ New File
+                </button>
+
+                <button id="saveFile">
+                    💾 Save
+                </button>
+
+                <button id="deleteFile">
+                    🗑️ Delete
+                </button>
+
+            </div>
+
+            <div class="file-layout">
+
+                <div id="fileList" class="file-list"></div>
+
+                <div class="file-editor">
+
+                    <input
+                        id="fileName"
+                        placeholder="File name"
+                    >
+
+                    <textarea
+                        id="fileContent"
+                        placeholder="File contents..."
+                    ></textarea>
+
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+
+    <!-- PAINT -->
+    <section id="paintWindow" class="window">
+
+        <div class="window-header">
+            <span>🎨 NEXUS Paint</span>
+
+            <div>
+                <button class="minimize-button">−</button>
+                <button class="close-button">×</button>
+            </div>
+        </div>
+
+        <div class="window-content">
+
+            <div class="paint-toolbar">
+
+                <label>
+                    Brush
+                    <input
+                        id="brushSize"
+                        type="range"
+                        min="1"
+                        max="40"
+                        value="5"
+                    >
+                </label>
+
+                <input
+                    id="paintColor"
+                    type="color"
+                    value="#6c5ce7"
+                >
+
+                <button id="clearPaint">
+                    🧹 Clear
+                </button>
+
+                <button id="savePaint">
+                    💾 Save PNG
+                </button>
+
+            </div>
+
+            <canvas id="paintCanvas"></canvas>
+
+        </div>
+    </section>
+
+
+    <!-- =================================================
+         GAMES
+    ================================================== -->
+
+    <section id="gamesWindow" class="window game-window">
+
+        <div class="window-header">
+
+            <span>🎮 NEXUS Game Center</span>
+
+            <div>
+                <button class="minimize-button">−</button>
+                <button class="close-button">×</button>
+            </div>
 
         </div>
 
+        <div class="window-content">
 
-        <!-- CLICK RUSH -->
+            <div id="gameMenu" class="game-menu">
 
-        <div id="clickGameScreen" class="game-screen hidden">
+                <h2>🎮 Game Center</h2>
+                <p>Choose a game.</p>
 
-          <div class="game-topbar">
+                <div class="game-cards">
 
-            <button class="game-back">
-              ← Games
-            </button>
+                    <button data-game="catch" class="game-card">
+                        <span>🎯</span>
+                        <strong>Catch NEXUS</strong>
+                        <small>Catch the target!</small>
+                    </button>
 
-            <h2>⚡ Click Rush</h2>
+                    <button data-game="click" class="game-card">
+                        <span>⚡</span>
+                        <strong>Click Rush</strong>
+                        <small>Click as fast as possible!</small>
+                    </button>
 
-            <span>
-              Score:
-              <strong id="clickScore">0</strong>
-            </span>
+                    <button data-game="memory" class="game-card">
+                        <span>🧠</span>
+                        <strong>Memory Match</strong>
+                        <small>Match the pairs.</small>
+                    </button>
 
-          </div>
+                    <button data-game="snake" class="game-card">
+                        <span>🐍</span>
+                        <strong>NEXUS Snake</strong>
+                        <small>Eat the dots!</small>
+                    </button>
 
-          <button id="startClick" class="primary-button">
-            ▶ Start
-          </button>
+                </div>
 
-          <button
-            id="clickButton"
-            class="big-game-button"
-            disabled
-          >
-            CLICK!
-          </button>
+            </div>
 
-          <p id="clickMessage">
-            Click as fast as you can!
-          </p>
+
+            <!-- CATCH -->
+            <div id="catchGameScreen" class="game-screen hidden">
+
+                <button class="back-game">← Games</button>
+
+                <h2>🎯 Catch NEXUS</h2>
+
+                <p>
+                    Score:
+                    <strong id="catchScore">0</strong>
+                </p>
+
+                <button id="startCatch" class="primary-button">
+                    ▶ Start
+                </button>
+
+                <div id="catchArea" class="catch-area">
+                    <button id="catchTarget">N</button>
+                </div>
+
+            </div>
+
+
+            <!-- CLICK RUSH -->
+            <div id="clickGameScreen" class="game-screen hidden">
+
+                <button class="back-game">← Games</button>
+
+                <h2>⚡ Click Rush</h2>
+
+                <p>
+                    Score:
+                    <strong id="clickScore">0</strong>
+                </p>
+
+                <p>
+                    Time:
+                    <strong id="clickTime">10</strong>
+                </p>
+
+                <button id="startClick" class="primary-button">
+                    ▶ Start
+                </button>
+
+                <button
+                    id="clickButton"
+                    class="click-rush-button"
+                    disabled
+                >
+                    CLICK!
+                </button>
+
+            </div>
+
+
+            <!-- MEMORY -->
+            <div id="memoryGameScreen" class="game-screen hidden">
+
+                <button class="back-game">← Games</button>
+
+                <h2>🧠 Memory Match</h2>
+
+                <p>
+                    Moves:
+                    <strong id="memoryMoves">0</strong>
+                </p>
+
+                <button id="startMemory" class="primary-button">
+                    ▶ Start
+                </button>
+
+                <div id="memoryBoard" class="memory-board"></div>
+
+            </div>
+
+
+            <!-- SNAKE -->
+            <div id="snakeGameScreen" class="game-screen hidden">
+
+                <button class="back-game">← Games</button>
+
+                <h2>🐍 NEXUS Snake</h2>
+
+                <p>
+                    Score:
+                    <strong id="snakeScore">0</strong>
+                </p>
+
+                <button id="startSnake" class="primary-button">
+                    ▶ Start
+                </button>
+
+                <canvas
+                    id="snakeCanvas"
+                    width="400"
+                    height="300"
+                ></canvas>
+
+                <p class="small-text">
+                    Use the arrow keys to move.
+                </p>
+
+            </div>
 
         </div>
-
-
-        <!-- MEMORY -->
-
-        <div id="memoryGameScreen" class="game-screen hidden">
-
-          <div class="game-topbar">
-
-            <button class="game-back">
-              ← Games
-            </button>
-
-            <h2>🧠 Memory Match</h2>
-
-            <span>
-              Moves:
-              <strong id="memoryMoves">0</strong>
-            </span>
-
-          </div>
-
-          <button id="startMemory" class="primary-button">
-            ▶ New Game
-          </button>
-
-          <div
-            id="memoryBoard"
-            class="memory-board"
-          ></div>
-
-          <p id="memoryMessage">
-            Match all the pairs!
-          </p>
-
-        </div>
-
-
-        <!-- SNAKE -->
-
-        <div id="snakeGameScreen" class="game-screen hidden">
-
-          <div class="game-topbar">
-
-            <button class="game-back">
-              ← Games
-            </button>
-
-            <h2>🐍 Snake</h2>
-
-            <span>
-              Score:
-              <strong id="snakeScore">0</strong>
-            </span>
-
-          </div>
-
-          <button id="startSnake" class="primary-button">
-            ▶ Start Snake
-          </button>
-
-          <canvas
-            id="snakeCanvas"
-            width="400"
-            height="400"
-          ></canvas>
-
-          <p id="snakeMessage">
-            Use the arrow keys to move.
-          </p>
-
-        </div>
-
-      </div>
 
     </section>
 
 
-    <!-- =====================================================
-         NEXUS BROWSER
-    ====================================================== -->
+    <!-- =================================================
+         BROWSER
+    ================================================== -->
 
-    <section id="browserWindow" class="app-window">
+    <section id="browserWindow" class="window browser-window">
 
-      <header class="window-header">
+        <div class="window-header">
 
-        <span id="browserTabTitle">
-          🌐 NEXUS Browser
-        </span>
+            <span>🌐 NEXUS Browser</span>
 
-        <div class="window-controls">
-          <button
-            id="newBrowserTab"
-            title="New Tab"
-          >
-            ＋
-          </button>
+            <div>
+                <button class="minimize-button">−</button>
+                <button class="close-button">×</button>
+            </div>
 
-          <button
-            id="closeBrowserTab"
-            title="Close Tab"
-          >
-            ×
-          </button>
         </div>
-
-      </header>
-
-      <div class="browser-content">
 
         <div class="browser-toolbar">
 
-          <button id="browserBack" title="Back">
-            ←
-          </button>
+            <button id="browserBack">←</button>
+            <button id="browserForward">→</button>
+            <button id="browserReload">⟳</button>
+            <button id="browserHome">⌂</button>
 
-          <button id="browserForward" title="Forward">
-            →
-          </button>
+            <input
+                id="browserAddress"
+                type="text"
+                placeholder="Search or enter a web address..."
+            >
 
-          <button id="browserReload" title="Reload">
-            ↻
-          </button>
+            <button id="browserGo">
+                Go
+            </button>
 
-          <button id="browserHome" title="Home">
-            🏠
-          </button>
-
-          <input
-            id="browserAddress"
-            type="text"
-            placeholder="Search or enter a web address"
-            autocomplete="off"
-          >
-
-          <button id="browserFavorite" title="Favorite">
-            ☆
-          </button>
-
-          <button id="openExternalButton">
-            ↗
-          </button>
+            <button id="browserFavorite">
+                ☆
+            </button>
 
         </div>
 
-        <div class="browser-main">
+        <div class="browser-extra">
 
-          <aside
-            id="browserHistoryPanel"
-            class="browser-history-panel hidden"
-          >
+            <button id="newBrowserTab">
+                ＋ New Tab
+            </button>
 
-            <h3>History</h3>
+            <button id="browserHistoryButton">
+                🕘 History
+            </button>
+
+            <button id="openExternalButton">
+                ↗ Open External
+            </button>
+
+        </div>
+
+        <div id="browserHistoryPanel" class="browser-history hidden">
+
+            <div class="history-header">
+                <strong>History</strong>
+                <button id="closeHistory">×</button>
+            </div>
 
             <div id="historyList"></div>
 
-          </aside>
+        </div>
 
-          <div class="browser-page">
+        <div class="browser-page">
 
-            <div id="browserHomePage" class="browser-home-page">
+            <div id="browserHomePage" class="browser-home">
 
-              <div class="browser-logo">
-                N
-              </div>
+                <div class="browser-logo">N</div>
 
-              <h1>NEXUS Browser</h1>
+                <h1>NEXUS Browser</h1>
 
-              <p>
-                Search the web or enter a website address.
-              </p>
+                <p>
+                    A small browser inside NEXUS.
+                </p>
 
-              <input
-                id="browserHomeSearch"
-                type="text"
-                placeholder="Search the web..."
-              >
+                <div class="quick-sites">
 
-              <div class="browser-shortcuts">
+                    <button data-url="https://www.google.com">
+                        🔎 Google
+                    </button>
 
-                <button data-url="https://www.google.com">
-                  Google
-                </button>
+                    <button data-url="https://www.wikipedia.org">
+                        📚 Wikipedia
+                    </button>
 
-                <button data-url="https://www.bing.com">
-                  Bing
-                </button>
+                    <button data-url="https://www.youtube.com">
+                        ▶ YouTube
+                    </button>
 
-                <button data-url="https://www.wikipedia.org">
-                  Wikipedia
-                </button>
-
-              </div>
+                </div>
 
             </div>
 
+            <div id="browserBlocked" class="browser-blocked hidden">
 
-            <div
-              id="browserBlocked"
-              class="browser-blocked hidden"
-            >
+                <h2>🌐 Site cannot be embedded</h2>
 
-              <div class="blocked-icon">
-                ⚠️
-              </div>
+                <p>
+                    Some websites don't allow themselves to be displayed
+                    inside another website.
+                </p>
 
-              <h2>This website can't be displayed here</h2>
-
-              <p>
-                Some websites block embedded browsers.
-                You can open the page in a new browser tab.
-              </p>
-
-              <button id="openBlockedExternal">
-                ↗ Open Externally
-              </button>
+                <button id="blockedExternalButton" class="primary-button">
+                    Open Outside NEXUS
+                </button>
 
             </div>
-
 
             <iframe
-              id="browserFrame"
-              title="NEXUS Browser"
-              class="browser-frame hidden"
-              sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
+                id="browserFrame"
+                title="NEXUS Browser"
+                class="hidden"
+                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
             ></iframe>
 
-          </div>
-
         </div>
 
-      </div>
+        <div class="browser-status">
+            <span id="browserTabTitle">NEXUS Browser</span>
+        </div>
 
     </section>
 
 
-    <!-- =====================================================
-         SETTINGS
-    ====================================================== -->
+    <!-- SETTINGS -->
+    <section id="settingsWindow" class="window">
 
-    <section id="settingsWindow" class="app-window">
+        <div class="window-header">
 
-      <header class="window-header">
+            <span>⚙️ Settings</span>
 
-        <span>⚙️ Settings</span>
+            <div>
+                <button class="minimize-button">−</button>
+                <button class="close-button">×</button>
+            </div>
 
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
         </div>
 
-      </header>
+        <div class="window-content settings-content">
 
-      <div class="window-content settings-content">
+            <div class="settings-profile">
 
-        <div class="settings-profile">
+                <div class="profile-avatar">
+                    👤
+                </div>
 
-          <div class="profile-avatar">
-            👤
-          </div>
+                <div>
+                    <h2 id="settingsUsername">User</h2>
+                    <p id="settingsEmail">Local NEXUS account</p>
+                </div>
 
-          <div>
+            </div>
 
-            <h2 id="settingsUsername">
-              User
-            </h2>
 
-            <p id="settingsAccountInfo">
-              Local NEXUS account
+            <h3>👤 Account</h3>
+
+            <input
+                id="settingsUsernameInput"
+                placeholder="Username"
+            >
+
+            <button id="saveUsername">
+                Save Username
+            </button>
+
+
+            <h3>🎨 Appearance</h3>
+
+            <div class="settings-buttons">
+
+                <button id="darkTheme">
+                    🌙 Dark Theme
+                </button>
+
+                <button id="lightTheme">
+                    ☀️ Light Theme
+                </button>
+
+            </div>
+
+
+            <h3>🌌 Wallpaper</h3>
+
+            <div class="settings-buttons wallpaper-buttons">
+
+                <button data-wallpaper="nexus">
+                    🌌 NEXUS
+                </button>
+
+                <button data-wallpaper="purple">
+                    🟣 Purple
+                </button>
+
+                <button data-wallpaper="blue">
+                    🔵 Blue
+                </button>
+
+                <button data-wallpaper="green">
+                    🟢 Green
+                </button>
+
+            </div>
+
+
+            <h3>🔐 Security</h3>
+
+            <button id="changePassword">
+                Change Password
+            </button>
+
+            <button id="logoutButton" class="danger-button">
+                🚪 Log Out
+            </button>
+
+            <button id="deleteAccount" class="danger-button">
+                🗑️ Delete Account
+            </button>
+
+        </div>
+    </section>
+
+
+    <!-- ABOUT -->
+    <section id="aboutWindow" class="window">
+
+        <div class="window-header">
+
+            <span>💠 About NEXUS</span>
+
+            <div>
+                <button class="minimize-button">−</button>
+                <button class="close-button">×</button>
+            </div>
+
+        </div>
+
+        <div class="window-content about-content">
+
+            <div class="about-logo">N</div>
+
+            <h1>NEXUS</h1>
+
+            <p class="version">
+                Version 1.4
             </p>
 
-          </div>
+            <p>
+                A browser-based mini operating system.
+            </p>
+
+            <div class="feature-list">
+
+                <div>🔐 Local multi-account system</div>
+                <div>📝 Notepad</div>
+                <div>🧮 Calculator</div>
+                <div>📁 File Manager</div>
+                <div>🎨 Paint</div>
+                <div>🎮 Multiple Games</div>
+                <div>🌐 NEXUS Browser</div>
+                <div>⚙️ Settings</div>
+
+            </div>
+
+            <p class="small-text">
+                Built with HTML, CSS and JavaScript.
+            </p>
 
         </div>
-
-
-        <div class="settings-section">
-
-          <h3>Appearance</h3>
-
-          <div class="settings-buttons">
-
-            <button id="darkThemeButton">
-              🌙 Dark Theme
-            </button>
-
-            <button id="lightThemeButton">
-              ☀️ Light Theme
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <div class="settings-section">
-
-          <h3>Wallpaper</h3>
-
-          <div class="settings-buttons">
-
-            <button data-wallpaper="default">
-              🌌 NEXUS
-            </button>
-
-            <button data-wallpaper="purple">
-              🟣 Purple
-            </button>
-
-            <button data-wallpaper="blue">
-              🔵 Blue
-            </button>
-
-            <button data-wallpaper="green">
-              🟢 Green
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <div class="settings-section">
-
-          <h3>Account</h3>
-
-          <button id="logoutButton">
-            🚪 Log Out
-          </button>
-
-          <button id="deleteAccountButton" class="danger-button">
-            🗑️ Delete Account
-          </button>
-
-        </div>
-
-      </div>
-
     </section>
 
 
-    <!-- =====================================================
-         ABOUT
-    ====================================================== -->
-
-    <section id="aboutWindow" class="app-window">
-
-      <header class="window-header">
-
-        <span>💠 About NEXUS</span>
-
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-
-      </header>
-
-      <div class="window-content about-content">
-
-        <div class="about-logo">
-          N
-        </div>
-
-        <h1>NEXUS</h1>
-
-        <p class="about-version">
-          Version 1.4
-        </p>
-
-        <p>
-          A browser-based mini operating system.
-        </p>
-
-        <div class="feature-list">
-
-          <div>🔐 Firebase-free local accounts</div>
-          <div>🌐 NEXUS Browser</div>
-          <div>📝 Notepad</div>
-          <div>🧮 Calculator</div>
-          <div>📁 File Manager</div>
-          <div>🎨 Paint</div>
-          <div>🎮 Game Center</div>
-          <div>⚙️ Settings</div>
-
-        </div>
-
-        <p class="about-footer">
-          Built with HTML, CSS and JavaScript.
-        </p>
-
-      </div>
-
-    </section>
-
-
-    <!-- =====================================================
+    <!-- =================================================
          START MENU
-    ====================================================== -->
+    ================================================== -->
 
-    <aside id="startMenu" class="start-menu hidden">
+    <div id="startMenu" class="start-menu hidden">
 
-      <div class="start-header">
+        <div class="start-profile">
 
-        <div class="profile-avatar">
-          👤
+            <div class="start-avatar">
+                👤
+            </div>
+
+            <div>
+                <strong id="startUsername">
+                    User
+                </strong>
+
+                <small id="startEmail">
+                    Local account
+                </small>
+            </div>
+
         </div>
 
-        <div>
 
-          <strong id="startUsername">
-            User
-          </strong>
+        <div class="start-apps">
 
-          <small>NEXUS User</small>
+            <button data-open="notepadWindow">
+                📝 Notepad
+            </button>
+
+            <button data-open="calculatorWindow">
+                🧮 Calculator
+            </button>
+
+            <button data-open="filesWindow">
+                📁 Files
+            </button>
+
+            <button data-open="paintWindow">
+                🎨 Paint
+            </button>
+
+            <button data-open="gamesWindow">
+                🎮 Games
+            </button>
+
+            <button data-open="browserWindow">
+                🌐 Browser
+            </button>
+
+            <button data-open="settingsWindow">
+                ⚙️ Settings
+            </button>
+
+            <button data-open="aboutWindow">
+                💠 About
+            </button>
 
         </div>
 
-      </div>
 
+        <div class="start-bottom">
 
-      <div class="start-apps">
+            <button id="startLogout">
+                🚪 Log Out
+            </button>
 
-        <button data-app="notepadWindow">
-          📝 Notepad
-        </button>
-
-        <button data-app="calculatorWindow">
-          🧮 Calculator
-        </button>
-
-        <button data-app="filesWindow">
-          📁 Files
-        </button>
-
-        <button data-app="paintWindow">
-          🎨 Paint
-        </button>
-
-        <button data-app="gameWindow">
-          🎮 Game Center
-        </button>
-
-        <button data-app="browserWindow">
-          🌐 NEXUS Browser
-        </button>
-
-        <button data-app="settingsWindow">
-          ⚙️ Settings
-        </button>
-
-        <button data-app="aboutWindow">
-          💠 About
-        </button>
-
-      </div>
-
-
-      <div class="start-footer">
-
-        <button id="startLogoutButton">
-          🚪 Log Out
-        </button>
-
-      </div>
-
-    </aside>
-
-
-    <!-- =====================================================
-         TASKBAR
-    ====================================================== -->
-
-    <footer class="taskbar">
-
-      <button
-        id="startButton"
-        class="start-button"
-        title="Start"
-      >
-        ◈
-        <span>NEXUS</span>
-      </button>
-
-      <div
-        id="taskbarApps"
-        class="taskbar-apps"
-      ></div>
-
-      <div class="taskbar-right">
-
-        <div
-          id="taskbarUser"
-          class="taskbar-user"
-        >
-          👤
         </div>
-
-        <div
-          id="clock"
-          class="clock"
-        >
-          00:00
-        </div>
-
-      </div>
-
-    </footer>
-
-
-    <!-- =====================================================
-         NOTIFICATION
-    ====================================================== -->
-
-    <div
-      id="notification"
-      class="notification hidden"
-    >
-
-      <div class="notification-icon">
-        ◈
-      </div>
-
-      <div>
-
-        <strong id="notificationTitle">
-          NEXUS
-        </strong>
-
-        <p id="notificationMessage">
-          Ready.
-        </p>
-
-      </div>
 
     </div>
 
 
-  </main>
+    <!-- =================================================
+         TASKBAR
+    ================================================== -->
+
+    <div class="taskbar">
+
+        <button id="startButton" class="start-button">
+            ◈ NEXUS
+        </button>
+
+        <div id="taskbarApps" class="taskbar-apps"></div>
+
+        <div class="taskbar-right">
+
+            <div id="notificationIcon">
+                🔔
+            </div>
+
+            <div id="taskbarClock">
+                00:00
+            </div>
+
+        </div>
+
+    </div>
 
 
-  <!-- =======================================================
-       JAVASCRIPT
-  ======================================================== -->
+    <!-- =================================================
+         NOTIFICATIONS
+    ================================================== -->
 
-  <script src="script.js"></script>
+    <div id="toastContainer"></div>
+
+
+    <!-- =================================================
+         CLOCK OVERLAY
+    ================================================== -->
+
+    <div id="clockOverlay" class="clock-overlay">
+
+        <div id="bigClock">
+            00:00
+        </div>
+
+        <div id="bigDate">
+            Loading...
+        </div>
+
+    </div>
+
+</div>
+
+
+<script src="script.js"></script>
 
 </body>
 </html>
