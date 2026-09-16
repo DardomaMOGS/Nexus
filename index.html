@@ -1,638 +1,2298 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NEXUS v1.2</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-
-  <!-- =========================
-       BOOT SCREEN
-  ========================== -->
-  <div id="bootScreen" class="screen boot-screen">
-    <div class="boot-logo">N</div>
-    <h1>NEXUS</h1>
-    <p>Starting NEXUS v1.2...</p>
-
-    <div class="boot-bar">
-      <div id="bootProgress"></div>
-    </div>
-
-    <span id="bootStatus">Initializing...</span>
-  </div>
+/* =========================================================
+   NEXUS v1.2
+   COMPLETE FIREBASE-FREE SYSTEM
+   Corrected authentication + stable initialization
+========================================================= */
 
+"use strict";
 
-  <!-- =========================
-       AUTH SCREEN
-  ========================== -->
-  <div id="authScreen" class="screen auth-screen hidden">
+document.addEventListener("DOMContentLoaded", () => {
 
-    <div class="auth-box">
+  /* =========================================================
+     STORAGE
+  ========================================================= */
+
+  const ACCOUNTS_KEY = "nexus_v12_accounts";
+  const SESSION_KEY = "nexus_v12_session";
 
-      <div class="auth-logo">N</div>
+  let accounts = {};
+  let currentUser = null;
+
+  let selectedFile = null;
+  let calculatorValue = "";
+  let saveNotesTimer = null;
+  let notificationTimer = null;
 
-      <h1>NEXUS</h1>
-      <p class="auth-version">v1.2</p>
+  let gameScore = 0;
+  let gameRunning = false;
+  let gameTimer = null;
 
-      <!-- LOGIN -->
-      <div id="loginPanel">
 
-        <h2>Welcome Back</h2>
-        <p class="auth-subtitle">Log in to your NEXUS account.</p>
+  /* =========================================================
+     HELPERS
+  ========================================================= */
+
+  const $ = id => document.getElementById(id);
 
-        <input
-          id="loginUsername"
-          type="text"
-          placeholder="Username"
-          autocomplete="username"
-        >
+  const qsa = selector =>
+    document.querySelectorAll(selector);
 
-        <input
-          id="loginPassword"
-          type="password"
-          placeholder="Password"
-          autocomplete="current-password"
-        >
 
-        <button id="loginButton" class="primary-button">
-          🔐 Login
-        </button>
-
-        <button id="forgotPasswordButton" class="text-button">
-          Forgot password?
-        </button>
-
-        <p id="loginError" class="error-message"></p>
+  function safeElement(id) {
+    return $(id);
+  }
 
-        <div class="auth-switch">
-          Don't have an account?
-          <button id="showSignupButton">Create one</button>
-        </div>
-
-      </div>
 
+  /* =========================================================
+     STORAGE
+  ========================================================= */
 
-      <!-- SIGN UP -->
-      <div id="signupPanel" class="hidden">
+  function loadAccounts() {
+    try {
+      const saved = localStorage.getItem(ACCOUNTS_KEY);
+      accounts = saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.error("Could not load NEXUS accounts:", error);
+      accounts = {};
+    }
+  }
 
-        <h2>Create Account</h2>
-        <p class="auth-subtitle">Create your own NEXUS profile.</p>
 
-        <input
-          id="signupUsername"
-          type="text"
-          placeholder="Username"
-          autocomplete="username"
-        >
+  function saveAccounts() {
+    try {
+      localStorage.setItem(
+        ACCOUNTS_KEY,
+        JSON.stringify(accounts)
+      );
+    } catch (error) {
+      console.error("Could not save NEXUS accounts:", error);
+      showNotification(
+        "Storage Error",
+        "NEXUS could not save your account."
+      );
+    }
+  }
 
-        <input
-          id="signupPassword"
-          type="password"
-          placeholder="Password"
-          autocomplete="new-password"
-        >
 
-        <input
-          id="signupPasswordConfirm"
-          type="password"
-          placeholder="Confirm password"
-          autocomplete="new-password"
-        >
+  function createID() {
+    return (
+      Date.now().toString(36) +
+      Math.random().toString(36).slice(2)
+    );
+  }
 
-        <button id="signupButton" class="primary-button">
-          🚀 Create Account
-        </button>
 
-        <p id="signupError" class="error-message"></p>
+  /* =========================================================
+     PASSWORD HASH
+  ========================================================= */
 
-        <div class="auth-switch">
-          Already have an account?
-          <button id="showLoginButton">Log in</button>
-        </div>
+  async function hashPassword(password) {
 
-      </div>
+    if (
+      window.crypto &&
+      window.crypto.subtle &&
+      window.TextEncoder
+    ) {
 
-      <p class="local-warning">
-        🔒 Your account is stored locally in this browser.
-      </p>
+      try {
 
-    </div>
-  </div>
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
 
+        const hash = await window.crypto.subtle.digest(
+          "SHA-256",
+          data
+        );
 
-  <!-- =========================
-       DESKTOP
-  ========================== -->
-  <div id="desktop" class="desktop hidden">
+        return Array.from(
+          new Uint8Array(hash)
+        )
+          .map(
+            byte =>
+              byte.toString(16).padStart(2, "0")
+          )
+          .join("");
 
-    <div id="wallpaper" class="wallpaper"></div>
+      } catch (error) {
+        console.warn(
+          "Web Crypto unavailable. Using fallback hash."
+        );
+      }
+    }
 
 
-    <!-- =========================
-         DESKTOP ICONS
-    ========================== -->
-    <div class="desktop-icons">
+    let hash = 0;
 
-      <button class="desktop-icon" data-app="notepadWindow">
-        <span>📝</span>
-        <label>Notepad</label>
-      </button>
+    for (let i = 0; i < password.length; i++) {
 
-      <button class="desktop-icon" data-app="calculatorWindow">
-        <span>🧮</span>
-        <label>Calculator</label>
-      </button>
+      hash =
+        (
+          (hash << 5) -
+          hash +
+          password.charCodeAt(i)
+        ) | 0;
+    }
 
-      <button class="desktop-icon" data-app="filesWindow">
-        <span>📁</span>
-        <label>Files</label>
-      </button>
+    return String(hash);
+  }
 
-      <button class="desktop-icon" data-app="paintWindow">
-        <span>🎨</span>
-        <label>Paint</label>
-      </button>
 
-      <button class="desktop-icon" data-app="gameWindow">
-        <span>🎮</span>
-        <label>Catch NEXUS</label>
-      </button>
+  /* =========================================================
+     DEFAULT FILES
+  ========================================================= */
 
-      <button class="desktop-icon" data-app="settingsWindow">
-        <span>⚙️</span>
-        <label>Settings</label>
-      </button>
+  function defaultFiles(username) {
 
-      <button class="desktop-icon" data-app="aboutWindow">
-        <span>💠</span>
-        <label>About</label>
-      </button>
+    return {
 
-    </div>
+      "Welcome.txt":
+`Welcome to NEXUS v1.2!
 
+Hello ${username}!
 
-    <!-- =========================
-         WINDOWS
-    ========================== -->
+This is your personal NEXUS desktop.
 
-    <!-- NOTEPAD -->
-    <section id="notepadWindow" class="app-window">
+Everything stored here belongs to this browser account.`,
 
-      <div class="window-header">
-        <span>📝 Notepad</span>
+      "About.txt":
+`NEXUS v1.2
 
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-      </div>
+A browser-based mini operating system.
 
-      <div class="window-body notepad-body">
+Apps:
+- Notepad
+- Calculator
+- File Manager
+- Paint
+- Catch NEXUS
+- Settings`,
 
-        <textarea
-          id="notesArea"
-          placeholder="Start writing..."
-        ></textarea>
+      "Ideas.txt":
+`NEXUS Ideas
 
-        <div class="notepad-footer">
-          <span id="notesStatus">Ready</span>
+1. More games
+2. More apps
+3. Better wallpapers
+4. More customization
+5. Future NEXUS versions`
 
-          <button id="clearNotesButton" class="small-button">
-            Clear
-          </button>
-        </div>
+    };
+  }
 
-      </div>
 
-    </section>
+  /* =========================================================
+     BOOT
+  ========================================================= */
 
+  function boot() {
 
-    <!-- CALCULATOR -->
-    <section id="calculatorWindow" class="app-window">
+    const bootScreen = $("bootScreen");
 
-      <div class="window-header">
-        <span>🧮 Calculator</span>
+    if (!bootScreen) {
+      restoreSession();
+      return;
+    }
 
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-      </div>
+    let progress = 0;
 
-      <div class="window-body calculator-body">
+    const interval = setInterval(() => {
 
-        <input
-          id="calculatorDisplay"
-          class="calculator-display"
-          type="text"
-          readonly
-        >
+      progress += 5;
 
-        <div class="calculator-grid">
+      const progressBar = $("bootProgress");
+      const status = $("bootStatus");
 
-          <button data-calc="clear">C</button>
-          <button data-calc="backspace">⌫</button>
-          <button data-calc="/">÷</button>
-          <button data-calc="*">×</button>
+      if (progressBar) {
+        progressBar.style.width =
+          progress + "%";
+      }
 
-          <button data-calc="7">7</button>
-          <button data-calc="8">8</button>
-          <button data-calc="9">9</button>
-          <button data-calc="-">−</button>
+      if (status) {
 
-          <button data-calc="4">4</button>
-          <button data-calc="5">5</button>
-          <button data-calc="6">6</button>
-          <button data-calc="+">+</button>
+        if (progress < 35) {
+          status.textContent =
+            "Checking system...";
 
-          <button data-calc="1">1</button>
-          <button data-calc="2">2</button>
-          <button data-calc="3">3</button>
-          <button data-calc="(">(</button>
+        } else if (progress < 65) {
+          status.textContent =
+            "Loading NEXUS core...";
 
-          <button data-calc="0">0</button>
-          <button data-calc=".">.</button>
-          <button data-calc=")">)</button>
-          <button data-calc="=" class="equals-button">=</button>
+        } else if (progress < 90) {
+          status.textContent =
+            "Preparing desktop...";
 
-        </div>
+        } else {
+          status.textContent =
+            "Ready.";
+        }
+      }
 
-      </div>
+      if (progress >= 100) {
 
-    </section>
+        clearInterval(interval);
 
+        setTimeout(() => {
 
-    <!-- FILE MANAGER -->
-    <section id="filesWindow" class="app-window files-window">
+          bootScreen.classList.add("hidden");
 
-      <div class="window-header">
-        <span>📁 File Manager</span>
+          restoreSession();
 
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-      </div>
+        }, 350);
+      }
 
-      <div class="files-layout">
+    }, 35);
+  }
 
-        <div class="file-sidebar">
 
-          <h3>Your Files</h3>
+  /* =========================================================
+     AUTH SCREEN
+  ========================================================= */
 
-          <div id="fileList"></div>
+  function showLogin() {
 
-          <button id="newFileButton" class="small-button">
-            ➕ New File
-          </button>
+    const loginPanel = $("loginPanel");
+    const signupPanel = $("signupPanel");
 
-        </div>
+    if (loginPanel)
+      loginPanel.classList.remove("hidden");
 
-        <div class="file-editor">
+    if (signupPanel)
+      signupPanel.classList.add("hidden");
 
-          <textarea
-            id="fileEditor"
-            placeholder="Select a file..."
-          ></textarea>
+    if ($("loginError"))
+      $("loginError").textContent = "";
 
-          <div class="file-buttons">
+    if ($("signupError"))
+      $("signupError").textContent = "";
+  }
 
-            <button id="saveFileButton" class="small-button">
-              💾 Save
-            </button>
 
-            <button id="deleteFileButton" class="danger-button">
-              🗑️ Delete
-            </button>
+  function showSignup() {
 
-          </div>
+    const loginPanel = $("loginPanel");
+    const signupPanel = $("signupPanel");
 
-        </div>
+    if (loginPanel)
+      loginPanel.classList.add("hidden");
 
-      </div>
+    if (signupPanel)
+      signupPanel.classList.remove("hidden");
 
-    </section>
+    if ($("loginError"))
+      $("loginError").textContent = "";
 
+    if ($("signupError"))
+      $("signupError").textContent = "";
+  }
 
-    <!-- PAINT -->
-    <section id="paintWindow" class="app-window paint-window">
 
-      <div class="window-header">
-        <span>🎨 NEXUS Paint</span>
+  /* =========================================================
+     USERNAME VALIDATION
+  ========================================================= */
 
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-      </div>
+  function validUsername(username) {
 
-      <div class="paint-toolbar">
+    /*
+      Allowed:
+      A-Z
+      a-z
+      0-9
+      spaces
+      underscores
 
-        <label>
-          Brush
-          <input
-            id="brushSize"
-            type="range"
-            min="1"
-            max="40"
-            value="5"
-          >
-        </label>
+      NOT allowed:
+      @
+      #
+      $
+      %
+      !
+      etc.
+    */
 
-        <button id="clearCanvasButton" class="small-button">
-          🧹 Clear
-        </button>
+    return /^[A-Za-z0-9_ ]+$/.test(username);
+  }
 
-        <button id="saveDrawingButton" class="small-button">
-          💾 Save PNG
-        </button>
 
-      </div>
+  /* =========================================================
+     SIGN UP
+  ========================================================= */
 
-      <div class="canvas-container">
-        <canvas id="paintCanvas" width="900" height="500"></canvas>
-      </div>
+  async function signup() {
 
-    </section>
+    const usernameInput = $("signupUsername");
+    const passwordInput = $("signupPassword");
+    const confirmInput = $("signupPasswordConfirm");
+    const error = $("signupError");
 
+    if (!usernameInput || !passwordInput || !confirmInput || !error) {
+      console.error("Signup elements are missing.");
+      return;
+    }
 
-    <!-- GAME -->
-    <section id="gameWindow" class="app-window game-window">
 
-      <div class="window-header">
-        <span>🎮 Catch NEXUS</span>
+    const username =
+      usernameInput.value.trim();
 
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-      </div>
+    const password =
+      passwordInput.value;
 
-      <div class="game-info">
+    const confirm =
+      confirmInput.value;
 
-        <span>
-          Score:
-          <strong id="gameScore">0</strong>
-        </span>
 
-        <button id="startGameButton" class="primary-button">
-          ▶ Start Game
-        </button>
+    error.textContent = "";
 
-      </div>
 
-      <div id="gameArea">
+    /* EMPTY USERNAME */
 
-        <button id="gameTarget">
-          N
-        </button>
+    if (!username) {
 
-        <div id="gameMessage">
-          Press Start Game!
-        </div>
+      error.textContent =
+        "Please choose a username.";
 
-      </div>
+      return;
+    }
 
-    </section>
 
+    /* USERNAME LENGTH */
 
-    <!-- SETTINGS -->
-    <section id="settingsWindow" class="app-window settings-window">
+    if (username.length < 2) {
 
-      <div class="window-header">
-        <span>⚙️ Settings</span>
+      error.textContent =
+        "Username must be at least 2 characters.";
 
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-      </div>
+      return;
+    }
 
-      <div class="window-body settings-body">
 
-        <div class="profile-card">
+    /* USERNAME CHARACTERS */
 
-          <div class="profile-avatar">
-            👤
-          </div>
+    if (!validUsername(username)) {
 
-          <div>
-            <h2 id="settingsUsername">User</h2>
-            <p id="settingsAccountInfo">
-              Local NEXUS account
-            </p>
-          </div>
+      error.textContent =
+        "Use letters, numbers, spaces or underscores.";
 
-        </div>
+      return;
+    }
 
 
-        <h3>Appearance</h3>
+    /* PASSWORD LENGTH */
 
-        <div class="settings-buttons">
+    if (password.length < 6) {
 
-          <button id="darkThemeButton">
-            🌙 Dark Theme
-          </button>
+      error.textContent =
+        "Password must be at least 6 characters.";
 
-          <button id="lightThemeButton">
-            ☀️ Light Theme
-          </button>
+      return;
+    }
 
-        </div>
 
+    /* PASSWORD MATCH */
 
-        <h3>Wallpaper</h3>
+    if (password !== confirm) {
 
-        <div class="settings-buttons">
+      error.textContent =
+        "The passwords do not match.";
 
-          <button data-wallpaper="default">
-            🌌 NEXUS
-          </button>
+      return;
+    }
 
-          <button data-wallpaper="purple">
-            🟣 Purple
-          </button>
 
-          <button data-wallpaper="blue">
-            🔵 Blue
-          </button>
+    /*
+      IMPORTANT:
+      The username key is normalized only for storage.
+      The original username is preserved for display.
+    */
 
-          <button data-wallpaper="green">
-            🟢 Green
-          </button>
+    const usernameKey =
+      username.toLowerCase();
 
-        </div>
 
+    /* DUPLICATE USERNAME */
 
-        <h3>Account</h3>
+    if (Object.prototype.hasOwnProperty.call(
+      accounts,
+      usernameKey
+    )) {
 
-        <div class="settings-buttons">
+      error.textContent =
+        "That username is already taken.";
 
-          <button id="logoutButton" class="danger-button">
-            🚪 Log Out
-          </button>
+      return;
+    }
 
-          <button id="deleteAccountButton" class="danger-button">
-            🗑️ Delete Account
-          </button>
 
-        </div>
+    /* CREATE ACCOUNT */
 
-      </div>
+    const passwordHash =
+      await hashPassword(password);
 
-    </section>
 
+    accounts[usernameKey] = {
 
-    <!-- ABOUT -->
-    <section id="aboutWindow" class="app-window about-window">
+      id: createID(),
 
-      <div class="window-header">
-        <span>💠 About NEXUS</span>
+      username: username,
 
-        <div class="window-controls">
-          <button class="minimize-button">−</button>
-          <button class="close-button">×</button>
-        </div>
-      </div>
+      passwordHash: passwordHash,
 
-      <div class="window-body about-body">
+      createdAt: Date.now(),
 
-        <div class="about-logo">
-          N
-        </div>
+      theme: "dark",
 
-        <h1>NEXUS</h1>
+      wallpaper: "default",
 
-        <p class="version">Version 1.2</p>
+      notes: "",
 
-        <p>
-          A browser-based mini operating system.
-        </p>
+      files: defaultFiles(username),
 
-        <div class="feature-list">
+      highScore: 0
+    };
 
-          <div>🔐 Local multi-account system</div>
-          <div>📝 Notepad</div>
-          <div>🧮 Calculator</div>
-          <div>📁 File Manager</div>
-          <div>🎨 Paint</div>
-          <div>🎮 Catch NEXUS</div>
-          <div>⚙️ Settings</div>
 
-        </div>
+    saveAccounts();
 
-        <p class="about-note">
-          Built with HTML, CSS and JavaScript.
-        </p>
 
-      </div>
+    /* CREATE SESSION */
 
-    </section>
+    localStorage.setItem(
+      SESSION_KEY,
+      usernameKey
+    );
 
 
-    <!-- =========================
-         START MENU
-    ========================== -->
-    <div id="startMenu" class="start-menu hidden">
+    /* CLEAR FORM */
 
-      <div class="start-profile">
+    usernameInput.value = "";
+    passwordInput.value = "";
+    confirmInput.value = "";
 
-        <div class="start-avatar">
-          👤
-        </div>
 
-        <div>
-          <strong id="startUsername">User</strong>
-          <span>Local account</span>
-        </div>
+    /* ENTER DESKTOP */
 
-      </div>
+    loginUser(usernameKey);
+  }
 
 
-      <div class="start-apps">
+  /* =========================================================
+     LOGIN
+  ========================================================= */
 
-        <button data-app="notepadWindow">
-          📝 Notepad
-        </button>
+  async function login() {
 
-        <button data-app="calculatorWindow">
-          🧮 Calculator
-        </button>
+    const usernameInput = $("loginUsername");
+    const passwordInput = $("loginPassword");
+    const error = $("loginError");
 
-        <button data-app="filesWindow">
-          📁 Files
-        </button>
+    if (!usernameInput || !passwordInput || !error) {
+      console.error("Login elements are missing.");
+      return;
+    }
 
-        <button data-app="paintWindow">
-          🎨 Paint
-        </button>
 
-        <button data-app="gameWindow">
-          🎮 Catch NEXUS
-        </button>
+    const username =
+      usernameInput.value.trim();
 
-        <button data-app="settingsWindow">
-          ⚙️ Settings
-        </button>
+    const password =
+      passwordInput.value;
 
-        <button data-app="aboutWindow">
-          💠 About
-        </button>
 
-      </div>
+    error.textContent = "";
 
 
-      <div class="start-bottom">
+    if (!username || !password) {
 
-        <button id="startLogoutButton">
-          🚪 Log Out
-        </button>
+      error.textContent =
+        "Enter your username and password.";
 
-      </div>
+      return;
+    }
 
-    </div>
 
+    const key =
+      username.toLowerCase();
 
-    <!-- =========================
-         TASKBAR
-    ========================== -->
-    <div class="taskbar">
 
-      <button id="startButton" class="start-button">
-        ◈ NEXUS
-      </button>
+    const account =
+      accounts[key];
 
-      <div id="taskbarApps" class="taskbar-apps"></div>
 
-      <div class="taskbar-clock">
-        <span id="clock">00:00</span>
-      </div>
+    if (!account) {
 
-    </div>
+      error.textContent =
+        "No NEXUS account was found.";
 
+      return;
+    }
 
-    <!-- =========================
-         NOTIFICATION
-    ========================== -->
-    <div id="notification" class="notification hidden">
 
-      <strong id="notificationTitle">
-        NEXUS
-      </strong>
+    const passwordHash =
+      await hashPassword(password);
 
-      <p id="notificationMessage">
-        Notification
-      </p>
 
-    </div>
+    if (
+      passwordHash !==
+      account.passwordHash
+    ) {
 
-  </div>
+      error.textContent =
+        "Incorrect password.";
 
+      return;
+    }
 
-  <script src="script.js"></script>
 
-</body>
-</html>
+    localStorage.setItem(
+      SESSION_KEY,
+      key
+    );
+
+
+    passwordInput.value = "";
+
+
+    loginUser(key);
+  }
+
+
+  /* =========================================================
+     LOGIN USER
+  ========================================================= */
+
+  function loginUser(usernameKey) {
+
+    currentUser =
+      accounts[usernameKey];
+
+
+    if (!currentUser) {
+
+      showLogin();
+
+      return;
+    }
+
+
+    const authScreen = $("authScreen");
+    const desktop = $("desktop");
+
+    if (authScreen)
+      authScreen.classList.add("hidden");
+
+    if (desktop)
+      desktop.classList.remove("hidden");
+
+
+    applyUserSettings();
+
+    renderFiles();
+
+    showNotification(
+      "NEXUS Ready",
+      `Welcome, ${currentUser.username}!`
+    );
+  }
+
+
+  /* =========================================================
+     RESTORE SESSION
+  ========================================================= */
+
+  function restoreSession() {
+
+    loadAccounts();
+
+
+    const session =
+      localStorage.getItem(
+        SESSION_KEY
+      );
+
+
+    if (
+      session &&
+      Object.prototype.hasOwnProperty.call(
+        accounts,
+        session
+      )
+    ) {
+
+      loginUser(session);
+
+    } else {
+
+      if ($("authScreen"))
+        $("authScreen").classList.remove("hidden");
+
+      if ($("desktop"))
+        $("desktop").classList.add("hidden");
+
+      showLogin();
+    }
+  }
+
+
+  /* =========================================================
+     LOGOUT
+  ========================================================= */
+
+  function logout() {
+
+    localStorage.removeItem(
+      SESSION_KEY
+    );
+
+    currentUser = null;
+
+    closeAllWindows();
+
+
+    if ($("desktop"))
+      $("desktop").classList.add("hidden");
+
+    if ($("authScreen"))
+      $("authScreen").classList.remove("hidden");
+
+
+    if ($("loginUsername"))
+      $("loginUsername").value = "";
+
+    if ($("loginPassword"))
+      $("loginPassword").value = "";
+
+
+    showLogin();
+  }
+
+
+  /* =========================================================
+     SAVE CURRENT USER
+  ========================================================= */
+
+  function saveCurrentUser() {
+
+    if (!currentUser)
+      return;
+
+
+    const key =
+      currentUser.username.toLowerCase();
+
+
+    accounts[key] =
+      currentUser;
+
+
+    saveAccounts();
+  }
+
+
+  /* =========================================================
+     USER SETTINGS
+  ========================================================= */
+
+  function applyUserSettings() {
+
+    if (!currentUser)
+      return;
+
+
+    if ($("settingsUsername"))
+      $("settingsUsername").textContent =
+        currentUser.username;
+
+
+    if ($("settingsAccountInfo"))
+      $("settingsAccountInfo").textContent =
+        "Local NEXUS account";
+
+
+    if ($("startUsername"))
+      $("startUsername").textContent =
+        currentUser.username;
+
+
+    applyTheme(
+      currentUser.theme || "dark"
+    );
+
+
+    applyWallpaper(
+      currentUser.wallpaper || "default"
+    );
+
+
+    if ($("notesArea"))
+      $("notesArea").value =
+        currentUser.notes || "";
+  }
+
+
+  /* =========================================================
+     THEME
+  ========================================================= */
+
+  function applyTheme(theme) {
+
+    if (!document.body)
+      return;
+
+
+    if (theme === "light") {
+
+      document.body.classList.add(
+        "light-theme"
+      );
+
+    } else {
+
+      document.body.classList.remove(
+        "light-theme"
+      );
+    }
+  }
+
+
+  function setTheme(theme) {
+
+    if (!currentUser)
+      return;
+
+
+    currentUser.theme =
+      theme;
+
+
+    applyTheme(theme);
+
+    saveCurrentUser();
+
+
+    showNotification(
+      "Theme Changed",
+      theme === "light"
+        ? "Light theme enabled."
+        : "Dark theme enabled."
+    );
+  }
+
+
+  /* =========================================================
+     WALLPAPER
+  ========================================================= */
+
+  function applyWallpaper(name) {
+
+    const wallpaper =
+      $("wallpaper");
+
+
+    if (!wallpaper)
+      return;
+
+
+    wallpaper.className =
+      "wallpaper";
+
+
+    if (
+      name &&
+      name !== "default"
+    ) {
+
+      wallpaper.classList.add(
+        name
+      );
+    }
+  }
+
+
+  function setWallpaper(name) {
+
+    if (!currentUser)
+      return;
+
+
+    currentUser.wallpaper =
+      name;
+
+
+    applyWallpaper(name);
+
+    saveCurrentUser();
+
+
+    showNotification(
+      "Wallpaper Changed",
+      "Your wallpaper has been updated."
+    );
+  }
+
+
+  /* =========================================================
+     DELETE ACCOUNT
+  ========================================================= */
+
+  function deleteAccount() {
+
+    if (!currentUser)
+      return;
+
+
+    const confirmed =
+      confirm(
+        `Delete the NEXUS account "${currentUser.username}"? This cannot be undone.`
+      );
+
+
+    if (!confirmed)
+      return;
+
+
+    const key =
+      currentUser.username.toLowerCase();
+
+
+    delete accounts[key];
+
+    saveAccounts();
+
+
+    localStorage.removeItem(
+      SESSION_KEY
+    );
+
+
+    currentUser = null;
+
+    selectedFile = null;
+
+
+    closeAllWindows();
+
+
+    if ($("desktop"))
+      $("desktop").classList.add("hidden");
+
+    if ($("authScreen"))
+      $("authScreen").classList.remove("hidden");
+
+
+    showLogin();
+
+
+    showNotification(
+      "Account Deleted",
+      "Your local NEXUS account was deleted."
+    );
+  }
+
+
+  /* =========================================================
+     OPEN APP
+  ========================================================= */
+
+  function openApp(appID) {
+
+    const windowElement =
+      $(appID);
+
+
+    if (!windowElement)
+      return;
+
+
+    qsa(".app-window")
+      .forEach(win => {
+
+        win.classList.remove(
+          "open"
+        );
+
+      });
+
+
+    windowElement.classList.add(
+      "open"
+    );
+
+
+    if ($("startMenu"))
+      $("startMenu").classList.add(
+        "hidden"
+      );
+
+
+    updateTaskbar();
+
+
+    if (appID === "filesWindow")
+      renderFiles();
+
+
+    if (appID === "paintWindow")
+      prepareCanvas();
+
+
+    if (appID === "gameWindow") {
+      const target = $("gameTarget");
+
+      if (target && !gameRunning) {
+        target.style.display = "none";
+      }
+    }
+  }
+
+
+  /* =========================================================
+     CLOSE APP
+  ========================================================= */
+
+  function closeApp(windowElement) {
+
+    if (!windowElement)
+      return;
+
+
+    windowElement.classList.remove(
+      "open"
+    );
+
+
+    updateTaskbar();
+  }
+
+
+  function closeAllWindows() {
+
+    qsa(".app-window")
+      .forEach(win => {
+
+        win.classList.remove(
+          "open"
+        );
+
+      });
+
+
+    updateTaskbar();
+  }
+
+
+  /* =========================================================
+     TASKBAR
+  ========================================================= */
+
+  function updateTaskbar() {
+
+    const container =
+      $("taskbarApps");
+
+
+    if (!container)
+      return;
+
+
+    container.innerHTML = "";
+
+
+    qsa(".app-window.open")
+      .forEach(win => {
+
+        const button =
+          document.createElement(
+            "button"
+          );
+
+
+        button.className =
+          "taskbar-app";
+
+
+        const title =
+          win.querySelector(
+            ".window-header span"
+          );
+
+
+        button.textContent =
+          title
+            ? title.textContent
+            : "App";
+
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            win.classList.toggle(
+              "open"
+            );
+
+            updateTaskbar();
+          }
+        );
+
+
+        container.appendChild(
+          button
+        );
+      });
+  }
+
+
+  /* =========================================================
+     START MENU
+  ========================================================= */
+
+  function toggleStartMenu() {
+
+    const menu =
+      $("startMenu");
+
+
+    if (!menu)
+      return;
+
+
+    menu.classList.toggle(
+      "hidden"
+    );
+  }
+
+
+  /* =========================================================
+     CLOCK
+  ========================================================= */
+
+  function updateClock() {
+
+    const clock =
+      $("clock");
+
+
+    if (!clock)
+      return;
+
+
+    const now =
+      new Date();
+
+
+    const hours =
+      String(
+        now.getHours()
+      ).padStart(2, "0");
+
+
+    const minutes =
+      String(
+        now.getMinutes()
+      ).padStart(2, "0");
+
+
+    clock.textContent =
+      `${hours}:${minutes}`;
+  }
+
+
+  /* =========================================================
+     NOTIFICATIONS
+  ========================================================= */
+
+  function showNotification(
+    title,
+    message
+  ) {
+
+    const notification =
+      $("notification");
+
+    const titleElement =
+      $("notificationTitle");
+
+    const messageElement =
+      $("notificationMessage");
+
+
+    if (
+      !notification ||
+      !titleElement ||
+      !messageElement
+    )
+      return;
+
+
+    titleElement.textContent =
+      title;
+
+    messageElement.textContent =
+      message;
+
+
+    notification.classList.remove(
+      "hidden"
+    );
+
+
+    clearTimeout(
+      notificationTimer
+    );
+
+
+    notificationTimer =
+      setTimeout(() => {
+
+        notification.classList.add(
+          "hidden"
+        );
+
+      }, 3000);
+  }
+
+
+  /* =========================================================
+     NOTEPAD
+  ========================================================= */
+
+  function setupNotepad() {
+
+    const notes =
+      $("notesArea");
+
+
+    if (!notes)
+      return;
+
+
+    notes.addEventListener(
+      "input",
+      () => {
+
+        if (!currentUser)
+          return;
+
+
+        if ($("notesStatus"))
+          $("notesStatus").textContent =
+            "Saving...";
+
+
+        clearTimeout(
+          saveNotesTimer
+        );
+
+
+        saveNotesTimer =
+          setTimeout(() => {
+
+            if (!currentUser)
+              return;
+
+
+            currentUser.notes =
+              notes.value;
+
+
+            saveCurrentUser();
+
+
+            if ($("notesStatus"))
+              $("notesStatus").textContent =
+                "Saved";
+
+          }, 500);
+      }
+    );
+
+
+    if ($("clearNotesButton")) {
+
+      $("clearNotesButton")
+        .addEventListener(
+          "click",
+          () => {
+
+            if (!currentUser)
+              return;
+
+
+            notes.value = "";
+
+            currentUser.notes = "";
+
+            saveCurrentUser();
+
+
+            if ($("notesStatus"))
+              $("notesStatus").textContent =
+                "Saved";
+          }
+        );
+    }
+  }
+
+
+  /* =========================================================
+     CALCULATOR
+  ========================================================= */
+
+  function setupCalculator() {
+
+    qsa("[data-calc]")
+      .forEach(button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const value =
+              button.dataset.calc;
+
+
+            if (value === "clear") {
+
+              calculatorValue = "";
+            }
+
+
+            else if (
+              value === "backspace"
+            ) {
+
+              calculatorValue =
+                calculatorValue.slice(
+                  0,
+                  -1
+                );
+            }
+
+
+            else if (
+              value === "="
+            ) {
+
+              try {
+
+                if (
+                  !/^[0-9+\-*/().\s]+$/
+                    .test(
+                      calculatorValue
+                    )
+                ) {
+                  throw new Error();
+                }
+
+
+                const result =
+                  Function(
+                    `"use strict"; return (${calculatorValue})`
+                  )();
+
+
+                if (
+                  typeof result !== "number" ||
+                  !Number.isFinite(result)
+                ) {
+                  throw new Error();
+                }
+
+
+                calculatorValue =
+                  String(result);
+
+              } catch {
+
+                calculatorValue =
+                  "Error";
+              }
+            }
+
+
+            else {
+
+              if (
+                calculatorValue ===
+                "Error"
+              ) {
+
+                calculatorValue = "";
+              }
+
+
+              calculatorValue +=
+                value;
+            }
+
+
+            if ($("calculatorDisplay"))
+              $("calculatorDisplay").value =
+                calculatorValue;
+          }
+        );
+      });
+  }
+
+
+  /* =========================================================
+     FILE MANAGER
+  ========================================================= */
+
+  function renderFiles() {
+
+    if (!currentUser)
+      return;
+
+
+    const list =
+      $("fileList");
+
+
+    if (!list)
+      return;
+
+
+    list.innerHTML = "";
+
+
+    if (!currentUser.files)
+      currentUser.files = {};
+
+
+    Object.keys(
+      currentUser.files
+    )
+      .forEach(filename => {
+
+        const item =
+          document.createElement(
+            "div"
+          );
+
+
+        item.className =
+          "file-item";
+
+
+        if (
+          selectedFile === filename
+        ) {
+
+          item.classList.add(
+            "selected"
+          );
+        }
+
+
+        item.textContent =
+          `📄 ${filename}`;
+
+
+        item.addEventListener(
+          "click",
+          () => {
+
+            selectedFile =
+              filename;
+
+
+            if ($("fileEditor"))
+              $("fileEditor").value =
+                currentUser.files[
+                  filename
+                ];
+
+
+            renderFiles();
+          }
+        );
+
+
+        list.appendChild(
+          item
+        );
+      });
+  }
+
+
+  function createFile() {
+
+    if (!currentUser)
+      return;
+
+
+    const filename =
+      prompt(
+        "Enter a name for your new file:"
+      );
+
+
+    if (!filename)
+      return;
+
+
+    const cleanName =
+      filename.trim();
+
+
+    if (!cleanName)
+      return;
+
+
+    if (
+      Object.prototype.hasOwnProperty.call(
+        currentUser.files,
+        cleanName
+      )
+    ) {
+
+      showNotification(
+        "File Exists",
+        "A file with that name already exists."
+      );
+
+      return;
+    }
+
+
+    currentUser.files[
+      cleanName
+    ] = "";
+
+
+    selectedFile =
+      cleanName;
+
+
+    if ($("fileEditor"))
+      $("fileEditor").value = "";
+
+
+    saveCurrentUser();
+
+    renderFiles();
+
+
+    showNotification(
+      "File Created",
+      cleanName
+    );
+  }
+
+
+  function saveFile() {
+
+    if (
+      !currentUser ||
+      !selectedFile
+    ) {
+
+      showNotification(
+        "No File Selected",
+        "Select a file first."
+      );
+
+      return;
+    }
+
+
+    currentUser.files[
+      selectedFile
+    ] =
+      $("fileEditor")
+        ? $("fileEditor").value
+        : "";
+
+
+    saveCurrentUser();
+
+    renderFiles();
+
+
+    showNotification(
+      "File Saved",
+      selectedFile
+    );
+  }
+
+
+  function deleteFile() {
+
+    if (
+      !currentUser ||
+      !selectedFile
+    ) {
+
+      showNotification(
+        "No File Selected",
+        "Select a file first."
+      );
+
+      return;
+    }
+
+
+    const confirmed =
+      confirm(
+        `Delete "${selectedFile}"?`
+      );
+
+
+    if (!confirmed)
+      return;
+
+
+    delete currentUser.files[
+      selectedFile
+    ];
+
+
+    selectedFile = null;
+
+
+    if ($("fileEditor"))
+      $("fileEditor").value = "";
+
+
+    saveCurrentUser();
+
+    renderFiles();
+
+
+    showNotification(
+      "File Deleted",
+      "The file was deleted."
+    );
+  }
+
+
+  /* =========================================================
+     PAINT
+  ========================================================= */
+
+  let canvas = null;
+  let ctx = null;
+  let drawing = false;
+
+
+  function prepareCanvas() {
+
+    canvas =
+      $("paintCanvas");
+
+
+    if (!canvas)
+      return;
+
+
+    if (!ctx)
+      ctx =
+        canvas.getContext("2d");
+  }
+
+
+  function canvasPosition(event) {
+
+    if (!canvas)
+      return {
+        x: 0,
+        y: 0
+      };
+
+
+    const rect =
+      canvas.getBoundingClientRect();
+
+
+    return {
+
+      x:
+        (event.clientX - rect.left) *
+        (canvas.width / rect.width),
+
+      y:
+        (event.clientY - rect.top) *
+        (canvas.height / rect.height)
+    };
+  }
+
+
+  function setupPaint() {
+
+    prepareCanvas();
+
+
+    if (!canvas || !ctx)
+      return;
+
+
+    canvas.addEventListener(
+      "pointerdown",
+      event => {
+
+        drawing = true;
+
+
+        const pos =
+          canvasPosition(event);
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          pos.x,
+          pos.y
+        );
+      }
+    );
+
+
+    canvas.addEventListener(
+      "pointermove",
+      event => {
+
+        if (!drawing)
+          return;
+
+
+        const pos =
+          canvasPosition(event);
+
+
+        ctx.lineWidth =
+          Number(
+            $("brushSize")
+              ? $("brushSize").value
+              : 5
+          );
+
+
+        ctx.lineCap =
+          "round";
+
+
+        ctx.strokeStyle =
+          "#000000";
+
+
+        ctx.lineTo(
+          pos.x,
+          pos.y
+        );
+
+
+        ctx.stroke();
+      }
+    );
+
+
+    const stopDrawing =
+      () => {
+        drawing = false;
+      };
+
+
+    canvas.addEventListener(
+      "pointerup",
+      stopDrawing
+    );
+
+
+    canvas.addEventListener(
+      "pointerleave",
+      stopDrawing
+    );
+
+
+    canvas.addEventListener(
+      "contextmenu",
+      event => {
+        event.preventDefault();
+      }
+    );
+  }
+
+
+  function clearCanvas() {
+
+    prepareCanvas();
+
+    if (!canvas || !ctx)
+      return;
+
+
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+  }
+
+
+  function saveDrawing() {
+
+    prepareCanvas();
+
+    if (!canvas)
+      return;
+
+
+    const image =
+      canvas.toDataURL(
+        "image/png"
+      );
+
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+
+    link.href =
+      image;
+
+
+    link.download =
+      "nexus-drawing.png";
+
+
+    link.click();
+  }
+
+
+  /* =========================================================
+     CATCH NEXUS GAME
+  ========================================================= */
+
+  function moveGameTarget() {
+
+    const area =
+      $("gameArea");
+
+    const target =
+      $("gameTarget");
+
+
+    if (!area || !target)
+      return;
+
+
+    const maxX =
+      Math.max(
+        0,
+        area.clientWidth -
+        target.offsetWidth
+      );
+
+
+    const maxY =
+      Math.max(
+        0,
+        area.clientHeight -
+        target.offsetHeight
+      );
+
+
+    target.style.left =
+      Math.random() *
+      maxX +
+      "px";
+
+
+    target.style.top =
+      Math.random() *
+      maxY +
+      "px";
+  }
+
+
+  function startGame() {
+
+    const target =
+      $("gameTarget");
+
+    if (!target)
+      return;
+
+
+    clearInterval(
+      gameTimer
+    );
+
+
+    gameScore = 0;
+
+    gameRunning = true;
+
+
+    if ($("gameScore"))
+      $("gameScore").textContent =
+        "0";
+
+
+    target.style.display =
+      "block";
+
+
+    if ($("gameMessage"))
+      $("gameMessage").textContent =
+        "";
+
+
+    moveGameTarget();
+
+
+    showNotification(
+      "Game Started",
+      "Catch the N!"
+    );
+
+
+    gameTimer =
+      setTimeout(() => {
+
+        gameRunning = false;
+
+
+        target.style.display =
+          "none";
+
+
+        if ($("gameMessage"))
+          $("gameMessage").textContent =
+            `Time's up! Score: ${gameScore}`;
+
+
+        if (
+          currentUser &&
+          gameScore >
+          (currentUser.highScore || 0)
+        ) {
+
+          currentUser.highScore =
+            gameScore;
+
+
+          saveCurrentUser();
+
+
+          showNotification(
+            "New High Score!",
+            `${gameScore} points!`
+          );
+        }
+
+      }, 30000);
+  }
+
+
+  function catchTarget() {
+
+    if (!gameRunning)
+      return;
+
+
+    gameScore++;
+
+
+    if ($("gameScore"))
+      $("gameScore").textContent =
+        gameScore;
+
+
+    moveGameTarget();
+  }
+
+
+  /* =========================================================
+     EVENT LISTENERS
+  ========================================================= */
+
+  /* AUTH */
+
+  if ($("loginButton")) {
+    $("loginButton").addEventListener(
+      "click",
+      login
+    );
+  }
+
+
+  if ($("signupButton")) {
+    $("signupButton").addEventListener(
+      "click",
+      signup
+    );
+  }
+
+
+  if ($("showSignupButton")) {
+    $("showSignupButton").addEventListener(
+      "click",
+      showSignup
+    );
+  }
+
+
+  if ($("showLoginButton")) {
+    $("showLoginButton").addEventListener(
+      "click",
+      showLogin
+    );
+  }
+
+
+  if ($("forgotPasswordButton")) {
+
+    $("forgotPasswordButton")
+      .addEventListener(
+        "click",
+        () => {
+
+          showNotification(
+            "Password Reset",
+            "Because NEXUS stores accounts locally, password recovery is not available yet."
+          );
+        }
+      );
+  }
+
+
+  /* ENTER KEY LOGIN */
+
+  if ($("loginPassword")) {
+
+    $("loginPassword")
+      .addEventListener(
+        "keydown",
+        event => {
+
+          if (
+            event.key === "Enter"
+          ) {
+            login();
+          }
+        }
+      );
+  }
+
+
+  /* ENTER KEY SIGNUP */
+
+  if ($("signupPasswordConfirm")) {
+
+    $("signupPasswordConfirm")
+      .addEventListener(
+        "keydown",
+        event => {
+
+          if (
+            event.key === "Enter"
+          ) {
+            signup();
+          }
+        }
+      );
+  }
+
+
+  /* DESKTOP APPS */
+
+  qsa("[data-app]")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          openApp(
+            button.dataset.app
+          );
+        }
+      );
+    });
+
+
+  /* WINDOW CLOSE */
+
+  qsa(".close-button")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          closeApp(
+            button.closest(
+              ".app-window"
+            )
+          );
+        }
+      );
+    });
+
+
+  /* WINDOW MINIMIZE */
+
+  qsa(".minimize-button")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          const win =
+            button.closest(
+              ".app-window"
+            );
+
+
+          if (win)
+            win.classList.remove(
+              "open"
+            );
+
+
+          updateTaskbar();
+        }
+      );
+    });
+
+
+  /* START BUTTON */
+
+  if ($("startButton")) {
+
+    $("startButton")
+      .addEventListener(
+        "click",
+        toggleStartMenu
+      );
+  }
+
+
+  /* START LOGOUT */
+
+  if ($("startLogoutButton")) {
+
+    $("startLogoutButton")
+      .addEventListener(
+        "click",
+        logout
+      );
+  }
+
+
+  /* SETTINGS */
+
+  if ($("darkThemeButton")) {
+
+    $("darkThemeButton")
+      .addEventListener(
+        "click",
+        () => setTheme("dark")
+      );
+  }
+
+
+  if ($("lightThemeButton")) {
+
+    $("lightThemeButton")
+      .addEventListener(
+        "click",
+        () => setTheme("light")
+      );
+  }
+
+
+  qsa("[data-wallpaper]")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          setWallpaper(
+            button.dataset.wallpaper
+          );
+        }
+      );
+    });
+
+
+  if ($("logoutButton")) {
+
+    $("logoutButton")
+      .addEventListener(
+        "click",
+        logout
+      );
+  }
+
+
+  if ($("deleteAccountButton")) {
+
+    $("deleteAccountButton")
+      .addEventListener(
+        "click",
+        deleteAccount
+      );
+  }
+
+
+  /* FILE MANAGER */
+
+  if ($("newFileButton")) {
+
+    $("newFileButton")
+      .addEventListener(
+        "click",
+        createFile
+      );
+  }
+
+
+  if ($("saveFileButton")) {
+
+    $("saveFileButton")
+      .addEventListener(
+        "click",
+        saveFile
+      );
+  }
+
+
+  if ($("deleteFileButton")) {
+
+    $("deleteFileButton")
+      .addEventListener(
+        "click",
+        deleteFile
+      );
+  }
+
+
+  /* PAINT */
+
+  setupPaint();
+
+
+  if ($("clearCanvasButton")) {
+
+    $("clearCanvasButton")
+      .addEventListener(
+        "click",
+        clearCanvas
+      );
+  }
+
+
+  if ($("saveDrawingButton")) {
+
+    $("saveDrawingButton")
+      .addEventListener(
+        "click",
+        saveDrawing
+      );
+  }
+
+
+  /* GAME */
+
+  if ($("gameTarget")) {
+
+    $("gameTarget")
+      .addEventListener(
+        "click",
+        catchTarget
+      );
+  }
+
+
+  if ($("startGameButton")) {
+
+    $("startGameButton")
+      .addEventListener(
+        "click",
+        startGame
+      );
+  }
+
+
+  /* NOTEPAD */
+
+  setupNotepad();
+
+
+  /* CALCULATOR */
+
+  setupCalculator();
+
+
+  /* CLOCK */
+
+  updateClock();
+
+  setInterval(
+    updateClock,
+    1000
+  );
+
+
+  /* =========================================================
+     KEYBOARD SHORTCUTS
+  ========================================================= */
+
+  document.addEventListener(
+    "keydown",
+    event => {
+
+      /*
+        Escape closes the start menu.
+      */
+
+      if (
+        event.key === "Escape"
+      ) {
+
+        if ($("startMenu"))
+          $("startMenu").classList.add(
+            "hidden"
+          );
+      }
+
+
+      /*
+        Ctrl + L logs out.
+      */
+
+      if (
+        event.ctrlKey &&
+        event.key.toLowerCase() === "l"
+      ) {
+
+        /*
+          Do not interfere with browser
+          address-bar shortcut.
+        */
+
+        event.preventDefault();
+
+        if (currentUser)
+          logout();
+      }
+    }
+  );
+
+
+  /* =========================================================
+     START NEXUS
+  ========================================================= */
+
+  loadAccounts();
+
+  boot();
+
+});
