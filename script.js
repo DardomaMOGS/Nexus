@@ -1,3344 +1,1801 @@
 /* =========================================================
    NEXUS v1.4
-   COMPLETE FIREBASE-FREE SYSTEM
+   COMPLETE STYLE
 ========================================================= */
 
-"use strict";
-
-document.addEventListener("DOMContentLoaded", () => {
-
-  /* =====================================================
-     STORAGE
-  ====================================================== */
-
-  const ACCOUNTS_KEY = "nexus_v14_accounts";
-  const SESSION_KEY = "nexus_v14_session";
-  const HISTORY_KEY = "nexus_v14_history";
-
-  let accounts = {};
-  let currentUser = null;
-  let selectedFile = null;
-
-  let calculatorValue = "";
-
-  let browserCurrentURL = "";
-  let browserPreviousURL = "";
-  let browserForwardURL = "";
-  let browserExternalURL = "";
-
-  let notificationTimer = null;
-
-  let paintCanvas = null;
-  let paintContext = null;
-  let painting = false;
-
-  let catchRunning = false;
-  let catchScore = 0;
-  let catchTimer = null;
-
-  let clickRunning = false;
-  let clickScore = 0;
-  let clickTime = 10;
-  let clickTimer = null;
-
-  let memoryCards = [];
-  let memoryFlipped = [];
-  let memoryLocked = false;
-  let memoryMoves = 0;
-
-  let snakeRunning = false;
-  let snakeTimer = null;
-  let snakeDirection = "right";
-  let snakeNextDirection = "right";
-  let snakeBody = [];
-  let snakeFood = {};
-  let snakeScore = 0;
-
-
-  /* =====================================================
-     HELPERS
-  ====================================================== */
-
-  const $ = id =>
-    document.getElementById(id);
-
-  const qsa = selector =>
-    document.querySelectorAll(selector);
-
-
-  /* =====================================================
-     STORAGE
-  ====================================================== */
-
-  function loadAccounts() {
-
-    try {
-
-      accounts =
-        JSON.parse(
-          localStorage.getItem(
-            ACCOUNTS_KEY
-          )
-        ) || {};
-
-    } catch {
-
-      accounts = {};
-    }
-  }
-
-
-  function saveAccounts() {
-
-    localStorage.setItem(
-      ACCOUNTS_KEY,
-      JSON.stringify(accounts)
-    );
-  }
-
-
-  function saveCurrentUser() {
-
-    if (!currentUser)
-      return;
-
-    accounts[
-      currentUser.key
-    ] = currentUser;
-
-    saveAccounts();
-  }
-
-
-  function createID() {
-
-    return (
-      Date.now().toString(36) +
-      Math.random()
-        .toString(36)
-        .slice(2)
-    );
-  }
-
-
-  /* =====================================================
-     PASSWORD HASH
-  ====================================================== */
-
-  async function hashPassword(password) {
-
-    if (
-      crypto &&
-      crypto.subtle
-    ) {
-
-      try {
-
-        const data =
-          new TextEncoder()
-            .encode(password);
-
-        const hash =
-          await crypto.subtle.digest(
-            "SHA-256",
-            data
-          );
-
-        return Array
-          .from(new Uint8Array(hash))
-          .map(
-            x =>
-              x.toString(16)
-                .padStart(2, "0")
-          )
-          .join("");
-
-      } catch {}
-    }
-
-
-    let hash = 0;
-
-    for (
-      let i = 0;
-      i < password.length;
-      i++
-    ) {
-
-      hash =
-        (
-          hash << 5
-        ) -
-        hash +
-        password.charCodeAt(i);
-
-      hash |= 0;
-    }
-
-    return String(hash);
-  }
-
-
-  /* =====================================================
-     DEFAULT FILES
-  ====================================================== */
-
-  function defaultFiles(username) {
-
-    return {
-
-      "Welcome.txt":
-`Welcome to NEXUS v1.4!
-
-Hello ${username}!
-
-NEXUS is your personal browser-based mini OS.
-
-New in v1.4:
-- Game Center
-- NEXUS Browser
-- Updated design
-- More customization`,
-
-      "Ideas.txt":
-`NEXUS Ideas
-
-Write your future ideas here!`,
-
-      "About.txt":
-`NEXUS v1.4
-
-Built with:
-HTML
-CSS
-JavaScript
-
-Firebase-free edition.`
-
-    };
-  }
-
-
-  /* =====================================================
-     BOOT
-  ====================================================== */
-
-  function boot() {
-
-    let progress = 0;
-
-    const interval =
-      setInterval(() => {
-
-        progress += 5;
-
-        if ($("bootProgress"))
-          $("bootProgress").style.width =
-            progress + "%";
-
-
-        if ($("bootStatus")) {
-
-          if (progress < 30)
-            $("bootStatus").textContent =
-              "Initializing NEXUS core...";
-
-          else if (progress < 60)
-            $("bootStatus").textContent =
-              "Loading applications...";
-
-          else if (progress < 90)
-            $("bootStatus").textContent =
-              "Preparing desktop...";
-
-          else
-            $("bootStatus").textContent =
-              "Ready.";
-        }
-
-
-        if (progress >= 100) {
-
-          clearInterval(interval);
-
-          setTimeout(() => {
-
-            $("bootScreen")
-              ?.classList
-              .add("hidden");
-
-            restoreSession();
-
-          }, 350);
-        }
-
-      }, 35);
-  }
-
-
-  /* =====================================================
-     AUTH
-  ====================================================== */
-
-  function showLogin() {
-
-    $("loginPanel")
-      ?.classList
-      .remove("hidden");
-
-    $("signupPanel")
-      ?.classList
-      .add("hidden");
-
-    if ($("loginError"))
-      $("loginError").textContent = "";
-
-    if ($("signupError"))
-      $("signupError").textContent = "";
-  }
-
-
-  function showSignup() {
-
-    $("loginPanel")
-      ?.classList
-      .add("hidden");
-
-    $("signupPanel")
-      ?.classList
-      .remove("hidden");
-
-    if ($("loginError"))
-      $("loginError").textContent = "";
-
-    if ($("signupError"))
-      $("signupError").textContent = "";
-  }
-
-
-  function validUsername(username) {
-
-    return /^[A-Za-z0-9_ ]+$/
-      .test(username);
-  }
-
-
-  /* =====================================================
-     SIGN UP
-  ====================================================== */
-
-  async function signup() {
-
-    const username =
-      $("signupUsername")
-        .value
-        .trim();
-
-    const email =
-      $("signupEmail")
-        .value
-        .trim();
-
-    const password =
-      $("signupPassword")
-        .value;
-
-    const confirm =
-      $("signupPasswordConfirm")
-        .value;
-
-
-    $("signupError")
-      .textContent = "";
-
-
-    if (!username) {
-
-      $("signupError")
-        .textContent =
-        "Please choose a username.";
-
-      return;
-    }
-
-
-    if (username.length < 2) {
-
-      $("signupError")
-        .textContent =
-        "Username must be at least 2 characters.";
-
-      return;
-    }
-
-
-    if (!validUsername(username)) {
-
-      $("signupError")
-        .textContent =
-        "Use letters, numbers, spaces or underscores.";
-
-      return;
-    }
-
-
-    if (!email) {
-
-      $("signupError")
-        .textContent =
-        "Please enter your email.";
-
-      return;
-    }
-
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      .test(email)) {
-
-      $("signupError")
-        .textContent =
-        "Please enter a valid email.";
-
-      return;
-    }
-
-
-    if (password.length < 6) {
-
-      $("signupError")
-        .textContent =
-        "Password must be at least 6 characters.";
-
-      return;
-    }
-
-
-    if (password !== confirm) {
-
-      $("signupError")
-        .textContent =
-        "The passwords do not match.";
-
-      return;
-    }
-
-
-    const key =
-      username.toLowerCase();
-
-
-    if (
-      accounts[key]
-    ) {
-
-      $("signupError")
-        .textContent =
-        "That username is already taken.";
-
-      return;
-    }
-
-
-    const passwordHash =
-      await hashPassword(password);
-
-
-    currentUser = {
-
-      key,
-
-      id: createID(),
-
-      username,
-
-      email,
-
-      passwordHash,
-
-      createdAt: Date.now(),
-
-      theme: "dark",
-
-      wallpaper: "default",
-
-      notes: "",
-
-      files:
-        defaultFiles(username),
-
-      highScore: 0,
-
-      gameScores: {
-        catch: 0,
-        click: 0,
-        memory: 0,
-        snake: 0
-      }
-    };
-
-
-    accounts[key] =
-      currentUser;
-
-
-    saveAccounts();
-
-
-    localStorage.setItem(
-      SESSION_KEY,
-      key
-    );
-
-
-    clearAuthFields();
-
-    enterDesktop();
-
-  }
-
-
-  /* =====================================================
-     LOGIN
-  ====================================================== */
-
-  async function login() {
-
-    const email =
-      $("loginEmail")
-        .value
-        .trim();
-
-    const password =
-      $("loginPassword")
-        .value;
-
-
-    $("loginError")
-      .textContent = "";
-
-
-    if (!email || !password) {
-
-      $("loginError")
-        .textContent =
-        "Please enter your email and password.";
-
-      return;
-    }
-
-
-    const passwordHash =
-      await hashPassword(password);
-
-
-    const userKey =
-      Object.keys(accounts)
-        .find(
-          key =>
-            accounts[key].email
-              .toLowerCase() ===
-            email.toLowerCase()
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --accent: #7c5cff;
+    --accent2: #00d4ff;
+
+    --bg: #070711;
+    --panel: rgba(20, 20, 38, 0.92);
+    --panel2: rgba(30, 30, 55, 0.92);
+
+    --text: #ffffff;
+    --muted: #a8a8c5;
+
+    --border: rgba(255,255,255,0.12);
+
+    --danger: #ff4f70;
+
+    --taskbar: rgba(8,8,18,0.88);
+}
+
+body.light {
+    --bg: #eef1ff;
+    --panel: rgba(255,255,255,0.94);
+    --panel2: rgba(240,242,255,0.96);
+
+    --text: #171725;
+    --muted: #666680;
+
+    --border: rgba(0,0,0,0.12);
+
+    --taskbar: rgba(255,255,255,0.88);
+}
+
+body {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* =========================================================
+   GENERAL
+========================================================= */
+
+button,
+input,
+textarea {
+    font-family: inherit;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+}
+
+.hidden {
+    display: none !important;
+}
+
+
+/* =========================================================
+   BOOT
+========================================================= */
+
+.boot-screen {
+    position: fixed;
+    inset: 0;
+
+    z-index: 99999;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    background:
+        radial-gradient(
+            circle at center,
+            #15122e 0%,
+            #070711 65%
         );
 
+    color: white;
+}
 
-    if (
-      !userKey ||
-      accounts[userKey]
-        .passwordHash !==
-        passwordHash
-    ) {
+.boot-logo,
+.auth-logo,
+.about-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-      $("loginError")
-        .textContent =
-        "The email or password is incorrect.";
+    width: 90px;
+    height: 90px;
 
-      return;
+    border-radius: 28px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            var(--accent2)
+        );
+
+    font-size: 55px;
+    font-weight: 900;
+
+    box-shadow:
+        0 0 45px rgba(124,92,255,0.45);
+
+    animation: pulse 2s infinite;
+}
+
+.boot-screen h1 {
+    margin-top: 20px;
+    font-size: 42px;
+    letter-spacing: 5px;
+}
+
+.boot-screen p {
+    margin-top: 10px;
+    color: #aaaacc;
+}
+
+.boot-loader {
+    width: 260px;
+    height: 7px;
+
+    margin-top: 30px;
+
+    border-radius: 10px;
+
+    overflow: hidden;
+
+    background: rgba(255,255,255,0.1);
+}
+
+#bootProgress {
+    width: 0%;
+    height: 100%;
+
+    background:
+        linear-gradient(
+            90deg,
+            var(--accent),
+            var(--accent2)
+        );
+
+    transition: width 0.2s;
+}
+
+@keyframes pulse {
+    50% {
+        transform: scale(1.05);
     }
+}
 
 
-    currentUser =
-      accounts[userKey];
+/* =========================================================
+   AUTH
+========================================================= */
 
+.auth-screen {
+    position: fixed;
+    inset: 0;
 
-    currentUser.key =
-      userKey;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-
-    localStorage.setItem(
-      SESSION_KEY,
-      userKey
-    );
-
-
-    clearAuthFields();
-
-    enterDesktop();
-
-  }
-
-
-  function clearAuthFields() {
-
-    if ($("loginEmail"))
-      $("loginEmail").value = "";
-
-    if ($("loginPassword"))
-      $("loginPassword").value = "";
-
-    if ($("signupUsername"))
-      $("signupUsername").value = "";
-
-    if ($("signupEmail"))
-      $("signupEmail").value = "";
-
-    if ($("signupPassword"))
-      $("signupPassword").value = "";
-
-    if ($("signupPasswordConfirm"))
-      $("signupPasswordConfirm").value = "";
-  }
-
-
-  function restoreSession() {
-
-    loadAccounts();
-
-
-    const key =
-      localStorage.getItem(
-        SESSION_KEY
-      );
-
-
-    if (
-      key &&
-      accounts[key]
-    ) {
-
-      currentUser =
-        accounts[key];
-
-      currentUser.key =
-        key;
-
-      enterDesktop();
-
-    } else {
-
-      $("authScreen")
-        ?.classList
-        .remove("hidden");
-
-      $("desktop")
-        ?.classList
-        .add("hidden");
-
-      showLogin();
-    }
-  }
-
-
-  function enterDesktop() {
-
-    $("authScreen")
-      ?.classList
-      .add("hidden");
-
-    $("desktop")
-      ?.classList
-      .remove("hidden");
-
-
-    applyUserSettings();
-
-    renderFiles();
-
-    updateGameBest();
-
-    showNotification(
-      "NEXUS Ready",
-      `Welcome, ${currentUser.username}!`
-    );
-  }
-
-
-  function logout() {
-
-    localStorage.removeItem(
-      SESSION_KEY
-    );
-
-    currentUser = null;
-
-    closeAllWindows();
-
-    $("desktop")
-      ?.classList
-      .add("hidden");
-
-    $("authScreen")
-      ?.classList
-      .remove("hidden");
-
-    showLogin();
-  }
-
-
-  /* =====================================================
-     USER SETTINGS
-  ====================================================== */
-
-  function applyUserSettings() {
-
-    if (!currentUser)
-      return;
-
-
-    $("settingsUsername")
-      .textContent =
-      currentUser.username;
-
-
-    $("settingsEmail")
-      .textContent =
-      currentUser.email;
-
-
-    $("startUsername")
-      .textContent =
-      currentUser.username;
-
-
-    $("startEmail")
-      .textContent =
-      currentUser.email;
-
-
-    $("notesArea")
-      .value =
-      currentUser.notes || "";
-
-
-    applyTheme(
-      currentUser.theme ||
-      "dark"
-    );
-
-
-    applyWallpaper(
-      currentUser.wallpaper ||
-      "default"
-    );
-  }
-
-
-  function applyTheme(theme) {
-
-    if (theme === "light")
-      document.body
-        .classList
-        .add("light-theme");
-    else
-      document.body
-        .classList
-        .remove("light-theme");
-  }
-
-
-  function setTheme(theme) {
-
-    if (!currentUser)
-      return;
-
-    currentUser.theme =
-      theme;
-
-    saveCurrentUser();
-
-    applyTheme(theme);
-  }
-
-
-  function applyWallpaper(name) {
-
-    const wallpaper =
-      $("wallpaper");
-
-    if (!wallpaper)
-      return;
-
-    wallpaper.className =
-      "wallpaper";
-
-    if (
-      name !== "default"
-    )
-      wallpaper.classList
-        .add(name);
-  }
-
-
-  function setWallpaper(name) {
-
-    if (!currentUser)
-      return;
-
-    currentUser.wallpaper =
-      name;
-
-    saveCurrentUser();
-
-    applyWallpaper(name);
-  }
-
-
-  /* =====================================================
-     WINDOWS
-  ====================================================== */
-
-  function openApp(name) {
-
-    const windowID =
-      name.endsWith("Window")
-        ? name
-        : `${name}Window`;
-
-
-    const windowElement =
-      $(windowID);
-
-
-    if (!windowElement)
-      return;
-
-
-    qsa(".app-window")
-      .forEach(win =>
-        win.classList
-          .remove("open")
-      );
-
-
-    windowElement
-      .classList
-      .add("open");
-
-
-    $("startMenu")
-      ?.classList
-      .add("hidden");
-
-
-    updateTaskbar();
-
-
-    if (name === "files")
-      renderFiles();
-
-
-    if (name === "games")
-      showGameMenu();
-
-
-    if (name === "paint")
-      preparePaint();
-  }
-
-
-  function closeApp(win) {
-
-    if (!win)
-      return;
-
-    win.classList
-      .remove("open");
-
-    updateTaskbar();
-  }
-
-
-  function closeAllWindows() {
-
-    qsa(".app-window")
-      .forEach(win =>
-        win.classList
-          .remove("open")
-      );
-
-    updateTaskbar();
-  }
-
-
-  function updateTaskbar() {
-
-    const taskbar =
-      $("taskbarApps");
-
-    if (!taskbar)
-      return;
-
-
-    taskbar.innerHTML = "";
-
-
-    qsa(".app-window.open")
-      .forEach(win => {
-
-        const button =
-          document.createElement(
-            "button"
-          );
-
-
-        button.className =
-          "taskbar-app";
-
-
-        const title =
-          win.querySelector(
-            ".window-title strong"
-          );
-
-
-        button.textContent =
-          title
-            ? title.textContent
-            : "App";
-
-
-        button.onclick = () =>
-          win.classList.toggle(
-            "open"
-          );
-
-
-        taskbar.appendChild(
-          button
-        );
-      });
-  }
-
-
-  /* =====================================================
-     CLOCK
-  ====================================================== */
-
-  function updateClock() {
-
-    const now =
-      new Date();
-
-
-    const hours =
-      String(
-        now.getHours()
-      ).padStart(2, "0");
-
-
-    const minutes =
-      String(
-        now.getMinutes()
-      ).padStart(2, "0");
-
-
-    const seconds =
-      String(
-        now.getSeconds()
-      ).padStart(2, "0");
-
-
-    const date =
-      now.toLocaleDateString(
-        undefined,
-        {
-          weekday: "short",
-          month: "short",
-          day: "numeric"
-        }
-      );
-
-
-    if ($("clock"))
-      $("clock").textContent =
-        `${hours}:${minutes}`;
-
-
-    if ($("bigClock"))
-      $("bigClock").textContent =
-        `${hours}:${minutes}:${seconds}`;
-
-
-    if ($("bigDate"))
-      $("bigDate").textContent =
-        date;
-  }
-
-
-  setInterval(
-    updateClock,
-    1000
-  );
-
-  updateClock();
-
-
-  /* =====================================================
-     NOTIFICATIONS
-  ====================================================== */
-
-  function showNotification(
-    title,
-    message
-  ) {
-
-    if (
-      !$("notification")
-    )
-      return;
-
-
-    $("notificationTitle")
-      .textContent =
-      title;
-
-
-    $("notificationMessage")
-      .textContent =
-      message;
-
-
-    $("notification")
-      .classList
-      .remove("hidden");
-
-
-    clearTimeout(
-      notificationTimer
-    );
-
-
-    notificationTimer =
-      setTimeout(() => {
-
-        $("notification")
-          .classList
-          .add("hidden");
-
-      }, 3500);
-  }
-
-
-  /* =====================================================
-     NOTEPAD
-  ====================================================== */
-
-  let notesSaveTimer;
-
-
-  $("notesArea")
-    ?.addEventListener(
-      "input",
-      () => {
-
-        if (!currentUser)
-          return;
-
-
-        $("notesStatus")
-          .textContent =
-          "Saving...";
-
-
-        clearTimeout(
-          notesSaveTimer
-        );
-
-
-        notesSaveTimer =
-          setTimeout(() => {
-
-            currentUser.notes =
-              $("notesArea")
-                .value;
-
-            saveCurrentUser();
-
-
-            $("notesStatus")
-              .textContent =
-              "Saved";
-
-          }, 500);
-      }
-    );
-
-
-  $("clearNotesButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        $("notesArea").value =
-          "";
-
-        currentUser.notes =
-          "";
-
-        saveCurrentUser();
-
-        $("notesStatus")
-          .textContent =
-          "Saved";
-      }
-    );
-
-
-  /* =====================================================
-     CALCULATOR
-  ====================================================== */
-
-  qsa("[data-calc]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const value =
-            button.dataset.calc;
-
-
-          if (value === "clear")
-            calculatorValue = "";
-
-
-          else if (
-            value === "backspace"
-          )
-            calculatorValue =
-              calculatorValue.slice(
-                0,
-                -1
-              );
-
-
-          else if (
-            value === "="
-          ) {
-
-            try {
-
-              if (
-                !/^[0-9+\-*/().\s]+$/
-                  .test(
-                    calculatorValue
-                  )
-              )
-                throw new Error();
-
-
-              const result =
-                Function(
-                  `"use strict"; return (${calculatorValue})`
-                )();
-
-
-              if (
-                !Number.isFinite(
-                  result
-                )
-              )
-                throw new Error();
-
-
-              calculatorValue =
-                String(result);
-
-            } catch {
-
-              calculatorValue =
-                "Error";
-            }
-
-          } else {
-
-            if (
-              calculatorValue ===
-              "Error"
-            )
-              calculatorValue = "";
-
-            calculatorValue +=
-              value;
-          }
-
-
-          $("calculatorDisplay")
-            .value =
-            calculatorValue;
-        }
-      );
-    });
-
-
-  /* =====================================================
-     FILES
-  ====================================================== */
-
-  function renderFiles() {
-
-    if (!currentUser)
-      return;
-
-
-    if (!currentUser.files)
-      currentUser.files = {};
-
-
-    const list =
-      $("fileList");
-
-
-    if (!list)
-      return;
-
-
-    list.innerHTML = "";
-
-
-    Object.keys(
-      currentUser.files
-    )
-      .forEach(filename => {
-
-        const item =
-          document.createElement(
-            "div"
-          );
-
-
-        item.className =
-          "file-item";
-
-
-        if (
-          filename ===
-          selectedFile
-        )
-          item.classList
-            .add("selected");
-
-
-        item.textContent =
-          `📄 ${filename}`;
-
-
-        item.onclick = () => {
-
-          selectedFile =
-            filename;
-
-          $("fileEditor")
-            .value =
-            currentUser.files[
-              filename
-            ];
-
-          renderFiles();
-        };
-
-
-        list.appendChild(item);
-      });
-  }
-
-
-  $("newFileButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        const name =
-          prompt(
-            "Enter a file name:"
-          );
-
-
-        if (!name)
-          return;
-
-
-        const filename =
-          name.trim();
-
-
-        if (!filename)
-          return;
-
-
-        if (
-          currentUser.files[
-            filename
-          ]
-        !== undefined
-        ) {
-
-          showNotification(
-            "File Exists",
-            "That file already exists."
-          );
-
-          return;
-        }
-
-
-        currentUser.files[
-          filename
-        ] = "";
-
-
-        selectedFile =
-          filename;
-
-
-        $("fileEditor")
-          .value = "";
-
-
-        saveCurrentUser();
-
-        renderFiles();
-      }
-    );
-
-
-  $("saveFileButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        if (!selectedFile) {
-
-          showNotification(
-            "No File",
-            "Select a file first."
-          );
-
-          return;
-        }
-
-
-        currentUser.files[
-          selectedFile
-        ] =
-          $("fileEditor")
-            .value;
-
-
-        saveCurrentUser();
-
-
-        showNotification(
-          "File Saved",
-          selectedFile
-        );
-      }
-    );
-
-
-  $("deleteFileButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        if (!selectedFile)
-          return;
-
-
-        if (
-          !confirm(
-            `Delete "${selectedFile}"?`
-          )
-        )
-          return;
-
-
-        delete currentUser.files[
-          selectedFile
-        ];
-
-
-        selectedFile = null;
-
-
-        $("fileEditor")
-          .value = "";
-
-
-        saveCurrentUser();
-
-        renderFiles();
-      }
-    );
-
-
-  /* =====================================================
-     PAINT
-  ====================================================== */
-
-  function preparePaint() {
-
-    paintCanvas =
-      $("paintCanvas");
-
-
-    if (!paintCanvas)
-      return;
-
-
-    if (!paintContext)
-      paintContext =
-        paintCanvas
-          .getContext("2d");
-  }
-
-
-  function paintPosition(event) {
-
-    const rect =
-      paintCanvas
-        .getBoundingClientRect();
-
-
-    return {
-
-      x:
-        (event.clientX -
-          rect.left) *
-        (
-          paintCanvas.width /
-          rect.width
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(124,92,255,0.25),
+            transparent 35%
         ),
-
-      y:
-        (event.clientY -
-          rect.top) *
-        (
-          paintCanvas.height /
-          rect.height
-        )
-    };
-  }
-
-
-  preparePaint();
-
-
-  $("paintCanvas")
-    ?.addEventListener(
-      "pointerdown",
-      event => {
-
-        painting = true;
-
-
-        const pos =
-          paintPosition(event);
-
-
-        paintContext.beginPath();
-
-        paintContext.moveTo(
-          pos.x,
-          pos.y
-        );
-      }
-    );
-
-
-  $("paintCanvas")
-    ?.addEventListener(
-      "pointermove",
-      event => {
-
-        if (!painting)
-          return;
-
-
-        const pos =
-          paintPosition(event);
-
-
-        paintContext.lineWidth =
-          Number(
-            $("brushSize")
-              .value
-          );
-
-
-        paintContext.lineCap =
-          "round";
-
-
-        paintContext.strokeStyle =
-          "#111111";
-
-
-        paintContext.lineTo(
-          pos.x,
-          pos.y
-        );
-
-
-        paintContext.stroke();
-      }
-    );
-
-
-  ["pointerup", "pointerleave"]
-    .forEach(type =>
-      $("paintCanvas")
-        ?.addEventListener(
-          type,
-          () => {
-            painting = false;
-          }
-        )
-    );
-
-
-  $("clearCanvasButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        preparePaint();
-
-
-        paintContext.clearRect(
-          0,
-          0,
-          paintCanvas.width,
-          paintCanvas.height
-        );
-      }
-    );
-
-
-  $("saveDrawingButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        preparePaint();
-
-
-        const link =
-          document.createElement(
-            "a"
-          );
-
-
-        link.href =
-          paintCanvas.toDataURL(
-            "image/png"
-          );
-
-
-        link.download =
-          "nexus-v14-drawing.png";
-
-
-        link.click();
-      }
-    );
-
-
-  /* =====================================================
-     GAME CENTER
-  ====================================================== */
-
-  function showGameMenu() {
-
-    $("gameMenu")
-      .classList
-      .remove("hidden");
-
-
-    qsa(".game-screen")
-      .forEach(screen =>
-        screen.classList
-          .add("hidden")
-      );
-  }
-
-
-  function openGame(id) {
-
-    $("gameMenu")
-      .classList
-      .add("hidden");
-
-
-    qsa(".game-screen")
-      .forEach(screen =>
-        screen.classList
-          .add("hidden")
-      );
-
-
-    $(id + "Game")
-      ?.classList
-      .remove("hidden");
-  }
-
-
-  function updateGameBest() {
-
-    if (!currentUser)
-      return;
-
-
-    const scores =
-      currentUser.gameScores || {};
-
-
-    const best =
-      Math.max(
-        scores.catch || 0,
-        scores.click || 0,
-        scores.memory || 0,
-        scores.snake || 0,
-        currentUser.highScore || 0
-      );
-
-
-    $("globalBestScore")
-      .textContent =
-      best;
-  }
-
-
-  function saveGameScore(
-    game,
-    score
-  ) {
-
-    if (!currentUser)
-      return;
-
-
-    if (!currentUser.gameScores)
-      currentUser.gameScores = {};
-
-
-    if (
-      score >
-      (
-        currentUser.gameScores[
-          game
-        ] || 0
-      )
-    ) {
-
-      currentUser.gameScores[
-        game
-      ] = score;
-
-
-      saveCurrentUser();
-
-      updateGameBest();
-
-
-      showNotification(
-        "New High Score!",
-        `${score} points`
-      );
-    }
-  }
-
-
-  /* =====================================================
-     CATCH NEXUS
-  ====================================================== */
-
-  function moveCatchTarget() {
-
-    const area =
-      $("catchArea");
-
-    const target =
-      $("catchTarget");
-
-
-    if (!area || !target)
-      return;
-
-
-    const maxX =
-      Math.max(
-        0,
-        area.clientWidth -
-        target.offsetWidth
-      );
-
-
-    const maxY =
-      Math.max(
-        0,
-        area.clientHeight -
-        target.offsetHeight
-      );
-
-
-    target.style.left =
-      Math.random() *
-      maxX +
-      "px";
-
-
-    target.style.top =
-      Math.random() *
-      maxY +
-      "px";
-  }
-
-
-  $("startCatch")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        clearTimeout(
-          catchTimer
-        );
-
-
-        catchScore = 0;
-
-        catchRunning = true;
-
-
-        $("catchScore")
-          .textContent = "0";
-
-
-        $("catchTarget")
-          .style.display =
-          "block";
-
-
-        moveCatchTarget();
-
-
-        catchTimer =
-          setTimeout(
-            () => {
-
-              catchRunning =
-                false;
-
-
-              $("catchTarget")
-                .style.display =
-                "none";
-
-
-              saveGameScore(
-                "catch",
-                catchScore
-              );
-
-
-              showNotification(
-                "Game Over",
-                `You scored ${catchScore}!`
-              );
-
-            },
-            30000
-          );
-      }
-    );
-
-
-  $("catchTarget")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        if (!catchRunning)
-          return;
-
-
-        catchScore++;
-
-
-        $("catchScore")
-          .textContent =
-          catchScore;
-
-
-        moveCatchTarget();
-      }
-    );
-
-
-  /* =====================================================
-     CLICK RUSH
-  ====================================================== */
-
-  $("startClick")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        clearInterval(
-          clickTimer
-        );
-
-
-        clickRunning = true;
-
-        clickScore = 0;
-
-        clickTime = 10;
-
-
-        $("clickScore")
-          .textContent = "0";
-
-
-        $("clickTime")
-          .textContent = "10";
-
-
-        clickTimer =
-          setInterval(
-            () => {
-
-              clickTime--;
-
-
-              $("clickTime")
-                .textContent =
-                clickTime;
-
-
-              if (
-                clickTime <= 0
-              ) {
-
-                clearInterval(
-                  clickTimer
-                );
-
-
-                clickRunning =
-                  false;
-
-
-                saveGameScore(
-                  "click",
-                  clickScore
-                );
-
-
-                showNotification(
-                  "Click Rush Finished",
-                  `${clickScore} clicks!`
-                );
-              }
-
-            },
-            1000
-          );
-      }
-    );
-
-
-  $("clickButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        if (!clickRunning)
-          return;
-
-
-        clickScore++;
-
-
-        $("clickScore")
-          .textContent =
-          clickScore;
-      }
-    );
-
-
-  /* =====================================================
-     MEMORY MATCH
-  ====================================================== */
-
-  function createMemoryGame() {
-
-    const icons = [
-      "🚀",
-      "🎮",
-      "🌐",
-      "🎨",
-      "🧠",
-      "⚡",
-      "📝",
-      "🪐"
-    ];
-
-
-    memoryCards =
-      [
-        ...icons,
-        ...icons
-      ]
-        .sort(
-          () =>
-            Math.random() - 0.5
-        );
-
-
-    memoryFlipped = [];
-
-    memoryLocked = false;
-
-    memoryMoves = 0;
-
-
-    $("memoryMoves")
-      .textContent = "0";
-
-
-    const board =
-      $("memoryBoard");
-
-
-    board.innerHTML = "";
-
-
-    memoryCards
-      .forEach(
-        (icon, index) => {
-
-          const card =
-            document.createElement(
-              "button"
-            );
-
-
-          card.className =
-            "memory-card";
-
-
-          card.dataset.index =
-            index;
-
-
-          card.textContent =
-            "❔";
-
-
-          card.onclick = () =>
-            flipMemoryCard(
-              card,
-              index
-            );
-
-
-          board.appendChild(
-            card
-          );
-        }
-      );
-  }
-
-
-  function flipMemoryCard(
-    card,
-    index
-  ) {
-
-    if (
-      memoryLocked ||
-      memoryFlipped
-        .some(
-          item =>
-            item.index === index
-        ) ||
-      card.classList.contains(
-        "matched"
-      )
-    )
-      return;
-
-
-    card.textContent =
-      memoryCards[index];
-
-
-    card.classList.add(
-      "flipped"
-    );
-
-
-    memoryFlipped.push({
-      card,
-      index
-    });
-
-
-    if (
-      memoryFlipped.length !== 2
-    )
-      return;
-
-
-    memoryMoves++;
-
-
-    $("memoryMoves")
-      .textContent =
-      memoryMoves;
-
-
-    const [a, b] =
-      memoryFlipped;
-
-
-    if (
-      memoryCards[a.index] ===
-      memoryCards[b.index]
-    ) {
-
-      a.card.classList.add(
-        "matched"
-      );
-
-      b.card.classList.add(
-        "matched"
-      );
-
-
-      memoryFlipped = [];
-
-
-      const matched =
-        qsa(
-          ".memory-card.matched"
-        );
-
-
-      if (
-        matched.length ===
-        memoryCards.length
-      ) {
-
-        const score =
-          Math.max(
-            100 -
-            memoryMoves * 5,
-            10
-          );
-
-
-        saveGameScore(
-          "memory",
-          score
-        );
-
-
-        showNotification(
-          "Memory Complete!",
-          `Score: ${score}`
-        );
-      }
-
-    } else {
-
-      memoryLocked = true;
-
-
-      setTimeout(
-        () => {
-
-          a.card.textContent =
-            "❔";
-
-          b.card.textContent =
-            "❔";
-
-
-          a.card.classList
-            .remove("flipped");
-
-          b.card.classList
-            .remove("flipped");
-
-
-          memoryFlipped = [];
-
-          memoryLocked = false;
-
-        },
-        700
-      );
-    }
-  }
-
-
-  $("startMemory")
-    ?.addEventListener(
-      "click",
-      createMemoryGame
-    );
-
-
-  /* =====================================================
-     SNAKE
-  ====================================================== */
-
-  const snakeCanvas =
-    $("snakeCanvas");
-
-  const snakeCtx =
-    snakeCanvas
-      ?.getContext("2d");
-
-
-  function randomSnakeFood() {
-
-    return {
-
-      x:
-        Math.floor(
-          Math.random() * 24
+        radial-gradient(
+            circle at 80% 80%,
+            rgba(0,212,255,0.16),
+            transparent 35%
         ),
+        #070711;
 
-      y:
-        Math.floor(
-          Math.random() * 16
-        )
-    };
-  }
+    z-index: 9000;
+}
 
+.auth-card {
+    width: min(430px, 92vw);
 
-  function startSnake() {
+    padding: 35px;
 
-    clearInterval(
-      snakeTimer
-    );
+    border: 1px solid var(--border);
 
+    border-radius: 28px;
 
-    snakeRunning = true;
+    background: rgba(20,20,38,0.94);
 
-    snakeScore = 0;
+    box-shadow:
+        0 30px 100px rgba(0,0,0,0.5);
 
+    backdrop-filter: blur(25px);
 
-    snakeDirection =
-      "right";
+    text-align: center;
+}
 
-    snakeNextDirection =
-      "right";
+.auth-logo {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 15px;
 
+    font-size: 40px;
+}
 
-    snakeBody = [
-      { x: 8, y: 8 },
-      { x: 7, y: 8 },
-      { x: 6, y: 8 }
-    ];
+.auth-card h1 {
+    font-size: 34px;
+    letter-spacing: 4px;
+}
 
+.version {
+    color: var(--muted);
+}
 
-    snakeFood =
-      randomSnakeFood();
+.auth-card h2 {
+    margin-top: 25px;
+}
 
+.auth-card p {
+    color: var(--muted);
+    margin: 8px 0 15px;
+}
 
-    $("snakeScore")
-      .textContent = "0";
+.auth-card input {
+    width: 100%;
 
+    margin-top: 10px;
+    padding: 14px 16px;
 
-    snakeTimer =
-      setInterval(
-        snakeTick,
-        120
-      );
+    border: 1px solid var(--border);
+    border-radius: 13px;
 
+    outline: none;
 
-    drawSnake();
-  }
+    background: rgba(255,255,255,0.06);
 
+    color: white;
 
-  function snakeTick() {
+    transition: 0.2s;
+}
 
-    snakeDirection =
-      snakeNextDirection;
+.auth-card input:focus {
+    border-color: var(--accent);
 
+    box-shadow:
+        0 0 0 3px rgba(124,92,255,0.15);
+}
 
-    const head = {
-      ...snakeBody[0]
-    };
+.primary-button {
+    width: 100%;
 
+    margin-top: 14px;
+    padding: 14px;
 
-    if (
-      snakeDirection ===
-      "up"
-    )
-      head.y--;
+    border-radius: 13px;
 
+    color: white;
 
-    if (
-      snakeDirection ===
-      "down"
-    )
-      head.y++;
-
-
-    if (
-      snakeDirection ===
-      "left"
-    )
-      head.x--;
-
-
-    if (
-      snakeDirection ===
-      "right"
-    )
-      head.x++;
-
-
-    if (
-      head.x < 0 ||
-      head.x >= 24 ||
-      head.y < 0 ||
-      head.y >= 16 ||
-      snakeBody.some(
-        part =>
-          part.x === head.x &&
-          part.y === head.y
-      )
-    ) {
-
-      endSnake();
-
-      return;
-    }
-
-
-    snakeBody.unshift(
-      head
-    );
-
-
-    if (
-      head.x === snakeFood.x &&
-      head.y === snakeFood.y
-    ) {
-
-      snakeScore++;
-
-
-      $("snakeScore")
-        .textContent =
-        snakeScore;
-
-
-      snakeFood =
-        randomSnakeFood();
-
-    } else {
-
-      snakeBody.pop();
-    }
-
-
-    drawSnake();
-  }
-
-
-  function drawSnake() {
-
-    if (!snakeCtx)
-      return;
-
-
-    snakeCtx.clearRect(
-      0,
-      0,
-      snakeCanvas.width,
-      snakeCanvas.height
-    );
-
-
-    const cellW =
-      snakeCanvas.width /
-      24;
-
-    const cellH =
-      snakeCanvas.height /
-      16;
-
-
-    snakeCtx.fillStyle =
-      "#7c5cff";
-
-
-    snakeBody.forEach(
-      part => {
-
-        snakeCtx.fillRect(
-          part.x * cellW + 1,
-          part.y * cellH + 1,
-          cellW - 2,
-          cellH - 2
-        );
-      }
-    );
-
-
-    snakeCtx.fillStyle =
-      "#19d8ff";
-
-
-    snakeCtx.beginPath();
-
-    snakeCtx.arc(
-      snakeFood.x * cellW +
-        cellW / 2,
-      snakeFood.y * cellH +
-        cellH / 2,
-      Math.min(
-        cellW,
-        cellH
-      ) / 3,
-      0,
-      Math.PI * 2
-    );
-
-    snakeCtx.fill();
-  }
-
-
-  function endSnake() {
-
-    snakeRunning = false;
-
-
-    clearInterval(
-      snakeTimer
-    );
-
-
-    saveGameScore(
-      "snake",
-      snakeScore
-    );
-
-
-    showNotification(
-      "Snake Over",
-      `Score: ${snakeScore}`
-    );
-  }
-
-
-  $("startSnake")
-    ?.addEventListener(
-      "click",
-      startSnake
-    );
-
-
-  document.addEventListener(
-    "keydown",
-    event => {
-
-      if (!snakeRunning)
-        return;
-
-
-      const key =
-        event.key.toLowerCase();
-
-
-      const directions = {
-
-        arrowup: "up",
-        w: "up",
-
-        arrowdown: "down",
-        s: "down",
-
-        arrowleft: "left",
-        a: "left",
-
-        arrowright: "right",
-        d: "right"
-      };
-
-
-      const direction =
-        directions[key];
-
-
-      if (!direction)
-        return;
-
-
-      event.preventDefault();
-
-
-      const opposite = {
-
-        up: "down",
-        down: "up",
-        left: "right",
-        right: "left"
-
-      };
-
-
-      if (
-        opposite[
-          snakeDirection
-        ] !== direction
-      )
-        snakeNextDirection =
-          direction;
-    }
-  );
-
-
-  /* =====================================================
-     GAME BUTTONS
-  ====================================================== */
-
-  qsa(".game-card")
-    .forEach(card => {
-
-      card.addEventListener(
-        "click",
-        () =>
-          openGame(
-            card.dataset.game
-          )
-      );
-    });
-
-
-  qsa(".back-games")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        showGameMenu
-      );
-    });
-
-
-  /* =====================================================
-     BROWSER
-  ====================================================== */
-
-  function normalizeURL(value) {
-
-    value =
-      value.trim();
-
-
-    if (!value)
-      return null;
-
-
-    if (
-      value.startsWith(
-        "http://"
-      ) ||
-      value.startsWith(
-        "https://"
-      )
-    ) {
-
-      return value;
-    }
-
-
-    if (
-      value.includes(".") &&
-      !value.includes(" ")
-    ) {
-
-      return (
-        "https://" +
-        value
-      );
-    }
-
-
-    return (
-      "https://www.google.com/search?q=" +
-      encodeURIComponent(value)
-    );
-  }
-
-
-  function loadBrowserURL(
-    input,
-    addHistory = true
-  ) {
-
-    const url =
-      normalizeURL(input);
-
-
-    if (!url)
-      return;
-
-
-    browserCurrentURL =
-      url;
-
-
-    if (
-      addHistory
-    )
-      addBrowserHistory(url);
-
-
-    $("browserAddress")
-      .value =
-      url;
-
-
-    $("browserHomePage")
-      .classList
-      .add("hidden");
-
-
-    $("browserBlocked")
-      .classList
-      .add("hidden");
-
-
-    const frame =
-      $("browserFrame");
-
-
-    frame.classList
-      .remove("hidden");
-
-
-    frame.src =
-      url;
-
-
-    $("browserTabTitle")
-      .textContent =
-      getDomain(url);
-
-
-    frame.onload = () => {
-
-      /*
-        Some pages may still refuse
-        to be embedded. The browser
-        cannot override that.
-      */
-
-      setTimeout(
-        () => {
-
-          try {
-
-            if (
-              frame.contentWindow
-                .location
-                .href ===
-              "about:blank"
-            ) {
-
-              showBrowserBlocked(url);
-            }
-
-          } catch {
-            /*
-              Cross-origin pages are
-              expected and are allowed.
-            */
-          }
-
-        },
-        900
-      );
-    };
-  }
-
-
-  function getDomain(url) {
-
-    try {
-
-      return new URL(url)
-        .hostname
-        .replace(
-          "www.",
-          ""
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            #5b43d6
         );
 
-    } catch {
+    font-weight: 700;
 
-      return "Web";
+    transition: 0.2s;
+}
+
+.primary-button:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 25px rgba(124,92,255,0.3);
+}
+
+.text-button,
+.link-button {
+    background: none;
+    color: #9f8dff;
+    margin-top: 10px;
+}
+
+.link-button {
+    font-weight: 700;
+}
+
+.local-warning {
+    margin-top: 25px;
+    padding: 12px;
+
+    border-radius: 12px;
+
+    background: rgba(255,255,255,0.05);
+
+    color: var(--muted);
+
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   DESKTOP
+========================================================= */
+
+.desktop {
+    position: fixed;
+    inset: 0;
+}
+
+.wallpaper {
+    position: absolute;
+    inset: 0;
+
+    z-index: 0;
+
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(124,92,255,0.4),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 80% 70%,
+            rgba(0,212,255,0.2),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #09091a,
+            #151034
+        );
+
+    transition: 0.5s;
+}
+
+.wallpaper.purple {
+    background:
+        radial-gradient(
+            circle at 30% 30%,
+            #a855f7,
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #18051f,
+            #090713
+        );
+}
+
+.wallpaper.blue {
+    background:
+        radial-gradient(
+            circle at 30% 30%,
+            #00bfff,
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #03141d,
+            #070a16
+        );
+}
+
+.wallpaper.green {
+    background:
+        radial-gradient(
+            circle at 30% 30%,
+            #00d084,
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #03160f,
+            #070d0a
+        );
+}
+
+
+/* =========================================================
+   DESKTOP ICONS
+========================================================= */
+
+.desktop-icons {
+    position: absolute;
+
+    top: 25px;
+    left: 20px;
+
+    z-index: 2;
+
+    display: grid;
+
+    grid-template-columns: repeat(2, 90px);
+
+    gap: 18px;
+}
+
+.desktop-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    width: 85px;
+    min-height: 80px;
+
+    background: transparent;
+
+    color: white;
+
+    border-radius: 12px;
+
+    padding: 7px;
+
+    transition: 0.15s;
+}
+
+.desktop-icon:hover {
+    background: rgba(255,255,255,0.12);
+}
+
+.desktop-icon span {
+    font-size: 34px;
+}
+
+.desktop-icon label {
+    margin-top: 5px;
+
+    font-size: 12px;
+
+    text-shadow:
+        0 2px 5px black;
+}
+
+
+/* =========================================================
+   WINDOWS
+========================================================= */
+
+.window {
+    position: absolute;
+
+    z-index: 10;
+
+    display: none;
+
+    width: 700px;
+    max-width: calc(100vw - 30px);
+
+    height: 500px;
+    max-height: calc(100vh - 90px);
+
+    left: 50%;
+    top: 45%;
+
+    transform: translate(-50%, -50%);
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+
+    border-radius: 17px;
+
+    background: var(--panel);
+
+    box-shadow:
+        0 30px 90px rgba(0,0,0,0.5);
+
+    backdrop-filter: blur(25px);
+}
+
+.window.open {
+    display: block;
+
+    animation: windowOpen 0.18s ease;
+}
+
+.window.minimized {
+    display: none;
+}
+
+@keyframes windowOpen {
+    from {
+        opacity: 0;
+        transform:
+            translate(-50%, -50%)
+            scale(0.96);
     }
-  }
+
+    to {
+        opacity: 1;
+        transform:
+            translate(-50%, -50%)
+            scale(1);
+    }
+}
+
+.window-header {
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 15px;
+
+    background:
+        rgba(255,255,255,0.05);
+
+    border-bottom: 1px solid var(--border);
+
+    font-weight: 700;
+}
+
+.window-header button {
+    width: 30px;
+    height: 30px;
+
+    border-radius: 8px;
+
+    color: var(--text);
+
+    background: transparent;
+
+    font-size: 19px;
+}
+
+.window-header button:hover {
+    background: rgba(255,255,255,0.12);
+}
+
+.close-button:hover {
+    background: #ff4565 !important;
+    color: white !important;
+}
+
+.window-content {
+    height: calc(100% - 48px);
+
+    overflow: auto;
+
+    padding: 20px;
+}
 
 
-  function showBrowserBlocked(url) {
+/* =========================================================
+   NOTEPAD
+========================================================= */
 
-    $("browserFrame")
-      .classList
-      .add("hidden");
+.notepad-content {
+    display: flex;
+    flex-direction: column;
+}
 
+.notepad-toolbar,
+.file-toolbar,
+.paint-toolbar {
+    display: flex;
+    gap: 8px;
 
-    $("browserBlocked")
-      .classList
-      .remove("hidden");
+    margin-bottom: 12px;
 
+    flex-wrap: wrap;
+}
 
-    browserExternalURL =
-      url;
-  }
+.notepad-toolbar button,
+.file-toolbar button,
+.paint-toolbar button,
+.settings-content button {
+    padding: 9px 13px;
 
+    border-radius: 9px;
 
-  function browserHome() {
+    color: var(--text);
 
-    $("browserFrame")
-      .classList
-      .add("hidden");
+    background: rgba(255,255,255,0.08);
 
+    border: 1px solid var(--border);
+}
 
-    $("browserBlocked")
-      .classList
-      .add("hidden");
+.notepad-toolbar button:hover,
+.file-toolbar button:hover,
+.paint-toolbar button:hover,
+.settings-content button:hover {
+    background: rgba(124,92,255,0.25);
+}
 
+#notepad {
+    flex: 1;
 
-    $("browserHomePage")
-      .classList
-      .remove("hidden");
+    width: 100%;
 
+    resize: none;
 
-    $("browserAddress")
-      .value = "";
+    padding: 15px;
 
+    border: 1px solid var(--border);
+    border-radius: 12px;
 
-    $("browserTabTitle")
-      .textContent =
-      "New Tab";
-  }
+    background: rgba(0,0,0,0.2);
 
+    color: var(--text);
 
-  function addBrowserHistory(url) {
+    outline: none;
 
-    let history = [];
+    line-height: 1.6;
+}
 
+.status-bar {
+    display: flex;
+    justify-content: space-between;
 
-    try {
+    margin-top: 8px;
 
-      history =
-        JSON.parse(
-          localStorage.getItem(
-            HISTORY_KEY
-          )
-        ) || [];
+    color: var(--muted);
 
-    } catch {}
-
-
-    history =
-      history.filter(
-        item =>
-          item !== url
-      );
-
-
-    history.unshift(url);
-
-
-    history =
-      history.slice(
-        0,
-        30
-      );
+    font-size: 12px;
+}
 
 
-    localStorage.setItem(
-      HISTORY_KEY,
-      JSON.stringify(history)
-    );
+/* =========================================================
+   CALCULATOR
+========================================================= */
+
+.calculator-display {
+    width: 100%;
+
+    padding: 18px;
+
+    margin-bottom: 15px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: rgba(0,0,0,0.25);
+
+    color: var(--text);
+
+    text-align: right;
+
+    font-size: 28px;
+
+    outline: none;
+}
+
+.calculator-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 9px;
+}
+
+.calculator-grid button {
+    min-height: 55px;
+
+    border-radius: 12px;
+
+    background:
+        rgba(255,255,255,0.08);
+
+    color: var(--text);
+
+    font-size: 18px;
+
+    border: 1px solid var(--border);
+}
+
+.calculator-grid button:hover {
+    background:
+        rgba(124,92,255,0.3);
+}
+
+.calculator-grid .equals {
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            #5140d5
+        );
+}
 
 
-    renderBrowserHistory();
-  }
+/* =========================================================
+   FILES
+========================================================= */
+
+.file-layout {
+    display: grid;
+
+    grid-template-columns: 200px 1fr;
+
+    gap: 15px;
+
+    height: calc(100% - 60px);
+}
+
+.file-list {
+    overflow: auto;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    padding: 8px;
+
+    background: rgba(0,0,0,0.15);
+}
+
+.file-item {
+    width: 100%;
+
+    padding: 11px;
+
+    margin-bottom: 5px;
+
+    border-radius: 8px;
+
+    text-align: left;
+
+    background: transparent;
+
+    color: var(--text);
+}
+
+.file-item:hover,
+.file-item.active {
+    background:
+        rgba(124,92,255,0.25);
+}
+
+.file-editor {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+.file-editor input,
+.file-editor textarea {
+    width: 100%;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: rgba(0,0,0,0.2);
+
+    color: var(--text);
+
+    outline: none;
+}
+
+.file-editor textarea {
+    flex: 1;
+    resize: none;
+}
 
 
-  function renderBrowserHistory() {
+/* =========================================================
+   PAINT
+========================================================= */
 
-    const list =
-      $("historyList");
+.paint-toolbar {
+    align-items: center;
+}
+
+.paint-toolbar label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#paintCanvas {
+    display: block;
+
+    width: 100%;
+    height: calc(100% - 60px);
+
+    min-height: 300px;
+
+    border-radius: 12px;
+
+    background: white;
+
+    cursor: crosshair;
+
+    touch-action: none;
+}
 
 
-    if (!list)
-      return;
+/* =========================================================
+   GAMES
+========================================================= */
+
+.game-menu {
+    text-align: center;
+}
+
+.game-menu h2 {
+    font-size: 30px;
+}
+
+.game-menu > p {
+    color: var(--muted);
+    margin: 5px 0 20px;
+}
+
+.game-cards {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 15px;
+}
+
+.game-card {
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+
+    padding: 22px;
+
+    min-height: 150px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 17px;
+
+    background:
+        rgba(255,255,255,0.06);
+
+    color: var(--text);
+
+    transition: 0.2s;
+}
+
+.game-card:hover {
+    transform: translateY(-4px);
+
+    border-color:
+        rgba(124,92,255,0.6);
+
+    background:
+        rgba(124,92,255,0.14);
+}
+
+.game-card span {
+    font-size: 42px;
+}
+
+.game-card strong {
+    margin-top: 8px;
+}
+
+.game-card small {
+    margin-top: 5px;
+    color: var(--muted);
+}
+
+.game-screen {
+    text-align: center;
+}
+
+.back-game {
+    padding: 8px 12px;
+
+    border-radius: 8px;
+
+    background: rgba(255,255,255,0.08);
+
+    color: var(--text);
+}
+
+.game-screen h2 {
+    margin-top: 15px;
+}
+
+.catch-area {
+    position: relative;
+
+    width: 100%;
+    height: 280px;
+
+    margin-top: 15px;
+
+    border-radius: 15px;
+
+    border: 1px solid var(--border);
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(124,92,255,0.2),
+            rgba(0,0,0,0.2)
+        );
+
+    overflow: hidden;
+}
+
+#catchTarget {
+    position: absolute;
+
+    width: 48px;
+    height: 48px;
+
+    border-radius: 50%;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            var(--accent2)
+        );
+
+    color: white;
+
+    font-size: 20px;
+    font-weight: 900;
+
+    box-shadow:
+        0 0 20px rgba(0,212,255,0.4);
+}
+
+.click-rush-button {
+    width: 220px;
+    height: 100px;
+
+    margin-top: 30px;
+
+    border-radius: 20px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ff4f70,
+            #ff8a00
+        );
+
+    color: white;
+
+    font-size: 28px;
+
+    font-weight: 900;
+}
+
+.click-rush-button:disabled {
+    opacity: 0.4;
+}
+
+.memory-board {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 8px;
+
+    max-width: 400px;
+
+    margin: 20px auto;
+}
+
+.memory-card {
+    aspect-ratio: 1;
+
+    border-radius: 10px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            #4030a5
+        );
+
+    color: transparent;
+
+    font-size: 24px;
+
+    font-weight: 800;
+}
+
+.memory-card.revealed,
+.memory-card.matched {
+    background:
+        rgba(255,255,255,0.1);
+
+    color: var(--text);
+}
+
+#snakeCanvas {
+    display: block;
+
+    width: 400px;
+    max-width: 100%;
+
+    margin: 15px auto;
+
+    background: #050509;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 10px;
+}
 
 
-    let history = [];
+/* =========================================================
+   BROWSER
+========================================================= */
+
+.browser-window {
+    width: 900px;
+    height: 620px;
+}
+
+.browser-toolbar {
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 9px;
+
+    background:
+        rgba(0,0,0,0.18);
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+.browser-toolbar button,
+.browser-extra button {
+    min-width: 35px;
+    height: 35px;
+
+    border-radius: 8px;
+
+    background:
+        rgba(255,255,255,0.07);
+
+    color: var(--text);
+
+    border: 1px solid var(--border);
+}
+
+.browser-toolbar button:hover,
+.browser-extra button:hover {
+    background:
+        rgba(124,92,255,0.25);
+}
+
+#browserAddress {
+    flex: 1;
+
+    height: 35px;
+
+    padding: 0 13px;
+
+    border-radius: 18px;
+
+    border:
+        1px solid var(--border);
+
+    background:
+        rgba(255,255,255,0.07);
+
+    color: var(--text);
+
+    outline: none;
+}
+
+.browser-extra {
+    display: flex;
+
+    gap: 7px;
+
+    padding: 7px 9px;
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+.browser-page {
+    position: relative;
+
+    height: calc(100% - 142px);
+
+    background:
+        var(--panel2);
+}
+
+#browserFrame {
+    width: 100%;
+    height: 100%;
+
+    border: none;
+
+    background: white;
+}
+
+.browser-home {
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+}
+
+.browser-logo {
+    width: 75px;
+    height: 75px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 23px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            var(--accent2)
+        );
+
+    font-size: 40px;
+    font-weight: 900;
+}
+
+.browser-home h1 {
+    margin-top: 15px;
+}
+
+.browser-home p {
+    color: var(--muted);
+}
+
+.quick-sites {
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 25px;
+}
+
+.quick-sites button {
+    padding: 12px 18px;
+
+    border-radius: 12px;
+
+    color: var(--text);
+
+    background:
+        rgba(255,255,255,0.07);
+
+    border:
+        1px solid var(--border);
+}
+
+.browser-blocked {
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+
+    padding: 30px;
+}
+
+.browser-blocked p {
+    max-width: 500px;
+
+    margin: 10px 0;
+
+    color: var(--muted);
+}
+
+.browser-blocked .primary-button {
+    width: auto;
+
+    padding: 11px 18px;
+}
+
+.browser-status {
+    height: 35px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 12px;
+
+    border-top:
+        1px solid var(--border);
+
+    color: var(--muted);
+
+    font-size: 12px;
+}
+
+.browser-history {
+    position: absolute;
+
+    z-index: 100;
+
+    top: 92px;
+    right: 10px;
+
+    width: 300px;
+    max-height: 350px;
+
+    overflow: auto;
+
+    background:
+        var(--panel);
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 13px;
+
+    box-shadow:
+        0 20px 50px rgba(0,0,0,0.5);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+
+    padding: 12px;
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+.history-header button {
+    background: transparent;
+    color: var(--text);
+}
+
+.history-item {
+    display: block;
+
+    width: 100%;
+
+    padding: 10px;
+
+    text-align: left;
+
+    background: transparent;
+
+    color: var(--text);
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+.history-item:hover {
+    background:
+        rgba(124,92,255,0.15);
+}
 
 
-    try {
+/* =========================================================
+   SETTINGS
+========================================================= */
 
-      history =
-        JSON.parse(
-          localStorage.getItem(
-            HISTORY_KEY
-          )
-        ) || [];
+.settings-profile {
+    display: flex;
+    align-items: center;
 
-    } catch {}
+    gap: 15px;
+
+    padding-bottom: 20px;
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+.profile-avatar,
+.start-avatar {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 55px;
+    height: 55px;
+
+    border-radius: 50%;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            var(--accent2)
+        );
+
+    font-size: 25px;
+}
+
+.settings-profile p {
+    color: var(--muted);
+}
+
+.settings-content h3 {
+    margin-top: 22px;
+    margin-bottom: 10px;
+}
+
+.settings-content input {
+    width: 100%;
+
+    padding: 11px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 10px;
+
+    background:
+        rgba(0,0,0,0.15);
+
+    color: var(--text);
+
+    outline: none;
+}
+
+.settings-buttons {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 8px;
+}
+
+.danger-button {
+    margin-right: 8px;
+
+    background:
+        rgba(255,79,112,0.12) !important;
+
+    color:
+        #ff7891 !important;
+}
 
 
-    list.innerHTML = "";
+/* =========================================================
+   ABOUT
+========================================================= */
+
+.about-content {
+    text-align: center;
+}
+
+.about-logo {
+    width: 75px;
+    height: 75px;
+
+    margin: 10px auto 15px;
+
+    font-size: 42px;
+}
+
+.about-content h1 {
+    font-size: 35px;
+    letter-spacing: 4px;
+}
+
+.feature-list {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 8px;
+
+    margin-top: 25px;
+}
+
+.feature-list div {
+    padding: 12px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 10px;
+
+    background:
+        rgba(255,255,255,0.05);
+}
 
 
-    if (!history.length) {
+/* =========================================================
+   START MENU
+========================================================= */
 
-      list.innerHTML =
-        `<div style="padding:15px;color:#9da7c2;font-size:11px">
-          No browsing history yet.
-        </div>`;
+.start-menu {
+    position: absolute;
 
-      return;
+    z-index: 1000;
+
+    left: 10px;
+    bottom: 68px;
+
+    width: 330px;
+    max-height: 70vh;
+
+    overflow: auto;
+
+    padding: 15px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 18px;
+
+    background:
+        var(--panel);
+
+    box-shadow:
+        0 25px 70px rgba(0,0,0,0.5);
+
+    backdrop-filter: blur(25px);
+
+    animation: startOpen 0.15s ease;
+}
+
+@keyframes startOpen {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
     }
 
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-    history.forEach(url => {
+.start-profile {
+    display: flex;
 
-      const button =
-        document.createElement(
-          "button"
+    align-items: center;
+
+    gap: 12px;
+
+    padding-bottom: 15px;
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+.start-profile small {
+    display: block;
+
+    margin-top: 3px;
+
+    color: var(--muted);
+}
+
+.start-apps {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 7px;
+
+    margin-top: 15px;
+}
+
+.start-apps button,
+.start-bottom button {
+    padding: 12px;
+
+    border-radius: 10px;
+
+    text-align: left;
+
+    background:
+        rgba(255,255,255,0.06);
+
+    color: var(--text);
+}
+
+.start-apps button:hover,
+.start-bottom button:hover {
+    background:
+        rgba(124,92,255,0.2);
+}
+
+.start-bottom {
+    margin-top: 15px;
+
+    border-top:
+        1px solid var(--border);
+
+    padding-top: 12px;
+}
+
+
+/* =========================================================
+   TASKBAR
+========================================================= */
+
+.taskbar {
+    position: absolute;
+
+    z-index: 2000;
+
+    bottom: 0;
+    left: 0;
+    right: 0;
+
+    height: 58px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 7px 10px;
+
+    background:
+        var(--taskbar);
+
+    border-top:
+        1px solid var(--border);
+
+    backdrop-filter: blur(25px);
+}
+
+.start-button {
+    height: 42px;
+
+    padding: 0 16px;
+
+    border-radius: 11px;
+
+    color: white;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            #4c38c9
         );
 
+    font-weight: 800;
+}
 
-      button.className =
-        "history-item";
+.taskbar-apps {
+    display: flex;
 
+    gap: 5px;
 
-      button.textContent =
-        getDomain(url);
+    margin-left: 10px;
 
+    flex: 1;
+}
 
-      button.title =
-        url;
+.taskbar-app {
+    height: 42px;
 
+    min-width: 42px;
 
-      button.onclick = () => {
+    padding: 0 10px;
 
-        $("browserHistoryPanel")
-          .classList
-          .add("hidden");
+    border-radius: 9px;
 
+    background:
+        rgba(255,255,255,0.07);
 
-        loadBrowserURL(url);
-      };
+    color: var(--text);
+}
 
+.taskbar-app.active {
+    background:
+        rgba(124,92,255,0.3);
+}
 
-      list.appendChild(
-        button
-      );
-    });
-  }
+.taskbar-right {
+    display: flex;
+    align-items: center;
 
+    gap: 15px;
 
-  function searchBrowser(value) {
+    color: var(--text);
 
-    if (!value)
-      return;
+    padding: 0 8px;
+}
 
+#taskbarClock {
+    font-variant-numeric: tabular-nums;
+}
 
-    loadBrowserURL(
-      value
-    );
-  }
 
+/* =========================================================
+   TOAST
+========================================================= */
 
-  $("browserAddress")
-    ?.addEventListener(
-      "keydown",
-      event => {
+#toastContainer {
+    position: absolute;
 
-        if (
-          event.key === "Enter"
-        ) {
+    z-index: 9999;
 
-          searchBrowser(
-            $("browserAddress")
-              .value
-          );
-        }
-      }
-    );
+    right: 20px;
+    bottom: 75px;
 
+    display: flex;
+    flex-direction: column;
 
-  $("browserHomeSearch")
-    ?.addEventListener(
-      "keydown",
-      event => {
+    gap: 8px;
+}
 
-        if (
-          event.key === "Enter"
-        ) {
+.toast {
+    min-width: 250px;
 
-          searchBrowser(
-            $("browserHomeSearch")
-              .value
-          );
-        }
-      }
-    );
+    padding: 13px 15px;
 
+    border:
+        1px solid var(--border);
 
-  $("browserHomeSearchButton")
-    ?.addEventListener(
-      "click",
-      () =>
-        searchBrowser(
-          $("browserHomeSearch")
-            .value
-        )
-    );
+    border-radius: 12px;
 
+    background:
+        var(--panel);
 
-  qsa(".quick-links button")
-    .forEach(button => {
+    box-shadow:
+        0 15px 40px rgba(0,0,0,0.4);
 
-      button.addEventListener(
-        "click",
-        () =>
-          loadBrowserURL(
-            button.dataset.url
-          )
-      );
-    });
+    animation:
+        toastIn 0.2s ease;
+}
 
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
 
-  $("browserHome")
-    ?.addEventListener(
-      "click",
-      browserHome
-    );
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
 
 
-  $("browserRefresh")
-    ?.addEventListener(
-      "click",
-      () => {
+/* =========================================================
+   CLOCK OVERLAY
+========================================================= */
 
-        if (
-          browserCurrentURL
-        ) {
+.clock-overlay {
+    position: absolute;
 
-          $("browserFrame")
-            .src =
-            browserCurrentURL;
-        }
-      }
-    );
+    z-index: 3;
 
+    right: 35px;
+    top: 30px;
 
-  $("browserBack")
-    ?.addEventListener(
-      "click",
-      () => {
+    text-align: right;
 
-        if (
-          browserPreviousURL
-        ) {
+    pointer-events: none;
 
-          const current =
-            browserCurrentURL;
+    text-shadow:
+        0 4px 20px rgba(0,0,0,0.6);
+}
 
-          browserCurrentURL =
-            browserPreviousURL;
+#bigClock {
+    font-size: clamp(35px, 6vw, 75px);
 
-          browserPreviousURL =
-            current;
+    font-weight: 800;
 
-          $("browserFrame")
-            .src =
-            browserCurrentURL;
+    letter-spacing: -3px;
+}
 
-          $("browserAddress")
-            .value =
-            browserCurrentURL;
-        }
-      }
-    );
+#bigDate {
+    color: rgba(255,255,255,0.7);
 
+    font-size: 14px;
+}
 
-  $("browserForward")
-    ?.addEventListener(
-      "click",
-      () => {
 
-        if (
-          browserForwardURL
-        ) {
+/* =========================================================
+   SMALL TEXT
+========================================================= */
 
-          loadBrowserURL(
-            browserForwardURL
-          );
-        }
-      }
-    );
+.small-text {
+    color: var(--muted);
 
+    font-size: 12px;
+}
 
-  $("browserHistoryButton")
-    ?.addEventListener(
-      "click",
-      () => {
 
-        $("browserHistoryPanel")
-          .classList
-          .toggle("hidden");
+/* =========================================================
+   MOBILE
+========================================================= */
 
+@media (max-width: 700px) {
 
-        renderBrowserHistory();
-      }
-    );
+    .desktop-icons {
+        grid-template-columns:
+            repeat(4, 70px);
 
+        left: 8px;
+        top: 15px;
 
-  $("clearHistory")
-    ?.addEventListener(
-      "click",
-      () => {
+        gap: 8px;
+    }
 
-        localStorage.removeItem(
-          HISTORY_KEY
-        );
+    .desktop-icon {
+        width: 65px;
+    }
 
-        renderBrowserHistory();
-      }
-    );
+    .desktop-icon span {
+        font-size: 28px;
+    }
 
+    .desktop-icon label {
+        font-size: 10px;
+    }
 
-  $("browserFavorite")
-    ?.addEventListener(
-      "click",
-      () => {
+    .window {
+        width: calc(100vw - 16px);
+        height: calc(100vh - 80px);
+    }
 
-        if (!browserCurrentURL)
-          return;
+    .browser-window {
+        width: calc(100vw - 16px);
+    }
 
+    .game-cards {
+        grid-template-columns:
+            1fr;
+    }
 
-        let favorites =
-          JSON.parse(
-            localStorage.getItem(
-              "nexus_v14_favorites"
-            )
-          ) || [];
+    .file-layout {
+        grid-template-columns:
+            1fr;
+    }
 
+    .file-list {
+        max-height: 120px;
+    }
 
-        if (
-          !favorites.includes(
-            browserCurrentURL
-          )
-        ) {
+    .feature-list {
+        grid-template-columns:
+            1fr;
+    }
 
-          favorites.push(
-            browserCurrentURL
-          );
+    .start-menu {
+        width: calc(100vw - 20px);
+    }
 
+    .clock-overlay {
+        top: 15px;
+        right: 15px;
+    }
 
-          localStorage.setItem(
-            "nexus_v14_favorites",
-            JSON.stringify(
-              favorites
-            )
-          );
-
-
-          $("browserFavorite")
-            .textContent =
-            "★";
-
-
-          showNotification(
-            "Favorite Added",
-            getDomain(
-              browserCurrentURL
-            )
-          );
-
-        } else {
-
-          showNotification(
-            "Already Saved",
-            "This page is already a favorite."
-          );
-        }
-      }
-    );
-
-
-  $("openExternalButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        if (
-          browserExternalURL
-        ) {
-
-          window.open(
-            browserExternalURL,
-            "_blank"
-          );
-        }
-      }
-    );
-
-
-  $("newBrowserTab")
-    ?.addEventListener(
-      "click",
-      browserHome
-    );
-
-
-  $("closeBrowserTab")
-    ?.addEventListener(
-      "click",
-      browserHome
-    );
-
-
-  /* =====================================================
-     SETTINGS
-  ====================================================== */
-
-  $("darkThemeButton")
-    ?.addEventListener(
-      "click",
-      () =>
-        setTheme("dark")
-    );
-
-
-  $("lightThemeButton")
-    ?.addEventListener(
-      "click",
-      () =>
-        setTheme("light")
-    );
-
-
-  qsa("[data-wallpaper]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () =>
-          setWallpaper(
-            button.dataset.wallpaper
-          )
-      );
-    });
-
-
-  $("logoutButton")
-    ?.addEventListener(
-      "click",
-      logout
-    );
-
-
-  $("startLogoutButton")
-    ?.addEventListener(
-      "click",
-      logout
-    );
-
-
-  $("deleteAccountButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        if (!currentUser)
-          return;
-
-
-        if (
-          !confirm(
-            `Delete "${currentUser.username}"? This cannot be undone.`
-          )
-        )
-          return;
-
-
-        delete accounts[
-          currentUser.key
-        ];
-
-
-        saveAccounts();
-
-
-        localStorage.removeItem(
-          SESSION_KEY
-        );
-
-
-        currentUser = null;
-
-
-        closeAllWindows();
-
-
-        $("desktop")
-          .classList
-          .add("hidden");
-
-
-        $("authScreen")
-          .classList
-          .remove("hidden");
-
-
-        showLogin();
-      }
-    );
-
-
-  /* =====================================================
-     START MENU
-  ====================================================== */
-
-  $("startButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        $("startMenu")
-          .classList
-          .toggle("hidden");
-      }
-    );
-
-
-  qsa(
-    "#startApps [data-app]"
-  )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () =>
-          openApp(
-            button.dataset.app
-          )
-      );
-    });
-
-
-  $("appSearch")
-    ?.addEventListener(
-      "input",
-      () => {
-
-        const query =
-          $("appSearch")
-            .value
-            .toLowerCase();
-
-
-        qsa(
-          "#startApps button"
-        )
-          .forEach(button => {
-
-            button.style.display =
-              button.textContent
-                .toLowerCase()
-                .includes(query)
-                  ? "flex"
-                  : "none";
-          });
-      }
-    );
-
-
-  /* =====================================================
-     WINDOW CONTROLS
-  ====================================================== */
-
-  qsa("[data-app]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () =>
-          openApp(
-            button.dataset.app
-          )
-      );
-    });
-
-
-  qsa(".close-button")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () =>
-          closeApp(
-            button.closest(
-              ".app-window"
-            )
-          )
-      );
-    });
-
-
-  qsa(".minimize-button")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const win =
-            button.closest(
-              ".app-window"
-            );
-
-
-          if (win)
-            win.classList
-              .remove("open");
-
-
-          updateTaskbar();
-        }
-      );
-    });
-
-
-  /* =====================================================
-     NOTIFICATION CLOSE
-  ====================================================== */
-
-  $("closeNotification")
-    ?.addEventListener(
-      "click",
-      () =>
-        $("notification")
-          .classList
-          .add("hidden")
-    );
-
-
-  /* =====================================================
-     AUTH BUTTONS
-  ====================================================== */
-
-  $("showSignupButton")
-    ?.addEventListener(
-      "click",
-      showSignup
-    );
-
-
-  $("showLoginButton")
-    ?.addEventListener(
-      "click",
-      showLogin
-    );
-
-
-  $("loginButton")
-    ?.addEventListener(
-      "click",
-      login
-    );
-
-
-  $("signupButton")
-    ?.addEventListener(
-      "click",
-      signup
-    );
-
-
-  $("loginPassword")
-    ?.addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key === "Enter"
-        )
-          login();
-      }
-    );
-
-
-  $("signupPasswordConfirm")
-    ?.addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key === "Enter"
-        )
-          signup();
-      }
-    );
-
-
-  $("forgotPasswordButton")
-    ?.addEventListener(
-      "click",
-      () => {
-
-        showNotification(
-          "Password Recovery",
-          "NEXUS v1.4 stores accounts locally, so automatic email password recovery is unavailable."
-        );
-      }
-    );
-
-
-  /* =====================================================
-     INITIALIZE
-  ====================================================== */
-
-  loadAccounts();
-
-  createMemoryGame();
-
-  renderBrowserHistory();
-
-  boot();
-
-
-  console.log(
-    "NEXUS v1.4 loaded — Firebase-free."
-  );
-
-});
+    #bigClock {
+        font-size: 38px;
+    }
+}
