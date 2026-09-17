@@ -1,48 +1,12 @@
-/* =========================================================
-   NEXUS v1.4
-   Complete JavaScript
-   Firebase-free
-   ========================================================= */
-
 "use strict";
 
 /* =========================================================
-   HELPERS
+   NEXUS v1.4 — COMPLETE SCRIPT
+   Matches the uploaded index.html exactly.
+   No Firebase.
    ========================================================= */
 
-const $ = (id) => document.getElementById(id);
-
-function show(el) {
-    if (!el) return;
-    el.classList.remove("hidden");
-}
-
-function hide(el) {
-    if (!el) return;
-    el.classList.add("hidden");
-}
-
-function toggle(el) {
-    if (!el) return;
-    el.classList.toggle("hidden");
-}
-
-function setText(id, text) {
-    const el = $(id);
-    if (el) el.textContent = text;
-}
-
-function safeJSONParse(value, fallback) {
-    try {
-        return JSON.parse(value);
-    } catch {
-        return fallback;
-    }
-}
-
-/* =========================================================
-   STORAGE
-   ========================================================= */
+const $ = id => document.getElementById(id);
 
 const STORAGE = {
     accounts: "nexus_v14_accounts",
@@ -50,88 +14,102 @@ const STORAGE = {
     notes: "nexus_v14_notes",
     files: "nexus_v14_files",
     settings: "nexus_v14_settings",
-    history: "nexus_v14_browser_history"
+    history: "nexus_v14_history"
 };
 
+let selectedFile = null;
+let highestZ = 20;
+let catchTimer = null;
+let clickTimer = null;
+let clickRunning = false;
+let clickScore = 0;
+let clickTime = 10;
+let memoryCards = [];
+let memoryFirst = null;
+let memoryMoves = 0;
+let memoryLocked = false;
+let snakeTimer = null;
+let snake = [];
+let snakeFood = { x: 5, y: 5 };
+let snakeDirection = { x: 1, y: 0 };
+let snakeNextDirection = { x: 1, y: 0 };
+let snakeScore = 0;
+let currentGame = null;
+let browserCurrentUrl = "";
+
+function show(element) {
+    if (element) element.classList.remove("hidden");
+}
+
+function hide(element) {
+    if (element) element.classList.add("hidden");
+}
+
+function text(id, value) {
+    const element = $(id);
+    if (element) element.textContent = value;
+}
+
+function readJSON(key, fallback) {
+    try {
+        return JSON.parse(localStorage.getItem(key)) ?? fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function writeJSON(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+}
+
 function getAccounts() {
-    return safeJSONParse(
-        localStorage.getItem(STORAGE.accounts),
-        []
-    );
+    return readJSON(STORAGE.accounts, []);
 }
 
 function saveAccounts(accounts) {
-    localStorage.setItem(
-        STORAGE.accounts,
-        JSON.stringify(accounts)
-    );
+    writeJSON(STORAGE.accounts, accounts);
 }
 
-function getCurrentUser() {
-    return localStorage.getItem(STORAGE.currentUser);
+function currentUsername() {
+    return localStorage.getItem(STORAGE.currentUser) || "";
 }
 
-function setCurrentUser(username) {
+function setCurrentUsername(username) {
     if (username) {
-        localStorage.setItem(
-            STORAGE.currentUser,
-            username
-        );
+        localStorage.setItem(STORAGE.currentUser, username);
     } else {
         localStorage.removeItem(STORAGE.currentUser);
     }
 }
 
-/* =========================================================
-   ACCOUNT HELPERS
-   ========================================================= */
-
-function findAccount(username) {
+function currentAccount() {
     return getAccounts().find(
         account =>
             account.username.toLowerCase() ===
-            username.toLowerCase()
+            currentUsername().toLowerCase()
     );
 }
 
-function validateUsername(username) {
+function validUsername(username) {
     return /^[A-Za-z0-9_ ]{3,24}$/.test(username);
 }
 
-function validateEmail(email) {
+function validEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function showAuthMessage(message, type = "error") {
-    const possible = [
-        $("authMessage"),
-        $("loginMessage"),
-        $("signupMessage"),
-        $("authStatus")
-    ];
+function authMessage(message) {
+    let element = $("authMessage");
 
-    const el = possible.find(Boolean);
-
-    if (!el) {
-        alert(message);
-        return;
+    if (!element) {
+        element = document.createElement("p");
+        element.id = "authMessage";
+        element.className = "auth-message";
+        const card = document.querySelector(".auth-card");
+        if (card) card.prepend(element);
     }
 
-    el.textContent = message;
-    el.dataset.type = type;
-}
-
-function clearAuthMessage() {
-    const possible = [
-        $("authMessage"),
-        $("loginMessage"),
-        $("signupMessage"),
-        $("authStatus")
-    ];
-
-    possible.forEach(el => {
-        if (el) el.textContent = "";
-    });
+    element.textContent = message;
 }
 
 /* =========================================================
@@ -139,45 +117,46 @@ function clearAuthMessage() {
    ========================================================= */
 
 function startBoot() {
-    const boot = $("bootScreen");
+    const bootScreen = $("bootScreen");
     const bootText = $("bootText");
+    const bootProgress = $("bootProgress");
 
-    if (!boot) {
+    if (!bootScreen) {
         initializeNexus();
         return;
     }
 
     let progress = 0;
 
-    if (bootText) {
-        bootText.textContent = "Starting NEXUS...";
-    }
-
     const timer = setInterval(() => {
-        progress += 20;
+        progress += 10;
+
+        if (bootProgress) {
+            bootProgress.style.width = `${progress}%`;
+        }
+
+        if (bootText) {
+            bootText.textContent =
+                progress >= 100
+                    ? "NEXUS Ready."
+                    : "Starting NEXUS...";
+        }
 
         if (progress >= 100) {
             clearInterval(timer);
 
-            if (bootText) {
-                bootText.textContent = "NEXUS Ready.";
-            }
-
             setTimeout(() => {
-                hide(boot);
+                hide(bootScreen);
                 initializeNexus();
-            }, 350);
+            }, 300);
         }
-    }, 180);
+    }, 50);
 }
-
-/* =========================================================
-   INITIALIZE
-   ========================================================= */
 
 function initializeNexus() {
     setupAuthentication();
     setupDesktop();
+    setupWindows();
     setupNotepad();
     setupCalculator();
     setupFiles();
@@ -185,205 +164,114 @@ function initializeNexus() {
     setupGames();
     setupBrowser();
     setupSettings();
-    setupWindowControls();
-    setupClock();
     setupStartMenu();
+    setupClock();
 
-    const currentUser = getCurrentUser();
+    const user = currentUsername();
 
-    if (currentUser && findAccount(currentUser)) {
-        enterDesktop(currentUser);
+    if (user && currentAccount()) {
+        enterDesktop(user);
     } else {
-        showAuthScreen();
+        showAuth();
     }
 }
 
 /* =========================================================
-   AUTH SCREEN
+   AUTHENTICATION
    ========================================================= */
 
-function showAuthScreen() {
-    hide($("desktop"));
-    hide($("taskbar"));
-    hide($("startMenu"));
+function setupAuthentication() {
+    $("loginButton")?.addEventListener("click", login);
+    $("signupButton")?.addEventListener("click", signup);
+    $("showSignup")?.addEventListener("click", showSignup);
+    $("showLogin")?.addEventListener("click", showLogin);
+    $("forgotPassword")?.addEventListener("click", forgotPassword);
+
+    $("loginPassword")?.addEventListener("keydown", event => {
+        if (event.key === "Enter") login();
+    });
+
+    $("signupConfirm")?.addEventListener("keydown", event => {
+        if (event.key === "Enter") signup();
+    });
+}
+
+function showAuth() {
     show($("authScreen"));
+    hide($("desktop"));
+    hide($("startMenu"));
 
-    const loginSection = $("loginSection");
-    const signupSection = $("signupSection");
-
-    if (loginSection) show(loginSection);
-    if (signupSection) hide(signupSection);
+    show($("loginPanel"));
+    hide($("signupPanel"));
 }
 
 function showSignup() {
-    const loginSection = $("loginSection");
-    const signupSection = $("signupSection");
-
-    if (loginSection) hide(loginSection);
-    if (signupSection) show(signupSection);
-
-    clearAuthMessage();
+    hide($("loginPanel"));
+    show($("signupPanel"));
+    authMessage("");
 }
 
 function showLogin() {
-    const loginSection = $("loginSection");
-    const signupSection = $("signupSection");
-
-    if (signupSection) hide(signupSection);
-    if (loginSection) show(loginSection);
-
-    clearAuthMessage();
-}
-
-function setupAuthentication() {
-    const loginButton =
-        $("loginButton") ||
-        $("loginBtn");
-
-    const signupButton =
-        $("signupButton") ||
-        $("signupBtn");
-
-    const createButton =
-        $("createAccountButton") ||
-        $("createAccountBtn");
-
-    const backLoginButton =
-        $("backLoginButton") ||
-        $("backLoginBtn");
-
-    if (loginButton) {
-        loginButton.addEventListener(
-            "click",
-            login
-        );
-    }
-
-    if (signupButton) {
-        signupButton.addEventListener(
-            "click",
-            createAccount
-        );
-    }
-
-    if (createButton) {
-        createButton.addEventListener(
-            "click",
-            showSignup
-        );
-    }
-
-    if (backLoginButton) {
-        backLoginButton.addEventListener(
-            "click",
-            showLogin
-        );
-    }
-
-    const loginPassword = $("loginPassword");
-
-    if (loginPassword) {
-        loginPassword.addEventListener(
-            "keydown",
-            event => {
-                if (event.key === "Enter") {
-                    login();
-                }
-            }
-        );
-    }
+    show($("loginPanel"));
+    hide($("signupPanel"));
+    authMessage("");
 }
 
 function login() {
-    clearAuthMessage();
-
-    const email = ($("loginEmail")?.value || "")
-        .trim()
-        .toLowerCase();
-
-    const username = ($("loginUsername")?.value || "")
-        .trim();
-
-    const password =
-        $("loginPassword")?.value || "";
+    const email = ($("loginEmail")?.value || "").trim().toLowerCase();
+    const username = ($("loginUsername")?.value || "").trim();
+    const password = $("loginPassword")?.value || "";
 
     if (!email || !username || !password) {
-        showAuthMessage(
-            "Please fill in all login fields."
-        );
+        authMessage("Please fill in all login fields.");
         return;
     }
 
-    const accounts = getAccounts();
-
-    const account = accounts.find(
-        item =>
-            item.email.toLowerCase() === email &&
-            item.username.toLowerCase() ===
-                username.toLowerCase() &&
-            item.password === password
+    const account = getAccounts().find(item =>
+        item.email.toLowerCase() === email &&
+        item.username.toLowerCase() === username.toLowerCase() &&
+        item.password === password
     );
 
     if (!account) {
-        showAuthMessage(
-            "Incorrect email, username, or password."
-        );
+        authMessage("Incorrect email, username, or password.");
         return;
     }
 
-    setCurrentUser(account.username);
-
+    setCurrentUsername(account.username);
     enterDesktop(account.username);
 }
 
-function createAccount() {
-    clearAuthMessage();
+function signup() {
+    const email = ($("signupEmail")?.value || "").trim().toLowerCase();
+    const username = ($("signupUsername")?.value || "").trim();
+    const password = $("signupPassword")?.value || "";
+    const confirm = $("signupConfirm")?.value || "";
 
-    const email = ($("signupEmail")?.value || "")
-        .trim()
-        .toLowerCase();
-
-    const username = ($("signupUsername")?.value || "")
-        .trim();
-
-    const password =
-        $("signupPassword")?.value || "";
-
-    const confirmPassword =
-        $("signupConfirmPassword")?.value || "";
-
-    if (!email || !username || !password || !confirmPassword) {
-        showAuthMessage(
-            "Please fill in every field."
-        );
+    if (!email || !username || !password || !confirm) {
+        authMessage("Please fill in every field.");
         return;
     }
 
-    if (!validateEmail(email)) {
-        showAuthMessage(
-            "Please enter a valid email address."
-        );
+    if (!validEmail(email)) {
+        authMessage("Please enter a valid email address.");
         return;
     }
 
-    if (!validateUsername(username)) {
-        showAuthMessage(
-            "Username must be 3–24 characters and may use letters, numbers, spaces, or underscores."
+    if (!validUsername(username)) {
+        authMessage(
+            "Username must be 3–24 characters and may contain letters, numbers, spaces, or underscores."
         );
         return;
     }
 
     if (password.length < 4) {
-        showAuthMessage(
-            "Password must be at least 4 characters."
-        );
+        authMessage("Password must be at least 4 characters.");
         return;
     }
 
-    if (password !== confirmPassword) {
-        showAuthMessage(
-            "Passwords do not match."
-        );
+    if (password !== confirm) {
+        authMessage("Passwords do not match.");
         return;
     }
 
@@ -392,26 +280,19 @@ function createAccount() {
     if (
         accounts.some(
             account =>
-                account.username.toLowerCase() ===
-                username.toLowerCase()
+                account.username.toLowerCase() === username.toLowerCase()
         )
     ) {
-        showAuthMessage(
-            "That username is already taken."
-        );
+        authMessage("That username is already taken.");
         return;
     }
 
     if (
         accounts.some(
-            account =>
-                account.email.toLowerCase() ===
-                email
+            account => account.email.toLowerCase() === email
         )
     ) {
-        showAuthMessage(
-            "That email is already registered."
-        );
+        authMessage("That email is already registered.");
         return;
     }
 
@@ -423,197 +304,91 @@ function createAccount() {
     });
 
     saveAccounts(accounts);
-    setCurrentUser(username);
-
+    setCurrentUsername(username);
     enterDesktop(username);
+}
+
+function forgotPassword() {
+    const email = prompt("Enter your account email:");
+
+    if (!email) return;
+
+    const account = getAccounts().find(
+        item => item.email.toLowerCase() === email.trim().toLowerCase()
+    );
+
+    if (!account) {
+        alert("No account was found with that email.");
+        return;
+    }
+
+    alert(
+        "This local version cannot send emails. Your username is: " +
+        account.username
+    );
 }
 
 function enterDesktop(username) {
     hide($("authScreen"));
     show($("desktop"));
-    show($("taskbar"));
-
-    setText("currentUsername", username);
-    setText("settingsUsername", username);
-    setText("aboutUsername", username);
-
+    updateUserLabels(username);
     applySettings();
 }
 
+function updateUserLabels(username) {
+    const account = currentAccount();
+
+    text("settingsUsername", username);
+    text("settingsEmail", account?.email || "Local NEXUS account");
+    text("startUsername", username);
+    text("startEmail", account?.email || "Local account");
+}
+
 /* =========================================================
-   DESKTOP
+   DESKTOP AND WINDOWS
    ========================================================= */
 
 function setupDesktop() {
-    const icons = document.querySelectorAll(
-        "[data-app]"
-    );
-
-    icons.forEach(icon => {
-        icon.addEventListener(
-            "dblclick",
-            () => {
-                openApp(icon.dataset.app);
-            }
-        );
-
-        icon.addEventListener(
-            "click",
-            () => {
-                icons.forEach(
-                    item =>
-                        item.classList.remove(
-                            "selected"
-                        )
-                );
-
-                icon.classList.add("selected");
-            }
-        );
+    document.querySelectorAll("[data-open]").forEach(button => {
+        button.addEventListener("click", () => {
+            openWindow(button.dataset.open);
+            hide($("startMenu"));
+        });
     });
 }
 
-function openApp(app) {
-    const map = {
-        notepad: "notepadWindow",
-        calculator: "calculatorWindow",
-        files: "filesWindow",
-        paint: "paintWindow",
-        games: "gamesWindow",
-        browser: "browserWindow",
-        settings: "settingsWindow",
-        about: "aboutWindow"
-    };
+function setupWindows() {
+    document.querySelectorAll(".window").forEach(windowElement => {
+        const closeButton = windowElement.querySelector(".close-button");
+        const minimizeButton = windowElement.querySelector(".minimize-button");
 
-    const windowId = map[app];
+        closeButton?.addEventListener("click", () => {
+            hide(windowElement);
+        });
 
-    if (!windowId) return;
+        minimizeButton?.addEventListener("click", () => {
+            hide(windowElement);
+        });
 
-    const windowElement = $(windowId);
-
-    if (!windowElement) return;
-
-    show(windowElement);
-
-    bringToFront(windowElement);
-}
-
-function closeApp(app) {
-    const map = {
-        notepad: "notepadWindow",
-        calculator: "calculatorWindow",
-        files: "filesWindow",
-        paint: "paintWindow",
-        games: "gamesWindow",
-        browser: "browserWindow",
-        settings: "settingsWindow",
-        about: "aboutWindow"
-    };
-
-    const windowId = map[app];
-
-    if (windowId) {
-        hide($(windowId));
-    }
-}
-
-/* =========================================================
-   WINDOW CONTROLS
-   ========================================================= */
-
-function setupWindowControls() {
-    document.querySelectorAll(
-        "[data-close]"
-    ).forEach(button => {
-        button.addEventListener(
-            "click",
-            () => {
-                closeApp(
-                    button.dataset.close
-                );
-            }
-        );
-    });
-
-    document.querySelectorAll(
-        "[data-open]"
-    ).forEach(button => {
-        button.addEventListener(
-            "click",
-            () => {
-                openApp(
-                    button.dataset.open
-                );
-            }
-        );
-    });
-
-    document.querySelectorAll(
-        "[data-minimize]"
-    ).forEach(button => {
-        button.addEventListener(
-            "click",
-            () => {
-                const target =
-                    $(button.dataset.minimize);
-
-                if (target) hide(target);
-            }
-        );
-    });
-
-    document.querySelectorAll(
-        ".window"
-    ).forEach(windowElement => {
-        windowElement.addEventListener(
-            "mousedown",
-            () => bringToFront(windowElement)
-        );
+        windowElement.addEventListener("mousedown", () => {
+            highestZ++;
+            windowElement.style.zIndex = highestZ;
+        });
     });
 }
 
-let highestZ = 50;
+function openWindow(id) {
+    const element = $(id);
 
-function bringToFront(element) {
     if (!element) return;
 
+    show(element);
     highestZ++;
     element.style.zIndex = highestZ;
 }
 
-/* =========================================================
-   START MENU
-   ========================================================= */
-
-function setupStartMenu() {
-    const startButton =
-        $("startButton") ||
-        $("startBtn");
-
-    const startMenu = $("startMenu");
-
-    if (startButton && startMenu) {
-        startButton.addEventListener(
-            "click",
-            event => {
-                event.stopPropagation();
-                toggle(startMenu);
-            }
-        );
-    }
-
-    document.addEventListener(
-        "click",
-        event => {
-            if (
-                startMenu &&
-                !startMenu.contains(event.target) &&
-                event.target !== startButton
-            ) {
-                hide(startMenu);
-            }
-        }
-    );
+function closeAllWindows() {
+    document.querySelectorAll(".window").forEach(hide);
 }
 
 /* =========================================================
@@ -621,112 +396,44 @@ function setupStartMenu() {
    ========================================================= */
 
 function setupNotepad() {
-    const editor =
-        $("notepadEditor") ||
-        $("notepadText");
+    const editor = $("notepad");
 
     if (!editor) return;
 
-    const saved =
-        localStorage.getItem(
-            STORAGE.notes
-        );
+    editor.value = localStorage.getItem(STORAGE.notes) || "";
 
-    if (saved !== null) {
-        editor.value = saved;
-    }
+    editor.addEventListener("input", updateWordCount);
 
-    editor.addEventListener(
-        "input",
-        updateWordCount
-    );
+    $("newNote")?.addEventListener("click", () => {
+        editor.value = "";
+        updateWordCount();
+        text("noteStatus", "New note");
+    });
+
+    $("saveNote")?.addEventListener("click", () => {
+        localStorage.setItem(STORAGE.notes, editor.value);
+        text("noteStatus", "Saved ✓");
+    });
+
+    $("clearNote")?.addEventListener("click", () => {
+        editor.value = "";
+        localStorage.removeItem(STORAGE.notes);
+        updateWordCount();
+        text("noteStatus", "Cleared");
+    });
 
     updateWordCount();
-
-    const saveButton =
-        $("saveNoteButton") ||
-        $("saveNote");
-
-    const newButton =
-        $("newNoteButton") ||
-        $("newNote");
-
-    const clearButton =
-        $("clearNoteButton") ||
-        $("clearNote");
-
-    if (saveButton) {
-        saveButton.addEventListener(
-            "click",
-            saveNote
-        );
-    }
-
-    if (newButton) {
-        newButton.addEventListener(
-            "click",
-            () => {
-                editor.value = "";
-                updateWordCount();
-            }
-        );
-    }
-
-    if (clearButton) {
-        clearButton.addEventListener(
-            "click",
-            () => {
-                editor.value = "";
-                localStorage.removeItem(
-                    STORAGE.notes
-                );
-                updateWordCount();
-            }
-        );
-    }
 }
 
 function updateWordCount() {
-    const editor =
-        $("notepadEditor") ||
-        $("notepadText");
-
+    const editor = $("notepad");
     if (!editor) return;
 
-    const words = editor.value
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
+    const words = editor.value.trim()
+        ? editor.value.trim().split(/\s+/).length
+        : 0;
 
-    setText(
-        "noteWordCount",
-        `${words.length} words`
-    );
-}
-
-function saveNote() {
-    const editor =
-        $("notepadEditor") ||
-        $("notepadText");
-
-    if (!editor) return;
-
-    localStorage.setItem(
-        STORAGE.notes,
-        editor.value
-    );
-
-    setText(
-        "noteStatus",
-        "Saved ✓"
-    );
-
-    setTimeout(() => {
-        setText(
-            "noteStatus",
-            "Ready"
-        );
-    }, 1500);
+    text("wordCount", `${words} words`);
 }
 
 /* =========================================================
@@ -734,48 +441,15 @@ function saveNote() {
    ========================================================= */
 
 function setupCalculator() {
-    const display =
-        $("calculatorDisplay") ||
-        $("calcDisplay");
-
-    if (!display) return;
-
-    document.querySelectorAll(
-        "[data-calc]"
-    ).forEach(button => {
-        button.addEventListener(
-            "click",
-            () => {
-                calculateInput(
-                    button.dataset.calc
-                );
-            }
-        );
-    });
-
-    document.querySelectorAll(
-        ".calc-btn"
-    ).forEach(button => {
-        if (
-            !button.dataset.calc &&
-            button.textContent.trim()
-        ) {
-            button.addEventListener(
-                "click",
-                () => {
-                    calculateInput(
-                        button.textContent.trim()
-                    );
-                }
-            );
-        }
+    document.querySelectorAll("[data-calc]").forEach(button => {
+        button.addEventListener("click", () => {
+            calculatorInput(button.dataset.calc);
+        });
     });
 }
 
-function calculateInput(value) {
-    const display =
-        $("calculatorDisplay") ||
-        $("calcDisplay");
+function calculatorInput(value) {
+    const display = $("calculatorDisplay");
 
     if (!display) return;
 
@@ -784,42 +458,26 @@ function calculateInput(value) {
         return;
     }
 
-    if (
-        value === "⌫" ||
-        value === "backspace"
-    ) {
-        display.value =
-            display.value.slice(0, -1);
+    if (value === "backspace") {
+        display.value = display.value.slice(0, -1);
         return;
     }
 
-    if (
-        value === "=" ||
-        value === "equals"
-    ) {
+    if (value === "=") {
         try {
-            const expression =
-                display.value
-                    .replace(/×/g, "*")
-                    .replace(/÷/g, "/");
+            const expression = display.value;
 
-            if (
-                !/^[0-9+\-*/().\s]+$/.test(
-                    expression
-                )
-            ) {
-                throw new Error();
+            if (!/^[0-9+\-*/().\s]+$/.test(expression)) {
+                throw new Error("Invalid expression");
             }
 
-            const result =
-                Function(
-                    `"use strict"; return (${expression})`
-                )();
+            const result = Function(
+                `"use strict"; return (${expression})`
+            )();
 
-            display.value =
-                Number.isFinite(result)
-                    ? String(result)
-                    : "Error";
+            display.value = Number.isFinite(result)
+                ? String(result)
+                : "Error";
         } catch {
             display.value = "Error";
         }
@@ -835,64 +493,23 @@ function calculateInput(value) {
    ========================================================= */
 
 function getFiles() {
-    return safeJSONParse(
-        localStorage.getItem(
-            STORAGE.files
-        ),
-        []
-    );
+    return readJSON(STORAGE.files, []);
 }
 
 function saveFiles(files) {
-    localStorage.setItem(
-        STORAGE.files,
-        JSON.stringify(files)
-    );
+    writeJSON(STORAGE.files, files);
 }
 
 function setupFiles() {
-    const newButton =
-        $("newFileButton") ||
-        $("newFile");
-
-    const saveButton =
-        $("saveFileButton") ||
-        $("saveFile");
-
-    const deleteButton =
-        $("deleteFileButton") ||
-        $("deleteFile");
-
-    if (newButton) {
-        newButton.addEventListener(
-            "click",
-            createFile
-        );
-    }
-
-    if (saveButton) {
-        saveButton.addEventListener(
-            "click",
-            saveCurrentFile
-        );
-    }
-
-    if (deleteButton) {
-        deleteButton.addEventListener(
-            "click",
-            deleteCurrentFile
-        );
-    }
+    $("newFile")?.addEventListener("click", newFile);
+    $("saveFile")?.addEventListener("click", saveFile);
+    $("deleteFile")?.addEventListener("click", deleteFile);
 
     renderFiles();
 }
 
-let selectedFile = null;
-
 function renderFiles() {
-    const list =
-        $("fileList");
-
+    const list = $("fileList");
     if (!list) return;
 
     list.innerHTML = "";
@@ -900,39 +517,34 @@ function renderFiles() {
     const files = getFiles();
 
     if (!files.length) {
-        list.innerHTML =
-            "<div class='empty-state'>No files yet.</div>";
+        list.innerHTML = "<p>No files yet.</p>";
         return;
     }
 
     files.forEach(file => {
-        const item =
-            document.createElement("button");
+        const button = document.createElement("button");
+        button.className = "file-item";
+        button.textContent = `📄 ${file.name}`;
 
-        item.className = "file-item";
-        item.textContent =
-            `📄 ${file.name}`;
+        button.addEventListener("click", () => {
+            selectedFile = file.name;
+            $("fileName").value = file.name;
+            $("fileContent").value = file.content;
+        });
 
-        item.addEventListener(
-            "click",
-            () => openFile(file.name)
-        );
-
-        list.appendChild(item);
+        list.appendChild(button);
     });
 }
 
-function createFile() {
-    const nameInput =
-        $("fileName");
+function newFile() {
+    selectedFile = null;
+    $("fileName").value = "";
+    $("fileContent").value = "";
+}
 
-    const editor =
-        $("fileEditor");
-
-    if (!nameInput || !editor) return;
-
-    const name =
-        nameInput.value.trim();
+function saveFile() {
+    const name = ($("fileName")?.value || "").trim();
+    const content = $("fileContent")?.value || "";
 
     if (!name) {
         alert("Enter a file name.");
@@ -940,116 +552,30 @@ function createFile() {
     }
 
     const files = getFiles();
-
-    if (
-        files.some(
-            file =>
-                file.name.toLowerCase() ===
-                name.toLowerCase()
-        )
-    ) {
-        alert("That file already exists.");
-        return;
-    }
-
-    files.push({
-        name,
-        content: editor.value || ""
-    });
-
-    saveFiles(files);
-
-    selectedFile = name;
-
-    renderFiles();
-}
-
-function openFile(name) {
-    const files = getFiles();
-
-    const file = files.find(
-        item => item.name === name
-    );
-
-    if (!file) return;
-
-    selectedFile = name;
-
-    if ($("fileName")) {
-        $("fileName").value = file.name;
-    }
-
-    if ($("fileEditor")) {
-        $("fileEditor").value =
-            file.content;
-    }
-}
-
-function saveCurrentFile() {
-    const nameInput =
-        $("fileName");
-
-    const editor =
-        $("fileEditor");
-
-    if (!nameInput || !editor) return;
-
-    const name =
-        nameInput.value.trim();
-
-    if (!name) {
-        alert("Enter a file name.");
-        return;
-    }
-
-    const files = getFiles();
-
-    const index = files.findIndex(
-        file => file.name === selectedFile
-    );
+    const index = files.findIndex(file => file.name === selectedFile);
 
     if (index >= 0) {
-        files[index] = {
-            name,
-            content: editor.value
-        };
+        files[index] = { name, content };
     } else {
-        files.push({
-            name,
-            content: editor.value
-        });
+        files.push({ name, content });
     }
 
-    saveFiles(files);
-
     selectedFile = name;
-
+    saveFiles(files);
     renderFiles();
 }
 
-function deleteCurrentFile() {
+function deleteFile() {
     if (!selectedFile) {
         alert("Select a file first.");
         return;
     }
 
-    const files = getFiles().filter(
-        file =>
-            file.name !== selectedFile
+    saveFiles(
+        getFiles().filter(file => file.name !== selectedFile)
     );
 
-    saveFiles(files);
-
-    selectedFile = null;
-
-    if ($("fileName")) {
-        $("fileName").value = "";
-    }
-
-    if ($("fileEditor")) {
-        $("fileEditor").value = "";
-    }
-
+    newFile();
     renderFiles();
 }
 
@@ -1058,516 +584,246 @@ function deleteCurrentFile() {
    ========================================================= */
 
 function setupPaint() {
-    const canvas =
-        $("paintCanvas");
+    const canvas = $("paintCanvas");
 
     if (!canvas) return;
 
-    const ctx =
-        canvas.getContext("2d");
-
+    const context = canvas.getContext("2d");
     let drawing = false;
 
-    function position(event) {
-        const rect =
-            canvas.getBoundingClientRect();
+    function point(event) {
+        const rect = canvas.getBoundingClientRect();
 
         return {
-            x:
-                event.clientX -
-                rect.left,
-
-            y:
-                event.clientY -
-                rect.top
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
         };
     }
 
-    canvas.addEventListener(
-        "pointerdown",
-        event => {
-            drawing = true;
+    canvas.addEventListener("pointerdown", event => {
+        drawing = true;
+        const p = point(event);
+        context.beginPath();
+        context.moveTo(p.x, p.y);
+    });
 
-            const point =
-                position(event);
+    canvas.addEventListener("pointermove", event => {
+        if (!drawing) return;
 
-            ctx.beginPath();
-            ctx.moveTo(
-                point.x,
-                point.y
-            );
-        }
-    );
+        const p = point(event);
 
-    canvas.addEventListener(
-        "pointermove",
-        event => {
-            if (!drawing) return;
+        context.lineWidth = Number($("brushSize")?.value || 5);
+        context.lineCap = "round";
+        context.strokeStyle = $("paintColor")?.value || "#6c5ce7";
 
-            const point =
-                position(event);
+        context.lineTo(p.x, p.y);
+        context.stroke();
+    });
 
-            const brush =
-                $("brushSize");
+    canvas.addEventListener("pointerup", () => {
+        drawing = false;
+    });
 
-            ctx.lineWidth =
-                Number(
-                    brush?.value || 5
-                );
+    canvas.addEventListener("pointerleave", () => {
+        drawing = false;
+    });
 
-            ctx.lineCap = "round";
+    $("clearPaint")?.addEventListener("click", () => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+    });
 
-            ctx.strokeStyle =
-                $("brushColor")?.value ||
-                "#000000";
-
-            ctx.lineTo(
-                point.x,
-                point.y
-            );
-
-            ctx.stroke();
-        }
-    );
-
-    canvas.addEventListener(
-        "pointerup",
-        () => {
-            drawing = false;
-        }
-    );
-
-    canvas.addEventListener(
-        "pointerleave",
-        () => {
-            drawing = false;
-        }
-    );
-
-    const clearButton =
-        $("clearPaintButton") ||
-        $("clearPaint");
-
-    if (clearButton) {
-        clearButton.addEventListener(
-            "click",
-            () => {
-                ctx.clearRect(
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height
-                );
-            }
-        );
-    }
-
-    const saveButton =
-        $("savePaintButton") ||
-        $("savePaint");
-
-    if (saveButton) {
-        saveButton.addEventListener(
-            "click",
-            () => {
-                const link =
-                    document.createElement(
-                        "a"
-                    );
-
-                link.download =
-                    "nexus-paint.png";
-
-                link.href =
-                    canvas.toDataURL(
-                        "image/png"
-                    );
-
-                link.click();
-            }
-        );
-    }
+    $("savePaint")?.addEventListener("click", () => {
+        const link = document.createElement("a");
+        link.download = "nexus-paint.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    });
 }
 
 /* =========================================================
-   GAME CENTER
+   GAMES
    ========================================================= */
 
-let activeGame = null;
-
 function setupGames() {
-    document.querySelectorAll(
-        "[data-game]"
-    ).forEach(button => {
-        button.addEventListener(
-            "click",
-            () => {
-                startGame(
-                    button.dataset.game
-                );
-            }
-        );
+    document.querySelectorAll("[data-game]").forEach(button => {
+        button.addEventListener("click", () => {
+            startGame(button.dataset.game);
+        });
     });
 
-    const backButton =
-        $("backToGames");
+    document.querySelectorAll(".back-game").forEach(button => {
+        button.addEventListener("click", showGameMenu);
+    });
 
-    if (backButton) {
-        backButton.addEventListener(
-            "click",
-            showGameMenu
-        );
-    }
+    $("startCatch")?.addEventListener("click", startCatch);
+    $("catchTarget")?.addEventListener("click", catchTarget);
 
-    const catchArea =
-        $("catchArea");
+    $("startClick")?.addEventListener("click", startClickRush);
+    $("clickButton")?.addEventListener("click", click);
 
-    if (catchArea) {
-        catchArea.addEventListener(
-            "click",
-            catchNexusClick
-        );
-    }
+    $("startMemory")?.addEventListener("click", startMemory);
+    $("startSnake")?.addEventListener("click", startSnake);
 
-    const clickRush =
-        $("clickRushButton");
-
-    if (clickRush) {
-        clickRush.addEventListener(
-            "click",
-            clickRushAction
-        );
-    }
-
-    const snakeStart =
-        $("snakeStart");
-
-    if (snakeStart) {
-        snakeStart.addEventListener(
-            "click",
-            startSnake
-        );
-    }
-
-    document.addEventListener(
-        "keydown",
-        snakeKeydown
-    );
+    document.addEventListener("keydown", snakeKeys);
 }
 
 function startGame(game) {
-    activeGame = game;
+    currentGame = game;
 
     hide($("gameMenu"));
-    show($("gameArea"));
+    hide($("catchGameScreen"));
+    hide($("clickGameScreen"));
+    hide($("memoryGameScreen"));
+    hide($("snakeGameScreen"));
 
-    const title =
-        $("gameTitle");
-
-    if (title) {
-        title.textContent =
-            gameTitle(game);
-    }
-
-    hideAllGamePanels();
-
-    if (game === "catch") {
-        startCatchGame();
-    }
-
-    if (game === "click") {
-        startClickRush();
-    }
-
-    if (game === "memory") {
-        startMemoryGame();
-    }
-
-    if (game === "snake") {
-        show($("snakeGame"));
-    }
-}
-
-function gameTitle(game) {
-    const titles = {
-        catch: "🎯 Catch NEXUS",
-        click: "⚡ Click Rush",
-        memory: "🧠 Memory Match",
-        snake: "🐍 NEXUS Snake"
-    };
-
-    return titles[game] ||
-        "NEXUS Game";
-}
-
-function hideAllGamePanels() {
-    [
-        "catchGame",
-        "clickGame",
-        "memoryGame",
-        "snakeGame"
-    ].forEach(id => hide($(id)));
+    if (game === "catch") show($("catchGameScreen"));
+    if (game === "click") show($("clickGameScreen"));
+    if (game === "memory") show($("memoryGameScreen"));
+    if (game === "snake") show($("snakeGameScreen"));
 }
 
 function showGameMenu() {
-    activeGame = null;
-
-    hide($("gameArea"));
-    show($("gameMenu"));
-}
-
-/* =========================================================
-   CATCH NEXUS
-   ========================================================= */
-
-let catchScore = 0;
-let catchTimer = null;
-
-function startCatchGame() {
-    show($("catchGame"));
-
-    catchScore = 0;
-
-    setText(
-        "catchScore",
-        "Score: 0"
-    );
-
-    const target =
-        $("catchTarget");
-
-    if (!target) return;
+    currentGame = null;
 
     clearInterval(catchTimer);
+    clearInterval(clickTimer);
+    clearInterval(snakeTimer);
 
-    moveCatchTarget();
-
-    catchTimer =
-        setInterval(
-            moveCatchTarget,
-            900
-        );
+    show($("gameMenu"));
+    hide($("catchGameScreen"));
+    hide($("clickGameScreen"));
+    hide($("memoryGameScreen"));
+    hide($("snakeGameScreen"));
 }
 
-function moveCatchTarget() {
-    const area =
-        $("catchArea");
+/* Catch NEXUS */
 
-    const target =
-        $("catchTarget");
+function startCatch() {
+    clearInterval(catchTimer);
 
-    if (!area || !target) return;
+    let score = 0;
+    text("catchScore", "0");
 
-    const maxX =
-        Math.max(
-            0,
-            area.clientWidth -
-                target.offsetWidth
-        );
+    const target = $("catchTarget");
+    const area = $("catchArea");
 
-    const maxY =
-        Math.max(
-            0,
-            area.clientHeight -
-                target.offsetHeight
-        );
+    if (!target || !area) return;
 
-    target.style.left =
-        Math.random() * maxX +
-        "px";
+    function move() {
+        const maxX = Math.max(0, area.clientWidth - target.offsetWidth);
+        const maxY = Math.max(0, area.clientHeight - target.offsetHeight);
 
-    target.style.top =
-        Math.random() * maxY +
-        "px";
-}
-
-function catchNexusClick(event) {
-    if (
-        !activeGame ||
-        activeGame !== "catch"
-    ) {
-        return;
+        target.style.left = `${Math.random() * maxX}px`;
+        target.style.top = `${Math.random() * maxY}px`;
     }
 
-    if (
-        !event.target.matches(
-            "#catchTarget"
-        )
-    ) {
-        return;
-    }
+    target.onclick = () => {
+        score++;
+        text("catchScore", String(score));
+        move();
+    };
 
-    catchScore++;
+    move();
 
-    setText(
-        "catchScore",
-        `Score: ${catchScore}`
-    );
-
-    moveCatchTarget();
+    catchTimer = setInterval(move, 900);
 }
 
-/* =========================================================
-   CLICK RUSH
-   ========================================================= */
+function catchTarget() {
+    /* The actual click action is assigned by startCatch(). */
+}
 
-let clickRushScore = 0;
-let clickRushRunning = false;
-let clickRushTime = 10;
-let clickRushTimer = null;
+/* Click Rush */
 
 function startClickRush() {
-    show($("clickGame"));
+    clearInterval(clickTimer);
 
-    clickRushScore = 0;
-    clickRushTime = 10;
-    clickRushRunning = false;
+    clickScore = 0;
+    clickTime = 10;
+    clickRunning = false;
 
-    setText(
-        "clickRushScore",
-        "Clicks: 0"
-    );
+    text("clickScore", "0");
+    text("clickTime", "10");
 
-    setText(
-        "clickRushTime",
-        "Time: 10"
-    );
+    const button = $("clickButton");
+    if (button) button.disabled = false;
 }
 
-function clickRushAction() {
-    if (!activeGame || activeGame !== "click") {
-        return;
+function click() {
+    if (!clickRunning) {
+        clickRunning = true;
+
+        clickTimer = setInterval(() => {
+            clickTime--;
+            text("clickTime", String(clickTime));
+
+            if (clickTime <= 0) {
+                clearInterval(clickTimer);
+                clickRunning = false;
+                $("clickButton").disabled = true;
+            }
+        }, 1000);
     }
 
-    if (!clickRushRunning) {
-        clickRushRunning = true;
+    if (clickTime <= 0) return;
 
-        clickRushTimer =
-            setInterval(() => {
-                clickRushTime--;
-
-                setText(
-                    "clickRushTime",
-                    `Time: ${clickRushTime}`
-                );
-
-                if (clickRushTime <= 0) {
-                    clearInterval(
-                        clickRushTimer
-                    );
-
-                    clickRushRunning =
-                        false;
-
-                    setText(
-                        "clickRushStatus",
-                        `Finished! You got ${clickRushScore} clicks.`
-                    );
-                }
-            }, 1000);
-    }
-
-    if (clickRushTime <= 0) return;
-
-    clickRushScore++;
-
-    setText(
-        "clickRushScore",
-        `Clicks: ${clickRushScore}`
-    );
+    clickScore++;
+    text("clickScore", String(clickScore));
 }
 
-/* =========================================================
-   MEMORY MATCH
-   ========================================================= */
+/* Memory Match */
 
-let memoryCards = [];
-let memoryFirst = null;
-let memoryLock = false;
-
-function startMemoryGame() {
-    show($("memoryGame"));
-
-    const board =
-        $("memoryBoard");
-
+function startMemory() {
+    const board = $("memoryBoard");
     if (!board) return;
 
-    const symbols = [
-        "🚀",
-        "🎮",
-        "🌟",
-        "🧠",
-        "💻",
-        "🎨"
-    ];
+    memoryCards = [];
+    memoryFirst = null;
+    memoryMoves = 0;
+    memoryLocked = false;
 
-    memoryCards =
-        [...symbols, ...symbols]
-            .sort(() => Math.random() - 0.5)
-            .map((symbol, index) => ({
+    text("memoryMoves", "0");
+
+    const symbols = ["🚀", "🎮", "🌟", "🧠", "💻", "🎨"];
+
+    [...symbols, ...symbols]
+        .sort(() => Math.random() - 0.5)
+        .forEach((symbol, index) => {
+            memoryCards.push({
                 id: index,
                 symbol,
                 flipped: false,
                 matched: false
-            }));
-
-    memoryFirst = null;
-    memoryLock = false;
+            });
+        });
 
     renderMemory();
 }
 
 function renderMemory() {
-    const board =
-        $("memoryBoard");
-
+    const board = $("memoryBoard");
     if (!board) return;
 
     board.innerHTML = "";
 
     memoryCards.forEach(card => {
-        const button =
-            document.createElement(
-                "button"
-            );
-
-        button.className =
-            "memory-card";
-
+        const button = document.createElement("button");
+        button.className = "memory-card";
         button.textContent =
-            card.flipped ||
-            card.matched
-                ? card.symbol
-                : "?";
+            card.flipped || card.matched ? card.symbol : "?";
 
-        button.addEventListener(
-            "click",
-            () => flipMemoryCard(card.id)
-        );
-
+        button.addEventListener("click", () => flipMemory(card.id));
         board.appendChild(button);
     });
 }
 
-function flipMemoryCard(id) {
-    if (memoryLock) return;
+function flipMemory(id) {
+    if (memoryLocked) return;
 
-    const card =
-        memoryCards.find(
-            item => item.id === id
-        );
+    const card = memoryCards.find(item => item.id === id);
 
-    if (
-        !card ||
-        card.flipped ||
-        card.matched
-    ) {
-        return;
-    }
+    if (!card || card.flipped || card.matched) return;
 
     card.flipped = true;
-
     renderMemory();
 
     if (!memoryFirst) {
@@ -1575,232 +831,109 @@ function flipMemoryCard(id) {
         return;
     }
 
-    if (
-        memoryFirst.symbol ===
-        card.symbol
-    ) {
+    memoryMoves++;
+    text("memoryMoves", String(memoryMoves));
+
+    if (memoryFirst.symbol === card.symbol) {
         memoryFirst.matched = true;
         card.matched = true;
         memoryFirst = null;
-
         renderMemory();
-
-        const finished =
-            memoryCards.every(
-                item => item.matched
-            );
-
-        if (finished) {
-            setText(
-                "memoryStatus",
-                "🎉 You matched everything!"
-            );
-        }
-
         return;
     }
 
-    memoryLock = true;
+    memoryLocked = true;
 
     setTimeout(() => {
         memoryFirst.flipped = false;
         card.flipped = false;
-
         memoryFirst = null;
-        memoryLock = false;
-
+        memoryLocked = false;
         renderMemory();
     }, 700);
 }
 
-/* =========================================================
-   SNAKE
-   ========================================================= */
-
-let snake = [];
-let snakeFood = {
-    x: 5,
-    y: 5
-};
-
-let snakeDirection = {
-    x: 1,
-    y: 0
-};
-
-let snakeNextDirection = {
-    x: 1,
-    y: 0
-};
-
-let snakeTimer = null;
-let snakeScore = 0;
-
-const SNAKE_SIZE = 15;
+/* Snake */
 
 function startSnake() {
-    const canvas =
-        $("snakeCanvas");
-
+    const canvas = $("snakeCanvas");
     if (!canvas) return;
 
     snake = [
+        { x: 8, y: 7 },
         { x: 7, y: 7 },
-        { x: 6, y: 7 },
-        { x: 5, y: 7 }
+        { x: 6, y: 7 }
     ];
 
-    snakeDirection = {
-        x: 1,
-        y: 0
-    };
-
-    snakeNextDirection = {
-        x: 1,
-        y: 0
-    };
-
+    snakeDirection = { x: 1, y: 0 };
+    snakeNextDirection = { x: 1, y: 0 };
     snakeScore = 0;
 
-    setText(
-        "snakeScore",
-        "Score: 0"
-    );
+    text("snakeScore", "0");
 
-    placeSnakeFood();
-
+    placeFood();
     clearInterval(snakeTimer);
-
-    snakeTimer =
-        setInterval(
-            snakeTick,
-            120
-        );
+    snakeTimer = setInterval(snakeTick, 120);
 
     drawSnake();
 }
 
-function snakeKeydown(event) {
-    if (
-        activeGame !== "snake"
-    ) {
-        return;
+function snakeKeys(event) {
+    if (currentGame !== "snake") return;
+
+    const key = event.key;
+
+    if (key === "ArrowUp" && snakeDirection.y !== 1) {
+        snakeNextDirection = { x: 0, y: -1 };
     }
 
-    const key =
-        event.key.toLowerCase();
-
-    if (
-        key === "arrowup" &&
-        snakeDirection.y !== 1
-    ) {
-        snakeNextDirection = {
-            x: 0,
-            y: -1
-        };
+    if (key === "ArrowDown" && snakeDirection.y !== -1) {
+        snakeNextDirection = { x: 0, y: 1 };
     }
 
-    if (
-        key === "arrowdown" &&
-        snakeDirection.y !== -1
-    ) {
-        snakeNextDirection = {
-            x: 0,
-            y: 1
-        };
+    if (key === "ArrowLeft" && snakeDirection.x !== 1) {
+        snakeNextDirection = { x: -1, y: 0 };
     }
 
-    if (
-        key === "arrowleft" &&
-        snakeDirection.x !== 1
-    ) {
-        snakeNextDirection = {
-            x: -1,
-            y: 0
-        };
+    if (key === "ArrowRight" && snakeDirection.x !== -1) {
+        snakeNextDirection = { x: 1, y: 0 };
     }
+}
 
-    if (
-        key === "arrowright" &&
-        snakeDirection.x !== -1
-    ) {
-        snakeNextDirection = {
-            x: 1,
-            y: 0
-        };
-    }
+function placeFood() {
+    snakeFood = {
+        x: Math.floor(Math.random() * 26),
+        y: Math.floor(Math.random() * 19)
+    };
 }
 
 function snakeTick() {
     const head = snake[0];
 
-    snakeDirection =
-        snakeNextDirection;
+    snakeDirection = snakeNextDirection;
 
-    const newHead = {
-        x:
-            head.x +
-            snakeDirection.x,
-
-        y:
-            head.y +
-            snakeDirection.y
+    const next = {
+        x: head.x + snakeDirection.x,
+        y: head.y + snakeDirection.y
     };
 
-    const canvas =
-        $("snakeCanvas");
-
-    if (!canvas) return;
-
-    const columns =
-        Math.floor(
-            canvas.width /
-                SNAKE_SIZE
-        );
-
-    const rows =
-        Math.floor(
-            canvas.height /
-                SNAKE_SIZE
-        );
-
     if (
-        newHead.x < 0 ||
-        newHead.y < 0 ||
-        newHead.x >= columns ||
-        newHead.y >= rows ||
-        snake.some(
-            segment =>
-                segment.x ===
-                    newHead.x &&
-                segment.y ===
-                    newHead.y
-        )
+        next.x < 0 ||
+        next.y < 0 ||
+        next.x >= 26 ||
+        next.y >= 19 ||
+        snake.some(part => part.x === next.x && part.y === next.y)
     ) {
         clearInterval(snakeTimer);
-
-        setText(
-            "snakeStatus",
-            `Game over! Score: ${snakeScore}`
-        );
-
         return;
     }
 
-    snake.unshift(newHead);
+    snake.unshift(next);
 
-    if (
-        newHead.x === snakeFood.x &&
-        newHead.y === snakeFood.y
-    ) {
+    if (next.x === snakeFood.x && next.y === snakeFood.y) {
         snakeScore++;
-
-        setText(
-            "snakeScore",
-            `Score: ${snakeScore}`
-        );
-
-        placeSnakeFood();
+        text("snakeScore", String(snakeScore));
+        placeFood();
     } else {
         snake.pop();
     }
@@ -1808,93 +941,36 @@ function snakeTick() {
     drawSnake();
 }
 
-function placeSnakeFood() {
-    const canvas =
-        $("snakeCanvas");
-
-    if (!canvas) return;
-
-    const columns =
-        Math.floor(
-            canvas.width /
-                SNAKE_SIZE
-        );
-
-    const rows =
-        Math.floor(
-            canvas.height /
-                SNAKE_SIZE
-        );
-
-    snakeFood = {
-        x:
-            Math.floor(
-                Math.random() *
-                    columns
-            ),
-
-        y:
-            Math.floor(
-                Math.random() *
-                    rows
-            )
-    };
-}
-
 function drawSnake() {
-    const canvas =
-        $("snakeCanvas");
-
+    const canvas = $("snakeCanvas");
     if (!canvas) return;
 
-    const ctx =
-        canvas.getContext("2d");
+    const context = canvas.getContext("2d");
+    const size = 15;
 
-    ctx.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
+    context.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle =
-        "#101827";
+    context.fillStyle = "#111827";
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
+    context.fillStyle = "#6c5ce7";
 
-    ctx.fillStyle =
-        "#7c5cff";
-
-    snake.forEach(segment => {
-        ctx.fillRect(
-            segment.x *
-                SNAKE_SIZE,
-
-            segment.y *
-                SNAKE_SIZE,
-
-            SNAKE_SIZE - 1,
-            SNAKE_SIZE - 1
+    snake.forEach(part => {
+        context.fillRect(
+            part.x * size,
+            part.y * size,
+            size - 1,
+            size - 1
         );
     });
 
-    ctx.fillStyle =
-        "#ff4f81";
+    context.fillStyle = "#ff4f81";
 
-    ctx.fillRect(
-        snakeFood.x *
-            SNAKE_SIZE,
-
-        snakeFood.y *
-            SNAKE_SIZE,
-
-        SNAKE_SIZE - 1,
-        SNAKE_SIZE - 1
+    context.fillRect(
+        snakeFood.x * size,
+        snakeFood.y * size,
+        size - 1,
+        size - 1
     );
 }
 
@@ -1902,302 +978,156 @@ function drawSnake() {
    BROWSER
    ========================================================= */
 
-let browserHistory = [];
-
 function setupBrowser() {
-    browserHistory =
-        safeJSONParse(
-            localStorage.getItem(
-                STORAGE.history
-            ),
-            []
-        );
-
-    const address =
-        $("browserAddress");
-
-    const goButton =
-        $("browserGo");
-
-    const backButton =
-        $("browserBack");
-
-    const forwardButton =
-        $("browserForward");
-
-    const refreshButton =
-        $("browserRefresh");
-
-    const homeButton =
-        $("browserHome");
-
-    const externalButton =
-        $("browserExternal");
-
-    if (goButton) {
-        goButton.addEventListener(
-            "click",
-            navigateBrowser
-        );
-    }
-
-    if (address) {
-        address.addEventListener(
-            "keydown",
-            event => {
-                if (event.key === "Enter") {
-                    navigateBrowser();
-                }
-            }
-        );
-    }
-
-    if (backButton) {
-        backButton.addEventListener(
-            "click",
-            () => {
-                const frame =
-                    $("browserFrame");
-
-                if (
-                    frame &&
-                    frame.contentWindow
-                ) {
-                    try {
-                        frame.contentWindow.history.back();
-                    } catch {}
-                }
-            }
-        );
-    }
-
-    if (forwardButton) {
-        forwardButton.addEventListener(
-            "click",
-            () => {
-                const frame =
-                    $("browserFrame");
-
-                if (
-                    frame &&
-                    frame.contentWindow
-                ) {
-                    try {
-                        frame.contentWindow.history.forward();
-                    } catch {}
-                }
-            }
-        );
-    }
-
-    if (refreshButton) {
-        refreshButton.addEventListener(
-            "click",
-            () => {
-                const frame =
-                    $("browserFrame");
-
-                if (frame) {
-                    frame.src =
-                        frame.src;
-                }
-            }
-        );
-    }
-
-    if (homeButton) {
-        homeButton.addEventListener(
-            "click",
-            browserHome
-        );
-    }
-
-    if (externalButton) {
-        externalButton.addEventListener(
-            "click",
-            openBrowserExternal
-        );
-    }
-
-    document.querySelectorAll(
-        "[data-browser-url]"
-    ).forEach(button => {
-        button.addEventListener(
-            "click",
-            () => {
-                navigateTo(
-                    button.dataset.browserUrl
-                );
-            }
-        );
+    $("browserGo")?.addEventListener("click", navigateBrowser);
+    $("browserBack")?.addEventListener("click", () => browserHistoryMove(-1));
+    $("browserForward")?.addEventListener("click", () => browserHistoryMove(1));
+    $("browserReload")?.addEventListener("click", reloadBrowser);
+    $("browserHome")?.addEventListener("click", browserHome);
+    $("openExternalButton")?.addEventListener("click", openExternal);
+    $("blockedExternalButton")?.addEventListener("click", openExternal);
+    $("browserFavorite")?.addEventListener("click", favoriteBrowser);
+    $("newBrowserTab")?.addEventListener("click", browserHome);
+    $("browserHistoryButton")?.addEventListener("click", showHistory);
+    $("closeHistory")?.addEventListener("click", () => {
+        hide($("browserHistoryPanel"));
     });
 
-    // IMPORTANT:
-    // These lines intentionally include
-    // the closing quotes and parentheses.
-    hide($("browserHomePage"));
-    hide($("browserBlocked"));
+    $("browserAddress")?.addEventListener("keydown", event => {
+        if (event.key === "Enter") navigateBrowser();
+    });
+
+    document.querySelectorAll("[data-url]").forEach(button => {
+        button.addEventListener("click", () => {
+            navigateTo(button.dataset.url);
+        });
+    });
+
+    browserHome();
 }
 
-function normalizeUrl(input) {
-    let value =
-        input.trim();
+function normalizeUrl(value) {
+    const input = value.trim();
 
-    if (!value) return "";
+    if (!input) return "";
 
-    if (
-        !/^https?:\/\//i.test(value)
-    ) {
-        if (
-            value.includes(".") &&
-            !value.includes(" ")
-        ) {
-            value =
-                "https://" + value;
-        } else {
-            value =
-                "https://www.google.com/search?q=" +
-                encodeURIComponent(value);
-        }
+    if (/^https?:\/\//i.test(input)) {
+        return input;
     }
 
-    return value;
+    if (input.includes(".") && !input.includes(" ")) {
+        return "https://" + input;
+    }
+
+    return "https://www.google.com/search?q=" +
+        encodeURIComponent(input);
 }
 
 function navigateBrowser() {
-    const address =
-        $("browserAddress");
-
-    if (!address) return;
-
-    navigateTo(address.value);
+    navigateTo($("browserAddress")?.value || "");
 }
 
-function navigateTo(url) {
-    const normalized =
-        normalizeUrl(url);
-
-    if (!normalized) return;
-
-    const address =
-        $("browserAddress");
-
-    if (address) {
-        address.value =
-            normalized;
-    }
-
-    browserHistory.push(normalized);
-
-    if (
-        browserHistory.length >
-        50
-    ) {
-        browserHistory.shift();
-    }
-
-    localStorage.setItem(
-        STORAGE.history,
-        JSON.stringify(
-            browserHistory
-        )
-    );
-
-    const frame =
-        $("browserFrame");
-
-    const homePage =
-        $("browserHomePage");
-
-    const blocked =
-        $("browserBlocked");
-
-    if (!frame) return;
-
-    hide(homePage);
-    hide(blocked);
-    show(frame);
-
-    frame.src = normalized;
-
-    frame.onerror = () => {
-        showBrowserBlocked(
-            normalized
-        );
-    };
-
-    setTimeout(() => {
-        // Some sites block iframe embedding.
-        // The external button remains available.
-    }, 1200);
-}
-
-function browserHome() {
-    const address =
-        $("browserAddress");
-
-    const frame =
-        $("browserFrame");
-
-    const homePage =
-        $("browserHomePage");
-
-    const blocked =
-        $("browserBlocked");
-
-    if (address) {
-        address.value = "";
-    }
-
-    if (frame) {
-        frame.src = "about:blank";
-        hide(frame);
-    }
-
-    hide(blocked);
-    show(homePage);
-}
-
-function showBrowserBlocked(url) {
-    hide($("browserHomePage"));
-    hide($("browserFrame"));
-    show($("browserBlocked"));
-
-    const blockedUrl =
-        $("blockedUrl");
-
-    if (blockedUrl) {
-        blockedUrl.textContent =
-            url;
-    }
-
-    const external =
-        $("browserExternal");
-
-    if (external) {
-        external.dataset.url =
-            url;
-    }
-}
-
-function openBrowserExternal() {
-    const external =
-        $("browserExternal");
-
-    const address =
-        $("browserAddress");
-
-    const url =
-        external?.dataset.url ||
-        address?.value;
+function navigateTo(value) {
+    const url = normalizeUrl(value);
 
     if (!url) return;
 
-    window.open(
-        normalizeUrl(url),
-        "_blank",
-        "noopener"
-    );
+    browserCurrentUrl = url;
+
+    if ($("browserAddress")) {
+        $("browserAddress").value = url;
+    }
+
+    hide($("browserHomePage"));
+    hide($("browserBlocked"));
+    show($("browserFrame"));
+
+    const frame = $("browserFrame");
+
+    if (frame) {
+        frame.src = url;
+    }
+}
+
+function browserHome() {
+    browserCurrentUrl = "";
+
+    if ($("browserAddress")) {
+        $("browserAddress").value = "";
+    }
+
+    hide($("browserFrame"));
+    hide($("browserBlocked"));
+    show($("browserHomePage"));
+}
+
+function reloadBrowser() {
+    const frame = $("browserFrame");
+
+    if (frame && browserCurrentUrl) {
+        frame.src = browserCurrentUrl;
+    }
+}
+
+function browserHistoryMove(direction) {
+    const frame = $("browserFrame");
+
+    try {
+        frame?.contentWindow?.history[
+            direction < 0 ? "back" : "forward"
+        ]();
+    } catch {
+        /* Some embedded websites block history access. */
+    }
+}
+
+function openExternal() {
+    const url =
+        browserCurrentUrl ||
+        $("browserAddress")?.value ||
+        "https://www.google.com";
+
+    window.open(normalizeUrl(url), "_blank", "noopener,noreferrer");
+}
+
+function favoriteBrowser() {
+    if (!browserCurrentUrl) {
+        alert("Open a website first.");
+        return;
+    }
+
+    const favorites = readJSON("nexus_v14_favorites", []);
+
+    if (!favorites.includes(browserCurrentUrl)) {
+        favorites.push(browserCurrentUrl);
+        writeJSON("nexus_v14_favorites", favorites);
+    }
+
+    alert("Saved to favorites.");
+}
+
+function showHistory() {
+    const panel = $("browserHistoryPanel");
+    const list = $("historyList");
+
+    if (!panel || !list) return;
+
+    list.innerHTML = "";
+
+    const history = readJSON(STORAGE.history, []);
+
+    if (!history.length) {
+        list.textContent = "No history yet.";
+    } else {
+        history.forEach(url => {
+            const button = document.createElement("button");
+            button.textContent = url;
+            button.addEventListener("click", () => navigateTo(url));
+            list.appendChild(button);
+        });
+    }
+
+    show(panel);
 }
 
 /* =========================================================
@@ -2205,478 +1135,227 @@ function openBrowserExternal() {
    ========================================================= */
 
 function getSettings() {
-    return safeJSONParse(
-        localStorage.getItem(
-            STORAGE.settings
-        ),
-        {
-            theme: "dark",
-            wallpaper: "nexus",
-            username: ""
-        }
-    );
+    return readJSON(STORAGE.settings, {
+        theme: "dark",
+        wallpaper: "nexus"
+    });
 }
 
 function saveSettings(settings) {
-    localStorage.setItem(
-        STORAGE.settings,
-        JSON.stringify(settings)
-    );
+    writeJSON(STORAGE.settings, settings);
 }
 
 function setupSettings() {
-    const settings =
-        getSettings();
+    $("saveUsername")?.addEventListener("click", saveUsername);
+    $("darkTheme")?.addEventListener("click", () => setTheme("dark"));
+    $("lightTheme")?.addEventListener("click", () => setTheme("light"));
+    $("changePassword")?.addEventListener("click", changePassword);
+    $("logoutButton")?.addEventListener("click", logout);
+    $("deleteAccount")?.addEventListener("click", deleteAccount);
+    $("startLogout")?.addEventListener("click", logout);
 
-    if (
-        settings.username &&
-        $("settingsUsername")
-    ) {
-        $("settingsUsername").value =
-            settings.username;
-    }
-
-    document.querySelectorAll(
-        "[data-theme]"
-    ).forEach(button => {
-        button.addEventListener(
-            "click",
-            () => {
-                applyTheme(
-                    button.dataset.theme
-                );
-            }
-        );
+    document.querySelectorAll("[data-wallpaper]").forEach(button => {
+        button.addEventListener("click", () => {
+            setWallpaper(button.dataset.wallpaper);
+        });
     });
-
-    document.querySelectorAll(
-        "[data-wallpaper]"
-    ).forEach(button => {
-        button.addEventListener(
-            "click",
-            () => {
-                applyWallpaper(
-                    button.dataset.wallpaper
-                );
-            }
-        );
-    });
-
-    const usernameButton =
-        $("saveUsernameButton") ||
-        $("saveUsername");
-
-    if (usernameButton) {
-        usernameButton.addEventListener(
-            "click",
-            saveUsername
-        );
-    }
-
-    const logoutButton =
-        $("logoutButton");
-
-    if (logoutButton) {
-        logoutButton.addEventListener(
-            "click",
-            logout
-        );
-    }
-
-    const deleteButton =
-        $("deleteAccountButton");
-
-    if (deleteButton) {
-        deleteButton.addEventListener(
-            "click",
-            deleteAccount
-        );
-    }
-
-    const changePasswordButton =
-        $("changePasswordButton");
-
-    if (changePasswordButton) {
-        changePasswordButton.addEventListener(
-            "click",
-            changePassword
-        );
-    }
-
-    applySettings();
 }
 
 function applySettings() {
-    const settings =
-        getSettings();
+    const settings = getSettings();
 
-    applyTheme(
-        settings.theme || "dark",
-        false
-    );
+    setTheme(settings.theme || "dark", false);
+    setWallpaper(settings.wallpaper || "nexus", false);
 
-    applyWallpaper(
-        settings.wallpaper || "nexus",
-        false
-    );
+    const account = currentAccount();
 
-    const current =
-        getCurrentUser();
+    if (account) {
+        text("settingsUsername", account.username);
+        text("settingsEmail", account.email);
+        text("startUsername", account.username);
+        text("startEmail", account.email);
 
-    if (current) {
-        setText(
-            "currentUsername",
-            current
-        );
-
-        setText(
-            "aboutUsername",
-            current
-        );
-
-        const usernameInput =
-            $("settingsUsername");
-
-        if (
-            usernameInput &&
-            !usernameInput.value
-        ) {
-            usernameInput.value =
-                current;
+        if ($("settingsUsernameInput")) {
+            $("settingsUsernameInput").value = account.username;
         }
     }
 }
 
-function applyTheme(
-    theme,
-    save = true
-) {
-    document.body.dataset.theme =
-        theme;
-
-    document.documentElement.dataset.theme =
-        theme;
+function setTheme(theme, save = true) {
+    document.body.dataset.theme = theme;
+    document.documentElement.dataset.theme = theme;
 
     if (save) {
-        const settings =
-            getSettings();
-
-        settings.theme =
-            theme;
-
+        const settings = getSettings();
+        settings.theme = theme;
         saveSettings(settings);
     }
 }
 
-function applyWallpaper(
-    wallpaper,
-    save = true
-) {
-    document.body.dataset.wallpaper =
-        wallpaper;
+function setWallpaper(wallpaper, save = true) {
+    const wallpaperElement = $("wallpaper");
 
-    document.documentElement.dataset.wallpaper =
-        wallpaper;
+    if (wallpaperElement) {
+        wallpaperElement.dataset.wallpaper = wallpaper;
+    }
+
+    document.body.dataset.wallpaper = wallpaper;
 
     if (save) {
-        const settings =
-            getSettings();
-
-        settings.wallpaper =
-            wallpaper;
-
+        const settings = getSettings();
+        settings.wallpaper = wallpaper;
         saveSettings(settings);
     }
 }
 
 function saveUsername() {
-    const input =
-        $("settingsUsername");
+    const input = $("settingsUsernameInput");
+    const account = currentAccount();
 
-    if (!input) return;
+    if (!input || !account) return;
 
-    const newUsername =
-        input.value.trim();
+    const username = input.value.trim();
 
-    if (!validateUsername(newUsername)) {
+    if (!validUsername(username)) {
         alert(
-            "Username must be 3–24 characters and may use letters, numbers, spaces, or underscores."
+            "Username must be 3–24 characters and may contain letters, numbers, spaces, or underscores."
         );
         return;
     }
 
-    const current =
-        getCurrentUser();
-
-    if (!current) return;
-
-    const accounts =
-        getAccounts();
-
-    const accountIndex =
-        accounts.findIndex(
-            account =>
-                account.username.toLowerCase() ===
-                current.toLowerCase()
-        );
-
-    if (accountIndex < 0) return;
+    const accounts = getAccounts();
 
     if (
         accounts.some(
-            (account, index) =>
-                index !== accountIndex &&
-                account.username.toLowerCase() ===
-                    newUsername.toLowerCase()
+            item =>
+                item.username.toLowerCase() === username.toLowerCase() &&
+                item.username !== account.username
         )
     ) {
-        alert(
-            "That username is already taken."
-        );
+        alert("That username is already taken.");
         return;
     }
 
-    accounts[
-        accountIndex
-    ].username = newUsername;
-
+    account.username = username;
     saveAccounts(accounts);
+    setCurrentUsername(username);
+    updateUserLabels(username);
 
-    setCurrentUser(
-        newUsername
-    );
-
-    setText(
-        "currentUsername",
-        newUsername
-    );
-
-    setText(
-        "aboutUsername",
-        newUsername
-    );
-
-    alert(
-        "Username saved!"
-    );
+    alert("Username saved.");
 }
 
 function changePassword() {
-    const current =
-        getCurrentUser();
-
-    if (!current) return;
-
-    const account =
-        findAccount(current);
+    const account = currentAccount();
 
     if (!account) return;
 
-    const oldPassword =
-        prompt(
-            "Enter your current password:"
-        );
+    const oldPassword = prompt("Enter your current password:");
 
-    if (
-        oldPassword === null
-    ) {
+    if (oldPassword !== account.password) {
+        alert("Incorrect password.");
         return;
     }
 
-    if (
-        oldPassword !==
-        account.password
-    ) {
-        alert(
-            "Incorrect current password."
-        );
+    const newPassword = prompt("Enter your new password:");
+
+    if (!newPassword || newPassword.length < 4) {
+        alert("Password must be at least 4 characters.");
         return;
     }
 
-    const newPassword =
-        prompt(
-            "Enter your new password:"
-        );
+    account.password = newPassword;
+    saveAccounts(getAccounts());
 
-    if (
-        newPassword === null
-    ) {
-        return;
-    }
-
-    if (
-        newPassword.length < 4
-    ) {
-        alert(
-            "Password must be at least 4 characters."
-        );
-        return;
-    }
-
-    account.password =
-        newPassword;
-
-    const accounts =
-        getAccounts();
-
-    const index =
-        accounts.findIndex(
-            item =>
-                item.username ===
-                current
-        );
-
-    if (index >= 0) {
-        accounts[index] =
-            account;
-
-        saveAccounts(accounts);
-    }
-
-    alert(
-        "Password changed successfully."
-    );
+    alert("Password changed successfully.");
 }
 
 function logout() {
-    setCurrentUser(null);
-
+    setCurrentUsername("");
+    closeAllWindows();
     hide($("desktop"));
-    hide($("taskbar"));
-
-    document.querySelectorAll(
-        ".window"
-    ).forEach(
-        windowElement =>
-            hide(windowElement)
-    );
-
-    showAuthScreen();
+    showAuth();
 }
 
 function deleteAccount() {
-    const current =
-        getCurrentUser();
+    const username = currentUsername();
 
-    if (!current) return;
+    if (!username) return;
 
-    const account =
-        findAccount(current);
-
-    if (!account) return;
-
-    const confirmation =
-        prompt(
-            `Type DELETE to remove the account "${current}":`
-        );
-
-    if (
-        confirmation !==
-        "DELETE"
-    ) {
+    if (prompt("Type DELETE to remove your account:") !== "DELETE") {
         return;
     }
 
-    const accounts =
+    saveAccounts(
         getAccounts().filter(
-            item =>
-                item.username !==
-                current
-        );
+            account => account.username !== username
+        )
+    );
 
-    saveAccounts(accounts);
-
-    setCurrentUser(null);
-
-    hide($("desktop"));
-    hide($("taskbar"));
-
-    showAuthScreen();
+    logout();
 }
 
 /* =========================================================
-   CLOCK
+   START MENU AND CLOCK
    ========================================================= */
+
+function setupStartMenu() {
+    $("startButton")?.addEventListener("click", event => {
+        event.stopPropagation();
+        toggleStartMenu();
+    });
+
+    document.addEventListener("click", event => {
+        const menu = $("startMenu");
+        const button = $("startButton");
+
+        if (
+            menu &&
+            !menu.contains(event.target) &&
+            event.target !== button
+        ) {
+            hide(menu);
+        }
+    });
+}
+
+function toggleStartMenu() {
+    const menu = $("startMenu");
+
+    if (!menu) return;
+
+    menu.classList.toggle("hidden");
+}
 
 function setupClock() {
     updateClock();
-
-    setInterval(
-        updateClock,
-        1000
-    );
+    setInterval(updateClock, 1000);
 }
 
 function updateClock() {
-    const now =
-        new Date();
+    const now = new Date();
 
-    const time =
-        now.toLocaleTimeString(
-            [],
-            {
-                hour: "2-digit",
-                minute: "2-digit"
-            }
-        );
+    const time = now.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
 
-    const date =
-        now.toLocaleDateString(
-            [],
-            {
-                month: "short",
-                day: "numeric"
-            }
-        );
+    const date = now.toLocaleDateString([], {
+        weekday: "short",
+        month: "short",
+        day: "numeric"
+    });
 
-    setText(
-        "taskbarTime",
-        time
-    );
-
-    setText(
-        "taskbarDate",
-        date
-    );
-
-    setText(
-        "clock",
-        time
-    );
+    text("taskbarClock", time);
+    text("bigClock", time);
+    text("bigDate", date);
 }
 
 /* =========================================================
-   GLOBAL CLICK HANDLERS
+   START
    ========================================================= */
 
-document.addEventListener(
-    "click",
-    event => {
-        const appButton =
-            event.target.closest(
-                "[data-app]"
-            );
-
-        if (appButton) {
-            openApp(
-                appButton.dataset.app
-            );
-        }
-    }
-);
-
-/* =========================================================
-   START NEXUS
-   ========================================================= */
-
-if (
-    document.readyState ===
-    "loading"
-) {
-    document.addEventListener(
-        "DOMContentLoaded",
-        startBoot
-    );
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startBoot);
 } else {
     startBoot();
 }
