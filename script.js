@@ -655,14 +655,29 @@ function setupGames() {
         button.addEventListener("click", showGameMenu);
     });
 
-    $("startCatch")?.addEventListener("click", startCatch);
-    $("catchTarget")?.addEventListener("click", catchTarget);
+    $("startCatch")?.addEventListener("click", () => {
+    startCatch();
+});
 
-    $("startClick")?.addEventListener("click", startClickRush);
-    $("clickButton")?.addEventListener("click", click);
+$("catchTarget")?.addEventListener("click", () => {
+    catchTarget();
+});
 
-    $("startMemory")?.addEventListener("click", startMemory);
-    $("startSnake")?.addEventListener("click", startSnake);
+$("startClick")?.addEventListener("click", () => {
+    startClickRush();
+});
+
+$("clickButton")?.addEventListener("click", () => {
+    click();
+});
+
+$("startMemory")?.addEventListener("click", () => {
+    startMemory();
+});
+
+$("startSnake")?.addEventListener("click", () => {
+    startSnake();
+});
 
     document.addEventListener("keydown", snakeKeys);
 }
