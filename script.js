@@ -350,8 +350,15 @@ function updateUserLabels(username) {
 
 function setupDesktop() {
     document.querySelectorAll("[data-open]").forEach(button => {
-        button.addEventListener("click", () => {
-            openWindow(button.dataset.open);
+        button.addEventListener("click", event => {
+            event.preventDefault();
+
+            const windowId = button.getAttribute("data-open");
+
+            if (windowId) {
+                openWindow(windowId);
+            }
+
             hide($("startMenu"));
         });
     });
