@@ -1,11 +1,11 @@
+```javascript
 console.log("🔥 NEXUS SCRIPT LOADED 🔥");
 
 "use strict";
 
 /* =========================================================
-   NEXUS v1.4 — COMPLETE SCRIPT
-   Matches the uploaded index.html exactly.
-   No Firebase.
+   NEXUS v1.4 — COMPLETE CORRECTED SCRIPT
+   Matches the supplied index.html
    ========================================================= */
 
 const $ = id => document.getElementById(id);
@@ -16,53 +16,92 @@ const STORAGE = {
     notes: "nexus_v14_notes",
     files: "nexus_v14_files",
     settings: "nexus_v14_settings",
-    history: "nexus_v14_history"
+    history: "nexus_v14_history",
+    favorites: "nexus_v14_favorites"
 };
 
 let selectedFile = null;
+
 let highestZ = 20;
+
 let catchTimer = null;
+
 let clickTimer = null;
 let clickRunning = false;
 let clickScore = 0;
 let clickTime = 10;
+
 let memoryCards = [];
 let memoryFirst = null;
 let memoryMoves = 0;
 let memoryLocked = false;
+
 let snakeTimer = null;
 let snake = [];
 let snakeFood = { x: 5, y: 5 };
 let snakeDirection = { x: 1, y: 0 };
 let snakeNextDirection = { x: 1, y: 0 };
 let snakeScore = 0;
+
 let currentGame = null;
+
 let browserCurrentUrl = "";
+let browserHistory = [];
+let browserHistoryIndex = -1;
+
+
+/* =========================================================
+   BASIC HELPERS
+========================================================= */
 
 function show(element) {
-    if (element) element.classList.remove("hidden");
+    if (!element) return;
+
+    element.classList.remove("hidden");
 }
 
 function hide(element) {
-    if (element) element.classList.add("hidden");
+    if (!element) return;
+
+    element.classList.add("hidden");
 }
 
 function text(id, value) {
     const element = $(id);
-    if (element) element.textContent = value;
+
+    if (element) {
+        element.textContent = value;
+    }
 }
 
 function readJSON(key, fallback) {
     try {
-        return JSON.parse(localStorage.getItem(key)) ?? fallback;
+        const value = localStorage.getItem(key);
+
+        if (!value) {
+            return fallback;
+        }
+
+        const parsed = JSON.parse(value);
+
+        return parsed ?? fallback;
     } catch {
         return fallback;
     }
 }
 
 function writeJSON(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+        console.error("NEXUS storage error:", error);
+    }
 }
+
+
+/* =========================================================
+   ACCOUNT SYSTEM
+========================================================= */
 
 function getAccounts() {
     return readJSON(STORAGE.accounts, []);
@@ -85,11 +124,17 @@ function setCurrentUsername(username) {
 }
 
 function currentAccount() {
+    const username = currentUsername();
+
+    if (!username) {
+        return null;
+    }
+
     return getAccounts().find(
         account =>
-            account.username.toLowerCase() ===
-            currentUsername().toLowerCase()
-    );
+            String(account.username).toLowerCase() ===
+            username.toLowerCase()
+    ) || null;
 }
 
 function validUsername(username) {
@@ -105,18 +150,24 @@ function authMessage(message) {
 
     if (!element) {
         element = document.createElement("p");
+
         element.id = "authMessage";
         element.className = "auth-message";
+
         const card = document.querySelector(".auth-card");
-        if (card) card.prepend(element);
+
+        if (card) {
+            card.prepend(element);
+        }
     }
 
     element.textContent = message;
 }
 
+
 /* =========================================================
-   BOOT
-   ========================================================= */
+   BOOT SCREEN
+========================================================= */
 
 function startBoot() {
     const bootScreen = $("bootScreen");
@@ -155,7 +206,14 @@ function startBoot() {
     }, 50);
 }
 
+
+/* =========================================================
+   INITIALIZE
+========================================================= */
+
 function initializeNexus() {
+    console.log("NEXUS initializing...");
+
     setupAuthentication();
     setupDesktop();
     setupWindows();
@@ -176,25 +234,36 @@ function initializeNexus() {
     } else {
         showAuth();
     }
+
+    console.log("✅ NEXUS initialized successfully");
 }
+
 
 /* =========================================================
    AUTHENTICATION
-   ========================================================= */
+========================================================= */
 
 function setupAuthentication() {
     $("loginButton")?.addEventListener("click", login);
+
     $("signupButton")?.addEventListener("click", signup);
+
     $("showSignup")?.addEventListener("click", showSignup);
+
     $("showLogin")?.addEventListener("click", showLogin);
+
     $("forgotPassword")?.addEventListener("click", forgotPassword);
 
     $("loginPassword")?.addEventListener("keydown", event => {
-        if (event.key === "Enter") login();
+        if (event.key === "Enter") {
+            login();
+        }
     });
 
     $("signupConfirm")?.addEventListener("keydown", event => {
-        if (event.key === "Enter") signup();
+        if (event.key === "Enter") {
+            signup();
+        }
     });
 }
 
@@ -205,24 +274,36 @@ function showAuth() {
 
     show($("loginPanel"));
     hide($("signupPanel"));
+
+    authMessage("");
 }
 
 function showSignup() {
     hide($("loginPanel"));
     show($("signupPanel"));
+
     authMessage("");
 }
 
 function showLogin() {
     show($("loginPanel"));
     hide($("signupPanel"));
+
     authMessage("");
 }
 
 function login() {
-    const email = ($("loginEmail")?.value || "").trim().toLowerCase();
-    const username = ($("loginUsername")?.value || "").trim();
-    const password = $("loginPassword")?.value || "";
+    const email =
+        ($("loginEmail")?.value || "")
+            .trim()
+            .toLowerCase();
+
+    const username =
+        ($("loginUsername")?.value || "")
+            .trim();
+
+    const password =
+        $("loginPassword")?.value || "";
 
     if (!email || !username || !password) {
         authMessage("Please fill in all login fields.");
@@ -230,8 +311,8 @@ function login() {
     }
 
     const account = getAccounts().find(item =>
-        item.email.toLowerCase() === email &&
-        item.username.toLowerCase() === username.toLowerCase() &&
+        String(item.email).toLowerCase() === email &&
+        String(item.username).toLowerCase() === username.toLowerCase() &&
         item.password === password
     );
 
@@ -241,14 +322,25 @@ function login() {
     }
 
     setCurrentUsername(account.username);
+
     enterDesktop(account.username);
 }
 
 function signup() {
-    const email = ($("signupEmail")?.value || "").trim().toLowerCase();
-    const username = ($("signupUsername")?.value || "").trim();
-    const password = $("signupPassword")?.value || "";
-    const confirm = $("signupConfirm")?.value || "";
+    const email =
+        ($("signupEmail")?.value || "")
+            .trim()
+            .toLowerCase();
+
+    const username =
+        ($("signupUsername")?.value || "")
+            .trim();
+
+    const password =
+        $("signupPassword")?.value || "";
+
+    const confirm =
+        $("signupConfirm")?.value || "";
 
     if (!email || !username || !password || !confirm) {
         authMessage("Please fill in every field.");
@@ -282,7 +374,8 @@ function signup() {
     if (
         accounts.some(
             account =>
-                account.username.toLowerCase() === username.toLowerCase()
+                String(account.username).toLowerCase() ===
+                username.toLowerCase()
         )
     ) {
         authMessage("That username is already taken.");
@@ -291,7 +384,8 @@ function signup() {
 
     if (
         accounts.some(
-            account => account.email.toLowerCase() === email
+            account =>
+                String(account.email).toLowerCase() === email
         )
     ) {
         authMessage("That email is already registered.");
@@ -306,17 +400,23 @@ function signup() {
     });
 
     saveAccounts(accounts);
+
     setCurrentUsername(username);
+
     enterDesktop(username);
 }
 
 function forgotPassword() {
     const email = prompt("Enter your account email:");
 
-    if (!email) return;
+    if (!email) {
+        return;
+    }
 
     const account = getAccounts().find(
-        item => item.email.toLowerCase() === email.trim().toLowerCase()
+        item =>
+            String(item.email).toLowerCase() ===
+            email.trim().toLowerCase()
     );
 
     if (!account) {
@@ -325,7 +425,7 @@ function forgotPassword() {
     }
 
     alert(
-        "This local version cannot send emails. Your username is: " +
+        "This local version cannot send emails.\n\nYour username is: " +
         account.username
     );
 }
@@ -333,6 +433,7 @@ function forgotPassword() {
 function enterDesktop(username) {
     hide($("authScreen"));
     show($("desktop"));
+
     updateUserLabels(username);
     applySettings();
 }
@@ -341,103 +442,193 @@ function updateUserLabels(username) {
     const account = currentAccount();
 
     text("settingsUsername", username);
-    text("settingsEmail", account?.email || "Local NEXUS account");
+
+    text(
+        "settingsEmail",
+        account?.email || "Local NEXUS account"
+    );
+
     text("startUsername", username);
-    text("startEmail", account?.email || "Local account");
+
+    text(
+        "startEmail",
+        account?.email || "Local account"
+    );
 }
 
+
 /* =========================================================
-   DESKTOP AND WINDOWS
-   ========================================================= */
+   DESKTOP
+========================================================= */
 
 function setupDesktop() {
-    document.addEventListener("click", event => {
-        const button = event.target.closest(
-            "[data-open], [data-app], [data-window]"
-        );
+    /*
+       IMPORTANT:
+       The HTML uses data-open on desktop and Start Menu
+       buttons. This listener handles those buttons directly.
+    */
 
-        if (!button) return;
+    document.querySelectorAll("[data-open]").forEach(button => {
+        button.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
 
-        event.preventDefault();
+            const windowId =
+                button.getAttribute("data-open");
 
-        const windowId =
-            button.getAttribute("data-open") ||
-            button.getAttribute("data-app") ||
-            button.getAttribute("data-window");
+            if (windowId) {
+                console.log(
+                    "NEXUS opening:",
+                    windowId
+                );
 
-        if (!windowId) return;
+                openWindow(windowId);
+            }
 
-        console.log("NEXUS opening:", windowId);
-
-        openWindow(windowId);
-
-        hide($("startMenu"));
+            hide($("startMenu"));
+        });
     });
 }
 
+
+/* =========================================================
+   WINDOWS
+========================================================= */
+
 function setupWindows() {
     document.querySelectorAll(".window").forEach(windowElement => {
-        const closeButton = windowElement.querySelector(".close-button");
-        const minimizeButton = windowElement.querySelector(".minimize-button");
 
-        closeButton?.addEventListener("click", () => {
+        const closeButton =
+            windowElement.querySelector(".close-button");
+
+        const minimizeButton =
+            windowElement.querySelector(".minimize-button");
+
+        closeButton?.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+
             hide(windowElement);
         });
 
-        minimizeButton?.addEventListener("click", () => {
+        minimizeButton?.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+
             hide(windowElement);
         });
 
         windowElement.addEventListener("mousedown", () => {
             highestZ++;
-            windowElement.style.zIndex = highestZ;
+
+            windowElement.style.zIndex =
+                highestZ;
         });
     });
 }
 
+
+/*
+   MAIN WINDOW OPENER
+
+   This is intentionally strong:
+   - Checks that the window exists.
+   - Removes hidden.
+   - Forces display to flex.
+   - Brings it to the front.
+*/
+
 function openWindow(id) {
     const element = $(id);
 
-    if (!element) return;
+    if (!element) {
+        console.error(
+            "❌ NEXUS: Window not found:",
+            id
+        );
 
-    show(element);
+        return;
+    }
+
+    console.log(
+        "✅ NEXUS window opened:",
+        id
+    );
+
+    element.classList.remove("hidden");
+
+    element.style.display = "flex";
+
     highestZ++;
-    element.style.zIndex = highestZ;
+
+    element.style.zIndex =
+        highestZ;
+
+    hide($("startMenu"));
 }
 
 function closeAllWindows() {
-    document.querySelectorAll(".window").forEach(hide);
+    document.querySelectorAll(".window").forEach(windowElement => {
+        hide(windowElement);
+    });
 }
+
 
 /* =========================================================
    NOTEPAD
-   ========================================================= */
+========================================================= */
 
 function setupNotepad() {
     const editor = $("notepad");
 
-    if (!editor) return;
+    if (!editor) {
+        return;
+    }
 
-    editor.value = localStorage.getItem(STORAGE.notes) || "";
+    editor.value =
+        localStorage.getItem(STORAGE.notes) || "";
 
-    editor.addEventListener("input", updateWordCount);
+    editor.addEventListener(
+        "input",
+        updateWordCount
+    );
 
     $("newNote")?.addEventListener("click", () => {
         editor.value = "";
+
         updateWordCount();
-        text("noteStatus", "New note");
+
+        text(
+            "noteStatus",
+            "New note"
+        );
     });
 
     $("saveNote")?.addEventListener("click", () => {
-        localStorage.setItem(STORAGE.notes, editor.value);
-        text("noteStatus", "Saved ✓");
+        localStorage.setItem(
+            STORAGE.notes,
+            editor.value
+        );
+
+        text(
+            "noteStatus",
+            "Saved ✓"
+        );
     });
 
     $("clearNote")?.addEventListener("click", () => {
         editor.value = "";
-        localStorage.removeItem(STORAGE.notes);
+
+        localStorage.removeItem(
+            STORAGE.notes
+        );
+
         updateWordCount();
-        text("noteStatus", "Cleared");
+
+        text(
+            "noteStatus",
+            "Cleared"
+        );
     });
 
     updateWordCount();
@@ -445,31 +636,48 @@ function setupNotepad() {
 
 function updateWordCount() {
     const editor = $("notepad");
-    if (!editor) return;
 
-    const words = editor.value.trim()
-        ? editor.value.trim().split(/\s+/).length
-        : 0;
+    if (!editor) {
+        return;
+    }
 
-    text("wordCount", `${words} words`);
+    const words =
+        editor.value.trim()
+            ? editor.value.trim().split(/\s+/).length
+            : 0;
+
+    text(
+        "wordCount",
+        `${words} words`
+    );
 }
+
 
 /* =========================================================
    CALCULATOR
-   ========================================================= */
+========================================================= */
 
 function setupCalculator() {
     document.querySelectorAll("[data-calc]").forEach(button => {
-        button.addEventListener("click", () => {
-            calculatorInput(button.dataset.calc);
+
+        button.addEventListener("click", event => {
+            event.preventDefault();
+
+            calculatorInput(
+                button.dataset.calc
+            );
         });
+
     });
 }
 
 function calculatorInput(value) {
-    const display = $("calculatorDisplay");
+    const display =
+        $("calculatorDisplay");
 
-    if (!display) return;
+    if (!display) {
+        return;
+    }
 
     if (value === "C") {
         display.value = "";
@@ -477,25 +685,41 @@ function calculatorInput(value) {
     }
 
     if (value === "backspace") {
-        display.value = display.value.slice(0, -1);
+        display.value =
+            display.value.slice(0, -1);
+
         return;
     }
 
     if (value === "=") {
         try {
-            const expression = display.value;
+            const expression =
+                display.value;
 
-            if (!/^[0-9+\-*/().\s]+$/.test(expression)) {
-                throw new Error("Invalid expression");
+            if (
+                !/^[0-9+\-*/().\s]+$/.test(
+                    expression
+                )
+            ) {
+                throw new Error(
+                    "Invalid expression"
+                );
             }
 
-            const result = Function(
-                `"use strict"; return (${expression})`
-            )();
+            if (!expression.trim()) {
+                return;
+            }
 
-            display.value = Number.isFinite(result)
-                ? String(result)
-                : "Error";
+            const result =
+                Function(
+                    `"use strict"; return (${expression})`
+                )();
+
+            display.value =
+                Number.isFinite(result)
+                    ? String(result)
+                    : "Error";
+
         } catch {
             display.value = "Error";
         }
@@ -506,49 +730,91 @@ function calculatorInput(value) {
     display.value += value;
 }
 
+
 /* =========================================================
    FILE MANAGER
-   ========================================================= */
+========================================================= */
 
 function getFiles() {
-    return readJSON(STORAGE.files, []);
+    return readJSON(
+        STORAGE.files,
+        []
+    );
 }
 
 function saveFiles(files) {
-    writeJSON(STORAGE.files, files);
+    writeJSON(
+        STORAGE.files,
+        files
+    );
 }
 
 function setupFiles() {
-    $("newFile")?.addEventListener("click", newFile);
-    $("saveFile")?.addEventListener("click", saveFile);
-    $("deleteFile")?.addEventListener("click", deleteFile);
+    $("newFile")?.addEventListener(
+        "click",
+        newFile
+    );
+
+    $("saveFile")?.addEventListener(
+        "click",
+        saveFile
+    );
+
+    $("deleteFile")?.addEventListener(
+        "click",
+        deleteFile
+    );
 
     renderFiles();
 }
 
 function renderFiles() {
     const list = $("fileList");
-    if (!list) return;
+
+    if (!list) {
+        return;
+    }
 
     list.innerHTML = "";
 
     const files = getFiles();
 
     if (!files.length) {
-        list.innerHTML = "<p>No files yet.</p>";
+        list.innerHTML =
+            "<p>No files yet.</p>";
+
         return;
     }
 
     files.forEach(file => {
-        const button = document.createElement("button");
-        button.className = "file-item";
-        button.textContent = `📄 ${file.name}`;
+        const button =
+            document.createElement("button");
 
-        button.addEventListener("click", () => {
-            selectedFile = file.name;
-            $("fileName").value = file.name;
-            $("fileContent").value = file.content;
-        });
+        button.className =
+            "file-item";
+
+        button.type = "button";
+
+        button.textContent =
+            `📄 ${file.name}`;
+
+        button.addEventListener(
+            "click",
+            () => {
+                selectedFile =
+                    file.name;
+
+                if ($("fileName")) {
+                    $("fileName").value =
+                        file.name;
+                }
+
+                if ($("fileContent")) {
+                    $("fileContent").value =
+                        file.content;
+                }
+            }
+        );
 
         list.appendChild(button);
     });
@@ -556,13 +822,23 @@ function renderFiles() {
 
 function newFile() {
     selectedFile = null;
-    $("fileName").value = "";
-    $("fileContent").value = "";
+
+    if ($("fileName")) {
+        $("fileName").value = "";
+    }
+
+    if ($("fileContent")) {
+        $("fileContent").value = "";
+    }
 }
 
 function saveFile() {
-    const name = ($("fileName")?.value || "").trim();
-    const content = $("fileContent")?.value || "";
+    const name =
+        ($("fileName")?.value || "")
+            .trim();
+
+    const content =
+        $("fileContent")?.value || "";
 
     if (!name) {
         alert("Enter a file name.");
@@ -570,16 +846,30 @@ function saveFile() {
     }
 
     const files = getFiles();
-    const index = files.findIndex(file => file.name === selectedFile);
+
+    const index =
+        files.findIndex(
+            file =>
+                file.name ===
+                selectedFile
+        );
 
     if (index >= 0) {
-        files[index] = { name, content };
+        files[index] = {
+            name,
+            content
+        };
     } else {
-        files.push({ name, content });
+        files.push({
+            name,
+            content
+        });
     }
 
     selectedFile = name;
+
     saveFiles(files);
+
     renderFiles();
 }
 
@@ -590,129 +880,257 @@ function deleteFile() {
     }
 
     saveFiles(
-        getFiles().filter(file => file.name !== selectedFile)
+        getFiles().filter(
+            file =>
+                file.name !==
+                selectedFile
+        )
     );
 
     newFile();
+
     renderFiles();
 }
 
+
 /* =========================================================
    PAINT
-   ========================================================= */
+========================================================= */
 
 function setupPaint() {
-    const canvas = $("paintCanvas");
+    const canvas =
+        $("paintCanvas");
 
-    if (!canvas) return;
+    if (!canvas) {
+        return;
+    }
 
-    const context = canvas.getContext("2d");
+    const context =
+        canvas.getContext("2d");
+
+    if (!context) {
+        return;
+    }
+
     let drawing = false;
 
     function point(event) {
-        const rect = canvas.getBoundingClientRect();
+        const rect =
+            canvas.getBoundingClientRect();
 
         return {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
+            x:
+                event.clientX -
+                rect.left,
+
+            y:
+                event.clientY -
+                rect.top
         };
     }
 
-    canvas.addEventListener("pointerdown", event => {
-        drawing = true;
-        const p = point(event);
-        context.beginPath();
-        context.moveTo(p.x, p.y);
-    });
+    canvas.addEventListener(
+        "pointerdown",
+        event => {
+            drawing = true;
 
-    canvas.addEventListener("pointermove", event => {
-        if (!drawing) return;
+            try {
+                canvas.setPointerCapture(
+                    event.pointerId
+                );
+            } catch {}
 
-        const p = point(event);
+            const p = point(event);
 
-        context.lineWidth = Number($("brushSize")?.value || 5);
-        context.lineCap = "round";
-        context.strokeStyle = $("paintColor")?.value || "#6c5ce7";
+            context.beginPath();
 
-        context.lineTo(p.x, p.y);
-        context.stroke();
-    });
+            context.moveTo(
+                p.x,
+                p.y
+            );
+        }
+    );
 
-    canvas.addEventListener("pointerup", () => {
-        drawing = false;
-    });
+    canvas.addEventListener(
+        "pointermove",
+        event => {
+            if (!drawing) {
+                return;
+            }
 
-    canvas.addEventListener("pointerleave", () => {
-        drawing = false;
-    });
+            const p =
+                point(event);
 
-    $("clearPaint")?.addEventListener("click", () => {
-        context.clearRect(0, 0, canvas.width, canvas.height);
-    });
+            context.lineWidth =
+                Number(
+                    $("brushSize")?.value ||
+                    5
+                );
 
-    $("savePaint")?.addEventListener("click", () => {
-        const link = document.createElement("a");
-        link.download = "nexus-paint.png";
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-    });
+            context.lineCap =
+                "round";
+
+            context.strokeStyle =
+                $("paintColor")?.value ||
+                "#6c5ce7";
+
+            context.lineTo(
+                p.x,
+                p.y
+            );
+
+            context.stroke();
+        }
+    );
+
+    canvas.addEventListener(
+        "pointerup",
+        () => {
+            drawing = false;
+        }
+    );
+
+    canvas.addEventListener(
+        "pointercancel",
+        () => {
+            drawing = false;
+        }
+    );
+
+    canvas.addEventListener(
+        "pointerleave",
+        () => {
+            drawing = false;
+        }
+    );
+
+    $("clearPaint")?.addEventListener(
+        "click",
+        () => {
+            context.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        }
+    );
+
+    $("savePaint")?.addEventListener(
+        "click",
+        () => {
+            const link =
+                document.createElement("a");
+
+            link.download =
+                "nexus-paint.png";
+
+            link.href =
+                canvas.toDataURL(
+                    "image/png"
+                );
+
+            link.click();
+        }
+    );
 }
+
 
 /* =========================================================
    GAMES
-   ========================================================= */
+========================================================= */
 
 function setupGames() {
-    document.querySelectorAll("[data-game]").forEach(button => {
-        button.addEventListener("click", () => {
-            startGame(button.dataset.game);
-        });
+
+    document.querySelectorAll(
+        "[data-game]"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+
+                startGame(
+                    button.dataset.game
+                );
+            }
+        );
+
     });
 
-    document.querySelectorAll(".back-game").forEach(button => {
-        button.addEventListener("click", showGameMenu);
+    document.querySelectorAll(
+        ".back-game"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            showGameMenu
+        );
+
     });
 
-    $("startCatch")?.addEventListener("click", () => {
-    startCatch();
-});
+    $("startCatch")?.addEventListener(
+        "click",
+        startCatch
+    );
 
-$("catchTarget")?.addEventListener("click", () => {
-    catchTarget();
-});
+    $("catchTarget")?.addEventListener(
+        "click",
+        catchTarget
+    );
 
-$("startClick")?.addEventListener("click", () => {
-    startClickRush();
-});
+    $("startClick")?.addEventListener(
+        "click",
+        startClickRush
+    );
 
-$("clickButton")?.addEventListener("click", () => {
-    click();
-});
+    $("clickButton")?.addEventListener(
+        "click",
+        clickRushAction
+    );
 
-$("startMemory")?.addEventListener("click", () => {
-    startMemory();
-});
+    $("startMemory")?.addEventListener(
+        "click",
+        startMemory
+    );
 
-$("startSnake")?.addEventListener("click", () => {
-    startSnake();
-});
+    $("startSnake")?.addEventListener(
+        "click",
+        startSnake
+    );
 
-    document.addEventListener("keydown", snakeKeys);
+    document.addEventListener(
+        "keydown",
+        snakeKeys
+    );
 }
 
 function startGame(game) {
     currentGame = game;
 
     hide($("gameMenu"));
+
     hide($("catchGameScreen"));
     hide($("clickGameScreen"));
     hide($("memoryGameScreen"));
     hide($("snakeGameScreen"));
 
-    if (game === "catch") show($("catchGameScreen"));
-    if (game === "click") show($("clickGameScreen"));
-    if (game === "memory") show($("memoryGameScreen"));
-    if (game === "snake") show($("snakeGameScreen"));
+    if (game === "catch") {
+        show($("catchGameScreen"));
+    }
+
+    if (game === "click") {
+        show($("clickGameScreen"));
+    }
+
+    if (game === "memory") {
+        show($("memoryGameScreen"));
+    }
+
+    if (game === "snake") {
+        show($("snakeGameScreen"));
+    }
 }
 
 function showGameMenu() {
@@ -722,50 +1140,99 @@ function showGameMenu() {
     clearInterval(clickTimer);
     clearInterval(snakeTimer);
 
+    clickRunning = false;
+
     show($("gameMenu"));
+
     hide($("catchGameScreen"));
     hide($("clickGameScreen"));
     hide($("memoryGameScreen"));
     hide($("snakeGameScreen"));
 }
 
-/* Catch NEXUS */
+
+/* =========================================================
+   CATCH NEXUS
+========================================================= */
 
 function startCatch() {
     clearInterval(catchTimer);
 
     let score = 0;
-    text("catchScore", "0");
 
-    const target = $("catchTarget");
-    const area = $("catchArea");
+    text(
+        "catchScore",
+        "0"
+    );
 
-    if (!target || !area) return;
+    const target =
+        $("catchTarget");
 
-    function move() {
-        const maxX = Math.max(0, area.clientWidth - target.offsetWidth);
-        const maxY = Math.max(0, area.clientHeight - target.offsetHeight);
+    const area =
+        $("catchArea");
 
-        target.style.left = `${Math.random() * maxX}px`;
-        target.style.top = `${Math.random() * maxY}px`;
+    if (!target || !area) {
+        return;
     }
 
-    target.onclick = () => {
+    target.style.position =
+        "absolute";
+
+    function move() {
+        const maxX =
+            Math.max(
+                0,
+                area.clientWidth -
+                target.offsetWidth
+            );
+
+        const maxY =
+            Math.max(
+                0,
+                area.clientHeight -
+                target.offsetHeight
+            );
+
+        target.style.left =
+            `${Math.random() * maxX}px`;
+
+        target.style.top =
+            `${Math.random() * maxY}px`;
+    }
+
+    target.onclick = event => {
+        event.preventDefault();
+
         score++;
-        text("catchScore", String(score));
+
+        text(
+            "catchScore",
+            String(score)
+        );
+
         move();
     };
 
     move();
 
-    catchTimer = setInterval(move, 900);
+    catchTimer =
+        setInterval(
+            move,
+            900
+        );
 }
 
 function catchTarget() {
-    /* The actual click action is assigned by startCatch(). */
+    /*
+       The actual Catch action is
+       assigned by startCatch().
+    */
 }
 
-/* Click Rush */
+
+/* =========================================================
+   CLICK RUSH
+========================================================= */
 
 function startClickRush() {
     clearInterval(clickTimer);
@@ -774,89 +1241,187 @@ function startClickRush() {
     clickTime = 10;
     clickRunning = false;
 
-    text("clickScore", "0");
-    text("clickTime", "10");
+    text(
+        "clickScore",
+        "0"
+    );
 
-    const button = $("clickButton");
-    if (button) button.disabled = false;
+    text(
+        "clickTime",
+        "10"
+    );
+
+    const button =
+        $("clickButton");
+
+    if (button) {
+        button.disabled = false;
+    }
 }
 
-function click() {
+function clickRushAction() {
     if (!clickRunning) {
         clickRunning = true;
 
-        clickTimer = setInterval(() => {
-            clickTime--;
-            text("clickTime", String(clickTime));
+        clickTimer =
+            setInterval(() => {
 
-            if (clickTime <= 0) {
-                clearInterval(clickTimer);
-                clickRunning = false;
-                $("clickButton").disabled = true;
-            }
-        }, 1000);
+                clickTime--;
+
+                text(
+                    "clickTime",
+                    String(clickTime)
+                );
+
+                if (clickTime <= 0) {
+                    clearInterval(
+                        clickTimer
+                    );
+
+                    clickRunning = false;
+
+                    const button =
+                        $("clickButton");
+
+                    if (button) {
+                        button.disabled =
+                            true;
+                    }
+                }
+
+            }, 1000);
     }
 
-    if (clickTime <= 0) return;
+    if (clickTime <= 0) {
+        return;
+    }
 
     clickScore++;
-    text("clickScore", String(clickScore));
+
+    text(
+        "clickScore",
+        String(clickScore)
+    );
 }
 
-/* Memory Match */
+
+/* =========================================================
+   MEMORY MATCH
+========================================================= */
 
 function startMemory() {
-    const board = $("memoryBoard");
-    if (!board) return;
+    const board =
+        $("memoryBoard");
+
+    if (!board) {
+        return;
+    }
 
     memoryCards = [];
+
     memoryFirst = null;
+
     memoryMoves = 0;
+
     memoryLocked = false;
 
-    text("memoryMoves", "0");
+    text(
+        "memoryMoves",
+        "0"
+    );
 
-    const symbols = ["🚀", "🎮", "🌟", "🧠", "💻", "🎨"];
+    const symbols = [
+        "🚀",
+        "🎮",
+        "🌟",
+        "🧠",
+        "💻",
+        "🎨"
+    ];
 
-    [...symbols, ...symbols]
-        .sort(() => Math.random() - 0.5)
-        .forEach((symbol, index) => {
-            memoryCards.push({
-                id: index,
-                symbol,
-                flipped: false,
-                matched: false
-            });
-        });
+    [
+        ...symbols,
+        ...symbols
+    ]
+        .sort(
+            () =>
+                Math.random() -
+                0.5
+        )
+        .forEach(
+            (symbol, index) => {
+
+                memoryCards.push({
+                    id: index,
+                    symbol,
+                    flipped: false,
+                    matched: false
+                });
+
+            }
+        );
 
     renderMemory();
 }
 
 function renderMemory() {
-    const board = $("memoryBoard");
-    if (!board) return;
+    const board =
+        $("memoryBoard");
+
+    if (!board) {
+        return;
+    }
 
     board.innerHTML = "";
 
     memoryCards.forEach(card => {
-        const button = document.createElement("button");
-        button.className = "memory-card";
-        button.textContent =
-            card.flipped || card.matched ? card.symbol : "?";
 
-        button.addEventListener("click", () => flipMemory(card.id));
+        const button =
+            document.createElement(
+                "button"
+            );
+
+        button.type = "button";
+
+        button.className =
+            "memory-card";
+
+        button.textContent =
+            card.flipped ||
+            card.matched
+                ? card.symbol
+                : "?";
+
+        button.addEventListener(
+            "click",
+            () => flipMemory(card.id)
+        );
+
         board.appendChild(button);
     });
 }
 
 function flipMemory(id) {
-    if (memoryLocked) return;
+    if (memoryLocked) {
+        return;
+    }
 
-    const card = memoryCards.find(item => item.id === id);
+    const card =
+        memoryCards.find(
+            item =>
+                item.id === id
+        );
 
-    if (!card || card.flipped || card.matched) return;
+    if (
+        !card ||
+        card.flipped ||
+        card.matched
+    ) {
+        return;
+    }
 
     card.flipped = true;
+
     renderMemory();
 
     if (!memoryFirst) {
@@ -865,32 +1430,65 @@ function flipMemory(id) {
     }
 
     memoryMoves++;
-    text("memoryMoves", String(memoryMoves));
 
-    if (memoryFirst.symbol === card.symbol) {
-        memoryFirst.matched = true;
-        card.matched = true;
+    text(
+        "memoryMoves",
+        String(memoryMoves)
+    );
+
+    if (
+        memoryFirst.symbol ===
+        card.symbol
+    ) {
+        memoryFirst.matched =
+            true;
+
+        card.matched =
+            true;
+
         memoryFirst = null;
+
         renderMemory();
+
         return;
     }
 
     memoryLocked = true;
 
+    const firstCard =
+        memoryFirst;
+
     setTimeout(() => {
-        memoryFirst.flipped = false;
-        card.flipped = false;
-        memoryFirst = null;
-        memoryLocked = false;
+
+        firstCard.flipped =
+            false;
+
+        card.flipped =
+            false;
+
+        memoryFirst =
+            null;
+
+        memoryLocked =
+            false;
+
         renderMemory();
+
     }, 700);
 }
 
-/* Snake */
+
+/* =========================================================
+   SNAKE
+========================================================= */
 
 function startSnake() {
-    const canvas = $("snakeCanvas");
-    if (!canvas) return;
+    const canvas =
+        $("snakeCanvas");
+
+    if (!canvas) {
+        return;
+    }
 
     snake = [
         { x: 8, y: 7 },
@@ -898,56 +1496,128 @@ function startSnake() {
         { x: 6, y: 7 }
     ];
 
-    snakeDirection = { x: 1, y: 0 };
-    snakeNextDirection = { x: 1, y: 0 };
+    snakeDirection = {
+        x: 1,
+        y: 0
+    };
+
+    snakeNextDirection = {
+        x: 1,
+        y: 0
+    };
+
     snakeScore = 0;
 
-    text("snakeScore", "0");
+    text(
+        "snakeScore",
+        "0"
+    );
 
     placeFood();
-    clearInterval(snakeTimer);
-    snakeTimer = setInterval(snakeTick, 120);
+
+    clearInterval(
+        snakeTimer
+    );
+
+    snakeTimer =
+        setInterval(
+            snakeTick,
+            120
+        );
 
     drawSnake();
 }
 
 function snakeKeys(event) {
-    if (currentGame !== "snake") return;
-
-    const key = event.key;
-
-    if (key === "ArrowUp" && snakeDirection.y !== 1) {
-        snakeNextDirection = { x: 0, y: -1 };
+    if (currentGame !== "snake") {
+        return;
     }
 
-    if (key === "ArrowDown" && snakeDirection.y !== -1) {
-        snakeNextDirection = { x: 0, y: 1 };
+    const key =
+        event.key;
+
+    if (
+        key === "ArrowUp" &&
+        snakeDirection.y !== 1
+    ) {
+        snakeNextDirection = {
+            x: 0,
+            y: -1
+        };
+
+        event.preventDefault();
     }
 
-    if (key === "ArrowLeft" && snakeDirection.x !== 1) {
-        snakeNextDirection = { x: -1, y: 0 };
+    if (
+        key === "ArrowDown" &&
+        snakeDirection.y !== -1
+    ) {
+        snakeNextDirection = {
+            x: 0,
+            y: 1
+        };
+
+        event.preventDefault();
     }
 
-    if (key === "ArrowRight" && snakeDirection.x !== -1) {
-        snakeNextDirection = { x: 1, y: 0 };
+    if (
+        key === "ArrowLeft" &&
+        snakeDirection.x !== 1
+    ) {
+        snakeNextDirection = {
+            x: -1,
+            y: 0
+        };
+
+        event.preventDefault();
+    }
+
+    if (
+        key === "ArrowRight" &&
+        snakeDirection.x !== -1
+    ) {
+        snakeNextDirection = {
+            x: 1,
+            y: 0
+        };
+
+        event.preventDefault();
     }
 }
 
 function placeFood() {
     snakeFood = {
-        x: Math.floor(Math.random() * 26),
-        y: Math.floor(Math.random() * 19)
+        x:
+            Math.floor(
+                Math.random() * 26
+            ),
+
+        y:
+            Math.floor(
+                Math.random() * 19
+            )
     };
 }
 
 function snakeTick() {
-    const head = snake[0];
+    if (!snake.length) {
+        return;
+    }
 
-    snakeDirection = snakeNextDirection;
+    const head =
+        snake[0];
+
+    snakeDirection =
+        snakeNextDirection;
 
     const next = {
-        x: head.x + snakeDirection.x,
-        y: head.y + snakeDirection.y
+        x:
+            head.x +
+            snakeDirection.x,
+
+        y:
+            head.y +
+            snakeDirection.y
     };
 
     if (
@@ -955,17 +1625,32 @@ function snakeTick() {
         next.y < 0 ||
         next.x >= 26 ||
         next.y >= 19 ||
-        snake.some(part => part.x === next.x && part.y === next.y)
+        snake.some(
+            part =>
+                part.x === next.x &&
+                part.y === next.y
+        )
     ) {
-        clearInterval(snakeTimer);
+        clearInterval(
+            snakeTimer
+        );
+
         return;
     }
 
     snake.unshift(next);
 
-    if (next.x === snakeFood.x && next.y === snakeFood.y) {
+    if (
+        next.x === snakeFood.x &&
+        next.y === snakeFood.y
+    ) {
         snakeScore++;
-        text("snakeScore", String(snakeScore));
+
+        text(
+            "snakeScore",
+            String(snakeScore)
+        );
+
         placeFood();
     } else {
         snake.pop();
@@ -975,18 +1660,41 @@ function snakeTick() {
 }
 
 function drawSnake() {
-    const canvas = $("snakeCanvas");
-    if (!canvas) return;
+    const canvas =
+        $("snakeCanvas");
 
-    const context = canvas.getContext("2d");
+    if (!canvas) {
+        return;
+    }
+
+    const context =
+        canvas.getContext("2d");
+
+    if (!context) {
+        return;
+    }
+
     const size = 15;
 
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
 
-    context.fillStyle = "#111827";
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle =
+        "#111827";
 
-    context.fillStyle = "#6c5ce7";
+    context.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    context.fillStyle =
+        "#6c5ce7";
 
     snake.forEach(part => {
         context.fillRect(
@@ -997,7 +1705,8 @@ function drawSnake() {
         );
     });
 
-    context.fillStyle = "#ff4f81";
+    context.fillStyle =
+        "#ff4f81";
 
     context.fillRect(
         snakeFood.x * size,
@@ -1007,111 +1716,274 @@ function drawSnake() {
     );
 }
 
+
 /* =========================================================
    BROWSER
-   ========================================================= */
+========================================================= */
 
 function setupBrowser() {
-    $("browserGo")?.addEventListener("click", navigateBrowser);
-    $("browserBack")?.addEventListener("click", () => browserHistoryMove(-1));
-    $("browserForward")?.addEventListener("click", () => browserHistoryMove(1));
-    $("browserReload")?.addEventListener("click", reloadBrowser);
-    $("browserHome")?.addEventListener("click", browserHome);
-    $("openExternalButton")?.addEventListener("click", openExternal);
-    $("blockedExternalButton")?.addEventListener("click", openExternal);
-    $("browserFavorite")?.addEventListener("click", favoriteBrowser);
-    $("newBrowserTab")?.addEventListener("click", browserHome);
-    $("browserHistoryButton")?.addEventListener("click", showHistory);
-    $("closeHistory")?.addEventListener("click", () => {
-        hide($("browserHistoryPanel"));
-    });
+    $("browserGo")?.addEventListener(
+        "click",
+        navigateBrowser
+    );
 
-    $("browserAddress")?.addEventListener("keydown", event => {
-        if (event.key === "Enter") navigateBrowser();
-    });
+    $("browserBack")?.addEventListener(
+        "click",
+        () => browserHistoryMove(-1)
+    );
 
-    document.querySelectorAll("[data-url]").forEach(button => {
-        button.addEventListener("click", () => {
-            navigateTo(button.dataset.url);
-        });
+    $("browserForward")?.addEventListener(
+        "click",
+        () => browserHistoryMove(1)
+    );
+
+    $("browserReload")?.addEventListener(
+        "click",
+        reloadBrowser
+    );
+
+    $("browserHome")?.addEventListener(
+        "click",
+        browserHome
+    );
+
+    $("openExternalButton")?.addEventListener(
+        "click",
+        openExternal
+    );
+
+    $("blockedExternalButton")?.addEventListener(
+        "click",
+        openExternal
+    );
+
+    $("browserFavorite")?.addEventListener(
+        "click",
+        favoriteBrowser
+    );
+
+    $("newBrowserTab")?.addEventListener(
+        "click",
+        browserHome
+    );
+
+    $("browserHistoryButton")?.addEventListener(
+        "click",
+        showHistory
+    );
+
+    $("closeHistory")?.addEventListener(
+        "click",
+        () => {
+            hide(
+                $("browserHistoryPanel")
+            );
+        }
+    );
+
+    $("browserAddress")?.addEventListener(
+        "keydown",
+        event => {
+            if (event.key === "Enter") {
+                navigateBrowser();
+            }
+        }
+    );
+
+    document.querySelectorAll(
+        "[data-url]"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+                navigateTo(
+                    button.dataset.url
+                );
+            }
+        );
+
     });
 
     browserHome();
 }
 
 function normalizeUrl(value) {
-    const input = value.trim();
+    const input =
+        String(value || "")
+            .trim();
 
-    if (!input) return "";
+    if (!input) {
+        return "";
+    }
 
-    if (/^https?:\/\//i.test(input)) {
+    if (
+        /^https?:\/\//i.test(
+            input
+        )
+    ) {
         return input;
     }
 
-    if (input.includes(".") && !input.includes(" ")) {
+    if (
+        input.includes(".") &&
+        !input.includes(" ")
+    ) {
         return "https://" + input;
     }
 
-    return "https://www.google.com/search?q=" +
-        encodeURIComponent(input);
+    return (
+        "https://www.google.com/search?q=" +
+        encodeURIComponent(input)
+    );
 }
 
 function navigateBrowser() {
-    navigateTo($("browserAddress")?.value || "");
+    navigateTo(
+        $("browserAddress")?.value ||
+        ""
+    );
 }
 
 function navigateTo(value) {
-    const url = normalizeUrl(value);
+    const url =
+        normalizeUrl(value);
 
-    if (!url) return;
+    if (!url) {
+        return;
+    }
 
-    browserCurrentUrl = url;
+    browserCurrentUrl =
+        url;
 
     if ($("browserAddress")) {
-        $("browserAddress").value = url;
+        $("browserAddress").value =
+            url;
     }
+
+    addBrowserHistory(url);
 
     hide($("browserHomePage"));
     hide($("browserBlocked"));
+
     show($("browserFrame"));
 
-    const frame = $("browserFrame");
+    const frame =
+        $("browserFrame");
 
     if (frame) {
         frame.src = url;
     }
+
+    text(
+        "browserTabTitle",
+        url
+    );
 }
 
 function browserHome() {
     browserCurrentUrl = "";
 
     if ($("browserAddress")) {
-        $("browserAddress").value = "";
+        $("browserAddress").value =
+            "";
     }
 
     hide($("browserFrame"));
     hide($("browserBlocked"));
+
     show($("browserHomePage"));
+
+    text(
+        "browserTabTitle",
+        "NEXUS Browser"
+    );
 }
 
 function reloadBrowser() {
-    const frame = $("browserFrame");
+    const frame =
+        $("browserFrame");
 
-    if (frame && browserCurrentUrl) {
-        frame.src = browserCurrentUrl;
+    if (
+        frame &&
+        browserCurrentUrl
+    ) {
+        frame.src =
+            browserCurrentUrl;
     }
 }
 
 function browserHistoryMove(direction) {
-    const frame = $("browserFrame");
+    const newIndex =
+        browserHistoryIndex +
+        direction;
 
-    try {
-        frame?.contentWindow?.history[
-            direction < 0 ? "back" : "forward"
-        ]();
-    } catch {
-        /* Some embedded websites block history access. */
+    if (
+        newIndex < 0 ||
+        newIndex >=
+            browserHistory.length
+    ) {
+        return;
     }
+
+    browserHistoryIndex =
+        newIndex;
+
+    const url =
+        browserHistory[
+            browserHistoryIndex
+        ];
+
+    browserCurrentUrl =
+        url;
+
+    if ($("browserAddress")) {
+        $("browserAddress").value =
+            url;
+    }
+
+    hide($("browserHomePage"));
+    hide($("browserBlocked"));
+
+    show($("browserFrame"));
+
+    const frame =
+        $("browserFrame");
+
+    if (frame) {
+        frame.src = url;
+    }
+
+    text(
+        "browserTabTitle",
+        url
+    );
+}
+
+function addBrowserHistory(url) {
+    if (
+        browserHistory[
+            browserHistory.length - 1
+        ] === url
+    ) {
+        return;
+    }
+
+    browserHistory =
+        browserHistory.slice(
+            0,
+            browserHistoryIndex + 1
+        );
+
+    browserHistory.push(url);
+
+    browserHistoryIndex =
+        browserHistory.length - 1;
+
+    writeJSON(
+        STORAGE.history,
+        browserHistory
+    );
 }
 
 function openExternal() {
@@ -1120,42 +1992,98 @@ function openExternal() {
         $("browserAddress")?.value ||
         "https://www.google.com";
 
-    window.open(normalizeUrl(url), "_blank", "noopener,noreferrer");
+    const normalized =
+        normalizeUrl(url);
+
+    if (!normalized) {
+        return;
+    }
+
+    window.open(
+        normalized,
+        "_blank",
+        "noopener,noreferrer"
+    );
 }
 
 function favoriteBrowser() {
     if (!browserCurrentUrl) {
-        alert("Open a website first.");
+        alert(
+            "Open a website first."
+        );
+
         return;
     }
 
-    const favorites = readJSON("nexus_v14_favorites", []);
+    const favorites =
+        readJSON(
+            STORAGE.favorites,
+            []
+        );
 
-    if (!favorites.includes(browserCurrentUrl)) {
-        favorites.push(browserCurrentUrl);
-        writeJSON("nexus_v14_favorites", favorites);
+    if (
+        !favorites.includes(
+            browserCurrentUrl
+        )
+    ) {
+        favorites.push(
+            browserCurrentUrl
+        );
+
+        writeJSON(
+            STORAGE.favorites,
+            favorites
+        );
     }
 
-    alert("Saved to favorites.");
+    alert(
+        "Saved to favorites."
+    );
 }
 
 function showHistory() {
-    const panel = $("browserHistoryPanel");
-    const list = $("historyList");
+    const panel =
+        $("browserHistoryPanel");
 
-    if (!panel || !list) return;
+    const list =
+        $("historyList");
+
+    if (!panel || !list) {
+        return;
+    }
 
     list.innerHTML = "";
 
-    const history = readJSON(STORAGE.history, []);
+    const history =
+        readJSON(
+            STORAGE.history,
+            []
+        );
 
     if (!history.length) {
-        list.textContent = "No history yet.";
+        list.textContent =
+            "No history yet.";
     } else {
         history.forEach(url => {
-            const button = document.createElement("button");
-            button.textContent = url;
-            button.addEventListener("click", () => navigateTo(url));
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+            button.type = "button";
+
+            button.textContent =
+                url;
+
+            button.addEventListener(
+                "click",
+                () => {
+                    navigateTo(url);
+                    hide(panel);
+                }
+            );
+
             list.appendChild(button);
         });
     }
@@ -1163,232 +2091,453 @@ function showHistory() {
     show(panel);
 }
 
+
 /* =========================================================
    SETTINGS
-   ========================================================= */
+========================================================= */
 
 function getSettings() {
-    return readJSON(STORAGE.settings, {
-        theme: "dark",
-        wallpaper: "nexus"
-    });
+    return readJSON(
+        STORAGE.settings,
+        {
+            theme: "dark",
+            wallpaper: "nexus"
+        }
+    );
 }
 
 function saveSettings(settings) {
-    writeJSON(STORAGE.settings, settings);
+    writeJSON(
+        STORAGE.settings,
+        settings
+    );
 }
 
 function setupSettings() {
-    $("saveUsername")?.addEventListener("click", saveUsername);
-    $("darkTheme")?.addEventListener("click", () => setTheme("dark"));
-    $("lightTheme")?.addEventListener("click", () => setTheme("light"));
-    $("changePassword")?.addEventListener("click", changePassword);
-    $("logoutButton")?.addEventListener("click", logout);
-    $("deleteAccount")?.addEventListener("click", deleteAccount);
-    $("startLogout")?.addEventListener("click", logout);
+    $("saveUsername")?.addEventListener(
+        "click",
+        saveUsername
+    );
 
-    document.querySelectorAll("[data-wallpaper]").forEach(button => {
-        button.addEventListener("click", () => {
-            setWallpaper(button.dataset.wallpaper);
-        });
+    $("darkTheme")?.addEventListener(
+        "click",
+        () => setTheme("dark")
+    );
+
+    $("lightTheme")?.addEventListener(
+        "click",
+        () => setTheme("light")
+    );
+
+    $("changePassword")?.addEventListener(
+        "click",
+        changePassword
+    );
+
+    $("logoutButton")?.addEventListener(
+        "click",
+        logout
+    );
+
+    $("deleteAccount")?.addEventListener(
+        "click",
+        deleteAccount
+    );
+
+    $("startLogout")?.addEventListener(
+        "click",
+        logout
+    );
+
+    document.querySelectorAll(
+        "[data-wallpaper]"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+                setWallpaper(
+                    button.dataset.wallpaper
+                );
+            }
+        );
+
     });
 }
 
 function applySettings() {
-    const settings = getSettings();
+    const settings =
+        getSettings();
 
-    setTheme(settings.theme || "dark", false);
-    setWallpaper(settings.wallpaper || "nexus", false);
+    setTheme(
+        settings.theme || "dark",
+        false
+    );
 
-    const account = currentAccount();
+    setWallpaper(
+        settings.wallpaper || "nexus",
+        false
+    );
+
+    const account =
+        currentAccount();
 
     if (account) {
-        text("settingsUsername", account.username);
-        text("settingsEmail", account.email);
-        text("startUsername", account.username);
-        text("startEmail", account.email);
+        text(
+            "settingsUsername",
+            account.username
+        );
+
+        text(
+            "settingsEmail",
+            account.email
+        );
+
+        text(
+            "startUsername",
+            account.username
+        );
+
+        text(
+            "startEmail",
+            account.email
+        );
 
         if ($("settingsUsernameInput")) {
-            $("settingsUsernameInput").value = account.username;
+            $("settingsUsernameInput").value =
+                account.username;
         }
     }
 }
 
 function setTheme(theme, save = true) {
-    document.body.dataset.theme = theme;
-    document.documentElement.dataset.theme = theme;
+    document.body.dataset.theme =
+        theme;
+
+    document.documentElement.dataset.theme =
+        theme;
 
     if (save) {
-        const settings = getSettings();
-        settings.theme = theme;
+        const settings =
+            getSettings();
+
+        settings.theme =
+            theme;
+
         saveSettings(settings);
     }
 }
 
-function setWallpaper(wallpaper, save = true) {
-    const wallpaperElement = $("wallpaper");
+function setWallpaper(
+    wallpaper,
+    save = true
+) {
+    const wallpaperElement =
+        $("wallpaper");
 
     if (wallpaperElement) {
-        wallpaperElement.dataset.wallpaper = wallpaper;
+        wallpaperElement.dataset.wallpaper =
+            wallpaper;
     }
 
-    document.body.dataset.wallpaper = wallpaper;
+    document.body.dataset.wallpaper =
+        wallpaper;
 
     if (save) {
-        const settings = getSettings();
-        settings.wallpaper = wallpaper;
+        const settings =
+            getSettings();
+
+        settings.wallpaper =
+            wallpaper;
+
         saveSettings(settings);
     }
 }
 
 function saveUsername() {
-    const input = $("settingsUsernameInput");
-    const account = currentAccount();
+    const input =
+        $("settingsUsernameInput");
 
-    if (!input || !account) return;
+    const account =
+        currentAccount();
 
-    const username = input.value.trim();
+    if (!input || !account) {
+        return;
+    }
+
+    const username =
+        input.value.trim();
 
     if (!validUsername(username)) {
         alert(
             "Username must be 3–24 characters and may contain letters, numbers, spaces, or underscores."
         );
+
         return;
     }
 
-    const accounts = getAccounts();
+    const accounts =
+        getAccounts();
 
     if (
         accounts.some(
             item =>
-                item.username.toLowerCase() === username.toLowerCase() &&
-                item.username !== account.username
+                String(
+                    item.username
+                ).toLowerCase() ===
+                    username.toLowerCase() &&
+                item.username !==
+                    account.username
         )
     ) {
-        alert("That username is already taken.");
+        alert(
+            "That username is already taken."
+        );
+
         return;
     }
 
-    account.username = username;
-    saveAccounts(accounts);
-    setCurrentUsername(username);
-    updateUserLabels(username);
+    account.username =
+        username;
 
-    alert("Username saved.");
+    saveAccounts(accounts);
+
+    setCurrentUsername(
+        username
+    );
+
+    updateUserLabels(
+        username
+    );
+
+    alert(
+        "Username saved."
+    );
 }
 
 function changePassword() {
-    const account = currentAccount();
+    const account =
+        currentAccount();
 
-    if (!account) return;
-
-    const oldPassword = prompt("Enter your current password:");
-
-    if (oldPassword !== account.password) {
-        alert("Incorrect password.");
+    if (!account) {
         return;
     }
 
-    const newPassword = prompt("Enter your new password:");
+    const oldPassword =
+        prompt(
+            "Enter your current password:"
+        );
 
-    if (!newPassword || newPassword.length < 4) {
-        alert("Password must be at least 4 characters.");
+    if (
+        oldPassword !==
+        account.password
+    ) {
+        alert(
+            "Incorrect password."
+        );
+
         return;
     }
 
-    account.password = newPassword;
-    saveAccounts(getAccounts());
+    const newPassword =
+        prompt(
+            "Enter your new password:"
+        );
 
-    alert("Password changed successfully.");
+    if (
+        !newPassword ||
+        newPassword.length < 4
+    ) {
+        alert(
+            "Password must be at least 4 characters."
+        );
+
+        return;
+    }
+
+    account.password =
+        newPassword;
+
+    saveAccounts(
+        getAccounts()
+    );
+
+    alert(
+        "Password changed successfully."
+    );
 }
 
 function logout() {
+    console.log(
+        "NEXUS: Logging out..."
+    );
+
     setCurrentUsername("");
+
     closeAllWindows();
+
     hide($("desktop"));
+
     showAuth();
+
+    console.log(
+        "NEXUS: Logged out."
+    );
 }
 
 function deleteAccount() {
-    const username = currentUsername();
+    const username =
+        currentUsername();
 
-    if (!username) return;
+    if (!username) {
+        return;
+    }
 
-    if (prompt("Type DELETE to remove your account:") !== "DELETE") {
+    const confirmation =
+        prompt(
+            "Type DELETE to remove your account:"
+        );
+
+    if (
+        confirmation !==
+        "DELETE"
+    ) {
         return;
     }
 
     saveAccounts(
         getAccounts().filter(
-            account => account.username !== username
+            account =>
+                String(
+                    account.username
+                ).toLowerCase() !==
+                username.toLowerCase()
         )
     );
 
     logout();
 }
 
+
 /* =========================================================
-   START MENU AND CLOCK
-   ========================================================= */
+   START MENU
+========================================================= */
 
 function setupStartMenu() {
-    $("startButton")?.addEventListener("click", event => {
-        event.stopPropagation();
-        toggleStartMenu();
-    });
+    $("startButton")?.addEventListener(
+        "click",
+        event => {
+            event.preventDefault();
+            event.stopPropagation();
 
-    document.addEventListener("click", event => {
-        const menu = $("startMenu");
-        const button = $("startButton");
-
-        if (
-            menu &&
-            !menu.contains(event.target) &&
-            event.target !== button
-        ) {
-            hide(menu);
+            toggleStartMenu();
         }
-    });
+    );
+
+    document.addEventListener(
+        "click",
+        event => {
+
+            const menu =
+                $("startMenu");
+
+            const button =
+                $("startButton");
+
+            if (
+                menu &&
+                !menu.contains(
+                    event.target
+                ) &&
+                event.target !== button
+            ) {
+                hide(menu);
+            }
+
+        }
+    );
 }
 
 function toggleStartMenu() {
-    const menu = $("startMenu");
+    const menu =
+        $("startMenu");
 
-    if (!menu) return;
+    if (!menu) {
+        return;
+    }
 
-    menu.classList.toggle("hidden");
+    menu.classList.toggle(
+        "hidden"
+    );
 }
+
+
+/* =========================================================
+   CLOCK
+========================================================= */
 
 function setupClock() {
     updateClock();
-    setInterval(updateClock, 1000);
+
+    setInterval(
+        updateClock,
+        1000
+    );
 }
 
 function updateClock() {
-    const now = new Date();
+    const now =
+        new Date();
 
-    const time = now.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
+    const time =
+        now.toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
 
-    const date = now.toLocaleDateString([], {
-        weekday: "short",
-        month: "short",
-        day: "numeric"
-    });
+    const date =
+        now.toLocaleDateString(
+            [],
+            {
+                weekday: "short",
+                month: "short",
+                day: "numeric"
+            }
+        );
 
-    text("taskbarClock", time);
-    text("bigClock", time);
-    text("bigDate", date);
+    text(
+        "taskbarClock",
+        time
+    );
+
+    text(
+        "bigClock",
+        time
+    );
+
+    text(
+        "bigDate",
+        date
+    );
 }
 
-/* =========================================================
-   START
-   ========================================================= */
 
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", startBoot);
+/* =========================================================
+   START NEXUS
+========================================================= */
+
+if (
+    document.readyState ===
+    "loading"
+) {
+    document.addEventListener(
+        "DOMContentLoaded",
+        startBoot
+    );
 } else {
     startBoot();
 }
+```
