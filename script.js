@@ -349,18 +349,27 @@ function updateUserLabels(username) {
    ========================================================= */
 
 function setupDesktop() {
-    document.querySelectorAll("[data-open]").forEach(button => {
-        button.addEventListener("click", event => {
-            event.preventDefault();
+    document.addEventListener("click", event => {
+        const button = event.target.closest(
+            "[data-open], [data-app], [data-window]"
+        );
 
-            const windowId = button.getAttribute("data-open");
+        if (!button) return;
 
-            if (windowId) {
-                openWindow(windowId);
-            }
+        event.preventDefault();
 
-            hide($("startMenu"));
-        });
+        const windowId =
+            button.getAttribute("data-open") ||
+            button.getAttribute("data-app") ||
+            button.getAttribute("data-window");
+
+        if (!windowId) return;
+
+        console.log("NEXUS opening:", windowId);
+
+        openWindow(windowId);
+
+        hide($("startMenu"));
     });
 }
 
