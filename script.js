@@ -1,6 +1,3 @@
-```javascript
-console.log("🔥 NEXUS SCRIPT LOADED 🔥");
-
 "use strict";
 
 /* =========================================================
