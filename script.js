@@ -1,9 +1,8 @@
 "use strict";
 
 /* =========================================================
-   NEXUS v1.4 — COMPLETE CORRECTED SCRIPT
-   Matches the supplied index.html
-   ========================================================= */
+   NEXUS v1.4 — FIXED COMPLETE SCRIPT
+========================================================= */
 
 const $ = id => document.getElementById(id);
 
@@ -18,7 +17,6 @@ const STORAGE = {
 };
 
 let selectedFile = null;
-
 let highestZ = 20;
 
 let catchTimer = null;
@@ -53,13 +51,11 @@ let browserHistoryIndex = -1;
 
 function show(element) {
     if (!element) return;
-
     element.classList.remove("hidden");
 }
 
 function hide(element) {
     if (!element) return;
-
     element.classList.add("hidden");
 }
 
@@ -82,16 +78,23 @@ function readJSON(key, fallback) {
         const parsed = JSON.parse(value);
 
         return parsed ?? fallback;
-    } catch {
+    } catch (error) {
+        console.error("NEXUS JSON error:", error);
         return fallback;
     }
 }
 
 function writeJSON(key, value) {
     try {
-        localStorage.setItem(key, JSON.stringify(value));
+        localStorage.setItem(
+            key,
+            JSON.stringify(value)
+        );
     } catch (error) {
-        console.error("NEXUS storage error:", error);
+        console.error(
+            "NEXUS storage error:",
+            error
+        );
     }
 }
 
@@ -101,27 +104,43 @@ function writeJSON(key, value) {
 ========================================================= */
 
 function getAccounts() {
-    return readJSON(STORAGE.accounts, []);
+    return readJSON(
+        STORAGE.accounts,
+        []
+    );
 }
 
 function saveAccounts(accounts) {
-    writeJSON(STORAGE.accounts, accounts);
+    writeJSON(
+        STORAGE.accounts,
+        accounts
+    );
 }
 
 function currentUsername() {
-    return localStorage.getItem(STORAGE.currentUser) || "";
+    return (
+        localStorage.getItem(
+            STORAGE.currentUser
+        ) || ""
+    );
 }
 
 function setCurrentUsername(username) {
     if (username) {
-        localStorage.setItem(STORAGE.currentUser, username);
+        localStorage.setItem(
+            STORAGE.currentUser,
+            username
+        );
     } else {
-        localStorage.removeItem(STORAGE.currentUser);
+        localStorage.removeItem(
+            STORAGE.currentUser
+        );
     }
 }
 
 function currentAccount() {
-    const username = currentUsername();
+    const username =
+        currentUsername();
 
     if (!username) {
         return null;
@@ -135,121 +154,159 @@ function currentAccount() {
 }
 
 function validUsername(username) {
-    return /^[A-Za-z0-9_ ]{3,24}$/.test(username);
+    return /^[A-Za-z0-9_ ]{3,24}$/.test(
+        username
+    );
 }
 
 function validEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        email
+    );
 }
 
 function authMessage(message) {
-    let element = $("authMessage");
+    let element =
+        $("authMessage");
 
     if (!element) {
-        element = document.createElement("p");
+        element =
+            document.createElement("p");
 
-        element.id = "authMessage";
-        element.className = "auth-message";
+        element.id =
+            "authMessage";
 
-        const card = document.querySelector(".auth-card");
+        element.className =
+            "auth-message";
+
+        const card =
+            document.querySelector(
+                ".auth-card"
+            );
 
         if (card) {
             card.prepend(element);
         }
     }
 
-    element.textContent = message;
+    element.textContent =
+        message;
 }
 
 
 /* =========================================================
-   BOOT SCREEN
+   BOOT
 ========================================================= */
 
-```javascript
 function startBoot() {
-    const bootScreen = $("bootScreen");
-    const bootText = $("bootText");
-    const bootProgress = $("bootProgress");
+    console.log(
+        "🚀 NEXUS BOOT STARTED"
+    );
 
-    console.log("🚀 NEXUS BOOT STARTED");
+    const bootScreen =
+        $("bootScreen");
 
-    // If the boot screen doesn't exist, start NEXUS immediately.
+    const bootText =
+        $("bootText");
+
+    const bootProgress =
+        $("bootProgress");
+
+    /*
+       If the HTML doesn't contain a boot screen,
+       start NEXUS directly.
+    */
     if (!bootScreen) {
-        console.log("No boot screen found. Starting NEXUS...");
-        initializeNexus();
+        console.log(
+            "No boot screen found."
+        );
+
+        safeInitialize();
+
         return;
     }
 
     let progress = 0;
 
-    // Update the boot screen immediately.
     if (bootText) {
-        bootText.textContent = "Starting NEXUS...";
+        bootText.textContent =
+            "Starting NEXUS...";
     }
 
     if (bootProgress) {
-        bootProgress.style.width = "0%";
+        bootProgress.style.width =
+            "0%";
     }
 
-    const timer = setInterval(() => {
-        progress += 20;
+    const timer =
+        setInterval(() => {
+            progress += 20;
 
-        if (bootProgress) {
-            bootProgress.style.width = `${progress}%`;
-        }
-
-        if (progress < 100) {
-            if (bootText) {
-                bootText.textContent =
-                    `Starting NEXUS... ${progress}%`;
+            if (bootProgress) {
+                bootProgress.style.width =
+                    `${progress}%`;
             }
 
-            return;
-        }
-
-        clearInterval(timer);
-
-        if (bootText) {
-            bootText.textContent =
-                "NEXUS Ready.";
-        }
-
-        if (bootProgress) {
-            bootProgress.style.width = "100%";
-        }
-
-        // Give the "NEXUS Ready" message a moment to appear.
-        setTimeout(() => {
-            console.log("🟢 Starting NEXUS interface...");
-
-            hide(bootScreen);
-
-            try {
-                initializeNexus();
-                console.log("✅ NEXUS STARTED SUCCESSFULLY");
-            } catch (error) {
-                console.error(
-                    "❌ NEXUS STARTUP ERROR:",
-                    error
-                );
-
-                // Don't leave the user permanently stuck
-                // on the boot screen.
-                show($("authScreen"));
-                hide($("desktop"));
-
+            if (progress < 100) {
                 if (bootText) {
                     bootText.textContent =
-                        "NEXUS startup error. Check the browser console.";
+                        `Starting NEXUS... ${progress}%`;
                 }
+
+                return;
             }
-        }, 300);
 
-    }, 100);
+            clearInterval(timer);
+
+            if (bootText) {
+                bootText.textContent =
+                    "NEXUS Ready.";
+            }
+
+            if (bootProgress) {
+                bootProgress.style.width =
+                    "100%";
+            }
+
+            setTimeout(() => {
+                hide(bootScreen);
+
+                safeInitialize();
+            }, 300);
+
+        }, 100);
 }
-```
 
+function safeInitialize() {
+    try {
+        initializeNexus();
+
+        console.log(
+            "✅ NEXUS STARTED SUCCESSFULLY"
+        );
+    } catch (error) {
+        console.error(
+            "❌ NEXUS STARTUP ERROR:",
+            error
+        );
+
+        /*
+           Never leave the user trapped on
+           the loading screen.
+        */
+
+        hide($("bootScreen"));
+
+        show($("authScreen"));
+
+        hide($("desktop"));
+
+        if ($("bootText")) {
+            $("bootText").textContent =
+                "NEXUS startup error. Open F12 → Console.";
+        }
+    }
+}
 
 
 /* =========================================================
@@ -257,7 +314,9 @@ function startBoot() {
 ========================================================= */
 
 function initializeNexus() {
-    console.log("NEXUS initializing...");
+    console.log(
+        "NEXUS initializing..."
+    );
 
     setupAuthentication();
     setupDesktop();
@@ -272,15 +331,21 @@ function initializeNexus() {
     setupStartMenu();
     setupClock();
 
-    const user = currentUsername();
+    const user =
+        currentUsername();
 
-    if (user && currentAccount()) {
+    if (
+        user &&
+        currentAccount()
+    ) {
         enterDesktop(user);
     } else {
         showAuth();
     }
 
-    console.log("✅ NEXUS initialized successfully");
+    console.log(
+        "✅ NEXUS initialized"
+    );
 }
 
 
@@ -289,27 +354,48 @@ function initializeNexus() {
 ========================================================= */
 
 function setupAuthentication() {
-    $("loginButton")?.addEventListener("click", login);
+    $("loginButton")?.addEventListener(
+        "click",
+        login
+    );
 
-    $("signupButton")?.addEventListener("click", signup);
+    $("signupButton")?.addEventListener(
+        "click",
+        signup
+    );
 
-    $("showSignup")?.addEventListener("click", showSignup);
+    $("showSignup")?.addEventListener(
+        "click",
+        showSignup
+    );
 
-    $("showLogin")?.addEventListener("click", showLogin);
+    $("showLogin")?.addEventListener(
+        "click",
+        showLogin
+    );
 
-    $("forgotPassword")?.addEventListener("click", forgotPassword);
+    $("forgotPassword")?.addEventListener(
+        "click",
+        forgotPassword
+    );
 
-    $("loginPassword")?.addEventListener("keydown", event => {
-        if (event.key === "Enter") {
-            login();
+    $("loginPassword")?.addEventListener(
+        "keydown",
+        event => {
+            if (event.key === "Enter") {
+                login();
+            }
         }
-    });
+    );
 
-    $("signupConfirm")?.addEventListener("keydown", event => {
-        if (event.key === "Enter") {
-            signup();
+    $("signupConfirm")?.addEventListener(
+        "keydown",
+        event => {
+            if (event.key === "Enter") {
+                signup();
+            }
         }
-    });
+    );
 }
 
 function showAuth() {
@@ -350,25 +436,43 @@ function login() {
     const password =
         $("loginPassword")?.value || "";
 
-    if (!email || !username || !password) {
-        authMessage("Please fill in all login fields.");
+    if (
+        !email ||
+        !username ||
+        !password
+    ) {
+        authMessage(
+            "Please fill in all login fields."
+        );
+
         return;
     }
 
-    const account = getAccounts().find(item =>
-        String(item.email).toLowerCase() === email &&
-        String(item.username).toLowerCase() === username.toLowerCase() &&
-        item.password === password
-    );
+    const account =
+        getAccounts().find(
+            item =>
+                String(item.email).toLowerCase() ===
+                    email &&
+                String(item.username).toLowerCase() ===
+                    username.toLowerCase() &&
+                item.password === password
+        );
 
     if (!account) {
-        authMessage("Incorrect email, username, or password.");
+        authMessage(
+            "Incorrect email, username, or password."
+        );
+
         return;
     }
 
-    setCurrentUsername(account.username);
+    setCurrentUsername(
+        account.username
+    );
 
-    enterDesktop(account.username);
+    enterDesktop(
+        account.username
+    );
 }
 
 function signup() {
@@ -387,13 +491,24 @@ function signup() {
     const confirm =
         $("signupConfirm")?.value || "";
 
-    if (!email || !username || !password || !confirm) {
-        authMessage("Please fill in every field.");
+    if (
+        !email ||
+        !username ||
+        !password ||
+        !confirm
+    ) {
+        authMessage(
+            "Please fill in every field."
+        );
+
         return;
     }
 
     if (!validEmail(email)) {
-        authMessage("Please enter a valid email address.");
+        authMessage(
+            "Please enter a valid email address."
+        );
+
         return;
     }
 
@@ -401,39 +516,58 @@ function signup() {
         authMessage(
             "Username must be 3–24 characters and may contain letters, numbers, spaces, or underscores."
         );
+
         return;
     }
 
     if (password.length < 4) {
-        authMessage("Password must be at least 4 characters.");
+        authMessage(
+            "Password must be at least 4 characters."
+        );
+
         return;
     }
 
     if (password !== confirm) {
-        authMessage("Passwords do not match.");
+        authMessage(
+            "Passwords do not match."
+        );
+
         return;
     }
 
-    const accounts = getAccounts();
+    const accounts =
+        getAccounts();
 
     if (
         accounts.some(
             account =>
-                String(account.username).toLowerCase() ===
+                String(
+                    account.username
+                ).toLowerCase() ===
                 username.toLowerCase()
         )
     ) {
-        authMessage("That username is already taken.");
+        authMessage(
+            "That username is already taken."
+        );
+
         return;
     }
 
     if (
         accounts.some(
             account =>
-                String(account.email).toLowerCase() === email
+                String(
+                    account.email
+                ).toLowerCase() ===
+                email
         )
     ) {
-        authMessage("That email is already registered.");
+        authMessage(
+            "That email is already registered."
+        );
+
         return;
     }
 
@@ -444,28 +578,43 @@ function signup() {
         createdAt: Date.now()
     });
 
-    saveAccounts(accounts);
+    saveAccounts(
+        accounts
+    );
 
-    setCurrentUsername(username);
+    setCurrentUsername(
+        username
+    );
 
-    enterDesktop(username);
+    enterDesktop(
+        username
+    );
 }
 
 function forgotPassword() {
-    const email = prompt("Enter your account email:");
+    const email =
+        prompt(
+            "Enter your account email:"
+        );
 
     if (!email) {
         return;
     }
 
-    const account = getAccounts().find(
-        item =>
-            String(item.email).toLowerCase() ===
-            email.trim().toLowerCase()
-    );
+    const account =
+        getAccounts().find(
+            item =>
+                String(
+                    item.email
+                ).toLowerCase() ===
+                email.trim().toLowerCase()
+        );
 
     if (!account) {
-        alert("No account was found with that email.");
+        alert(
+            "No account was found with that email."
+        );
+
         return;
     }
 
@@ -481,23 +630,34 @@ function enterDesktop(username) {
 
     updateUserLabels(username);
     applySettings();
+
+    closeAllWindows();
 }
 
 function updateUserLabels(username) {
-    const account = currentAccount();
+    const account =
+        currentAccount();
 
-    text("settingsUsername", username);
+    text(
+        "settingsUsername",
+        username
+    );
 
     text(
         "settingsEmail",
-        account?.email || "Local NEXUS account"
+        account?.email ||
+        "Local NEXUS account"
     );
 
-    text("startUsername", username);
+    text(
+        "startUsername",
+        username
+    );
 
     text(
         "startEmail",
-        account?.email || "Local account"
+        account?.email ||
+        "Local account"
     );
 }
 
@@ -508,31 +668,36 @@ function updateUserLabels(username) {
 
 function setupDesktop() {
     /*
-       IMPORTANT:
-       The HTML uses data-open on desktop and Start Menu
-       buttons. This listener handles those buttons directly.
+       Handles every button with data-open.
     */
 
-    document.querySelectorAll("[data-open]").forEach(button => {
-        button.addEventListener("click", event => {
-            event.preventDefault();
-            event.stopPropagation();
+    document
+        .querySelectorAll("[data-open]")
+        .forEach(button => {
 
-            const windowId =
-                button.getAttribute("data-open");
+            button.addEventListener(
+                "click",
+                event => {
+                    event.preventDefault();
+                    event.stopPropagation();
 
-            if (windowId) {
-                console.log(
-                    "NEXUS opening:",
-                    windowId
-                );
+                    const windowId =
+                        button.getAttribute(
+                            "data-open"
+                        );
 
-                openWindow(windowId);
-            }
+                    if (windowId) {
+                        openWindow(
+                            windowId
+                        );
+                    }
 
-            hide($("startMenu"));
+                    hide(
+                        $("startMenu")
+                    );
+                }
+            );
         });
-    });
 }
 
 
@@ -541,81 +706,110 @@ function setupDesktop() {
 ========================================================= */
 
 function setupWindows() {
-    document.querySelectorAll(".window").forEach(windowElement => {
+    document
+        .querySelectorAll(".window")
+        .forEach(windowElement => {
 
-        const closeButton =
-            windowElement.querySelector(".close-button");
+            const closeButton =
+                windowElement.querySelector(
+                    ".close-button"
+                );
 
-        const minimizeButton =
-            windowElement.querySelector(".minimize-button");
+            const minimizeButton =
+                windowElement.querySelector(
+                    ".minimize-button"
+                );
 
-        closeButton?.addEventListener("click", event => {
-            event.preventDefault();
-            event.stopPropagation();
+            closeButton?.addEventListener(
+                "click",
+                event => {
+                    event.preventDefault();
+                    event.stopPropagation();
 
-            hide(windowElement);
+                    hide(
+                        windowElement
+                    );
+                }
+            );
+
+            minimizeButton?.addEventListener(
+                "click",
+                event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    hide(
+                        windowElement
+                    );
+                }
+            );
+
+            windowElement.addEventListener(
+                "mousedown",
+                () => {
+                    highestZ++;
+
+                    windowElement.style.zIndex =
+                        highestZ;
+                }
+            );
         });
-
-        minimizeButton?.addEventListener("click", event => {
-            event.preventDefault();
-            event.stopPropagation();
-
-            hide(windowElement);
-        });
-
-        windowElement.addEventListener("mousedown", () => {
-            highestZ++;
-
-            windowElement.style.zIndex =
-                highestZ;
-        });
-    });
 }
-
-
-/*
-   MAIN WINDOW OPENER
-
-   This is intentionally strong:
-   - Checks that the window exists.
-   - Removes hidden.
-   - Forces display to flex.
-   - Brings it to the front.
-*/
 
 function openWindow(id) {
     const element = $(id);
 
     if (!element) {
         console.error(
-            "❌ NEXUS: Window not found:",
+            "NEXUS: Window not found:",
             id
         );
 
         return;
     }
 
-    console.log(
-        "✅ NEXUS window opened:",
-        id
+    /*
+       Remove the hidden class first.
+    */
+    element.classList.remove(
+        "hidden"
     );
 
-    element.classList.remove("hidden");
-
-    element.style.display = "flex";
+    /*
+       Force visibility so CSS cannot leave
+       the window hidden.
+    */
+    element.style.display =
+        "flex";
 
     highestZ++;
 
     element.style.zIndex =
         highestZ;
 
-    hide($("startMenu"));
+    hide(
+        $("startMenu")
+    );
+
+    console.log(
+        "NEXUS opened:",
+        id
+    );
 }
 
 function closeAllWindows() {
-    document.querySelectorAll(".window").forEach(windowElement => {
-        hide(windowElement);
-    });
+    document
+        .querySelectorAll(".window")
+        .forEach(windowElement => {
+            hide(windowElement);
+
+            /*
+               Clear the inline display so the
+               hidden class controls visibility.
+            */
+            windowElement.style.display =
+                "";
+        });
 }
 
 
@@ -624,63 +818,76 @@ function closeAllWindows() {
 ========================================================= */
 
 function setupNotepad() {
-    const editor = $("notepad");
+    const editor =
+        $("notepad");
 
     if (!editor) {
         return;
     }
 
     editor.value =
-        localStorage.getItem(STORAGE.notes) || "";
+        localStorage.getItem(
+            STORAGE.notes
+        ) || "";
 
     editor.addEventListener(
         "input",
         updateWordCount
     );
 
-    $("newNote")?.addEventListener("click", () => {
-        editor.value = "";
+    $("newNote")?.addEventListener(
+        "click",
+        () => {
+            editor.value = "";
 
-        updateWordCount();
+            updateWordCount();
 
-        text(
-            "noteStatus",
-            "New note"
-        );
-    });
+            text(
+                "noteStatus",
+                "New note"
+            );
+        }
+    );
 
-    $("saveNote")?.addEventListener("click", () => {
-        localStorage.setItem(
-            STORAGE.notes,
-            editor.value
-        );
+    $("saveNote")?.addEventListener(
+        "click",
+        () => {
+            localStorage.setItem(
+                STORAGE.notes,
+                editor.value
+            );
 
-        text(
-            "noteStatus",
-            "Saved ✓"
-        );
-    });
+            text(
+                "noteStatus",
+                "Saved ✓"
+            );
+        }
+    );
 
-    $("clearNote")?.addEventListener("click", () => {
-        editor.value = "";
+    $("clearNote")?.addEventListener(
+        "click",
+        () => {
+            editor.value = "";
 
-        localStorage.removeItem(
-            STORAGE.notes
-        );
+            localStorage.removeItem(
+                STORAGE.notes
+            );
 
-        updateWordCount();
+            updateWordCount();
 
-        text(
-            "noteStatus",
-            "Cleared"
-        );
-    });
+            text(
+                "noteStatus",
+                "Cleared"
+            );
+        }
+    );
 
     updateWordCount();
 }
 
 function updateWordCount() {
-    const editor = $("notepad");
+    const editor =
+        $("notepad");
 
     if (!editor) {
         return;
@@ -688,7 +895,10 @@ function updateWordCount() {
 
     const words =
         editor.value.trim()
-            ? editor.value.trim().split(/\s+/).length
+            ? editor.value
+                .trim()
+                .split(/\s+/)
+                .length
             : 0;
 
     text(
@@ -703,17 +913,21 @@ function updateWordCount() {
 ========================================================= */
 
 function setupCalculator() {
-    document.querySelectorAll("[data-calc]").forEach(button => {
+    document
+        .querySelectorAll("[data-calc]")
+        .forEach(button => {
 
-        button.addEventListener("click", event => {
-            event.preventDefault();
+            button.addEventListener(
+                "click",
+                event => {
+                    event.preventDefault();
 
-            calculatorInput(
-                button.dataset.calc
+                    calculatorInput(
+                        button.dataset.calc
+                    );
+                }
             );
         });
-
-    });
 }
 
 function calculatorInput(value) {
@@ -731,7 +945,10 @@ function calculatorInput(value) {
 
     if (value === "backspace") {
         display.value =
-            display.value.slice(0, -1);
+            display.value.slice(
+                0,
+                -1
+            );
 
         return;
     }
@@ -766,7 +983,8 @@ function calculatorInput(value) {
                     : "Error";
 
         } catch {
-            display.value = "Error";
+            display.value =
+                "Error";
         }
 
         return;
@@ -814,7 +1032,8 @@ function setupFiles() {
 }
 
 function renderFiles() {
-    const list = $("fileList");
+    const list =
+        $("fileList");
 
     if (!list) {
         return;
@@ -822,7 +1041,8 @@ function renderFiles() {
 
     list.innerHTML = "";
 
-    const files = getFiles();
+    const files =
+        getFiles();
 
     if (!files.length) {
         list.innerHTML =
@@ -833,12 +1053,15 @@ function renderFiles() {
 
     files.forEach(file => {
         const button =
-            document.createElement("button");
+            document.createElement(
+                "button"
+            );
 
         button.className =
             "file-item";
 
-        button.type = "button";
+        button.type =
+            "button";
 
         button.textContent =
             `📄 ${file.name}`;
@@ -861,7 +1084,9 @@ function renderFiles() {
             }
         );
 
-        list.appendChild(button);
+        list.appendChild(
+            button
+        );
     });
 }
 
@@ -886,11 +1111,15 @@ function saveFile() {
         $("fileContent")?.value || "";
 
     if (!name) {
-        alert("Enter a file name.");
+        alert(
+            "Enter a file name."
+        );
+
         return;
     }
 
-    const files = getFiles();
+    const files =
+        getFiles();
 
     const index =
         files.findIndex(
@@ -911,16 +1140,22 @@ function saveFile() {
         });
     }
 
-    selectedFile = name;
+    selectedFile =
+        name;
 
-    saveFiles(files);
+    saveFiles(
+        files
+    );
 
     renderFiles();
 }
 
 function deleteFile() {
     if (!selectedFile) {
-        alert("Select a file first.");
+        alert(
+            "Select a file first."
+        );
+
         return;
     }
 
@@ -933,7 +1168,6 @@ function deleteFile() {
     );
 
     newFile();
-
     renderFiles();
 }
 
@@ -985,7 +1219,8 @@ function setupPaint() {
                 );
             } catch {}
 
-            const p = point(event);
+            const p =
+                point(event);
 
             context.beginPath();
 
@@ -1065,7 +1300,9 @@ function setupPaint() {
         "click",
         () => {
             const link =
-                document.createElement("a");
+                document.createElement(
+                    "a"
+                );
 
             link.download =
                 "nexus-paint.png";
@@ -1086,34 +1323,31 @@ function setupPaint() {
 ========================================================= */
 
 function setupGames() {
+    document
+        .querySelectorAll("[data-game]")
+        .forEach(button => {
 
-    document.querySelectorAll(
-        "[data-game]"
-    ).forEach(button => {
+            button.addEventListener(
+                "click",
+                event => {
+                    event.preventDefault();
 
-        button.addEventListener(
-            "click",
-            event => {
-                event.preventDefault();
+                    startGame(
+                        button.dataset.game
+                    );
+                }
+            );
+        });
 
-                startGame(
-                    button.dataset.game
-                );
-            }
-        );
+    document
+        .querySelectorAll(".back-game")
+        .forEach(button => {
 
-    });
-
-    document.querySelectorAll(
-        ".back-game"
-    ).forEach(button => {
-
-        button.addEventListener(
-            "click",
-            showGameMenu
-        );
-
-    });
+            button.addEventListener(
+                "click",
+                showGameMenu
+            );
+        });
 
     $("startCatch")?.addEventListener(
         "click",
@@ -1152,10 +1386,10 @@ function setupGames() {
 }
 
 function startGame(game) {
-    currentGame = game;
+    currentGame =
+        game;
 
     hide($("gameMenu"));
-
     hide($("catchGameScreen"));
     hide($("clickGameScreen"));
     hide($("memoryGameScreen"));
@@ -1201,7 +1435,9 @@ function showGameMenu() {
 ========================================================= */
 
 function startCatch() {
-    clearInterval(catchTimer);
+    clearInterval(
+        catchTimer
+    );
 
     let score = 0;
 
@@ -1245,18 +1481,19 @@ function startCatch() {
             `${Math.random() * maxY}px`;
     }
 
-    target.onclick = event => {
-        event.preventDefault();
+    target.onclick =
+        event => {
+            event.preventDefault();
 
-        score++;
+            score++;
 
-        text(
-            "catchScore",
-            String(score)
-        );
+            text(
+                "catchScore",
+                String(score)
+            );
 
-        move();
-    };
+            move();
+        };
 
     move();
 
@@ -1269,8 +1506,7 @@ function startCatch() {
 
 function catchTarget() {
     /*
-       The actual Catch action is
-       assigned by startCatch().
+       startCatch handles the actual click.
     */
 }
 
@@ -1280,7 +1516,9 @@ function catchTarget() {
 ========================================================= */
 
 function startClickRush() {
-    clearInterval(clickTimer);
+    clearInterval(
+        clickTimer
+    );
 
     clickScore = 0;
     clickTime = 10;
@@ -1300,7 +1538,8 @@ function startClickRush() {
         $("clickButton");
 
     if (button) {
-        button.disabled = false;
+        button.disabled =
+            false;
     }
 }
 
@@ -1309,32 +1548,39 @@ function clickRushAction() {
         clickRunning = true;
 
         clickTimer =
-            setInterval(() => {
+            setInterval(
+                () => {
+                    clickTime--;
 
-                clickTime--;
-
-                text(
-                    "clickTime",
-                    String(clickTime)
-                );
-
-                if (clickTime <= 0) {
-                    clearInterval(
-                        clickTimer
+                    text(
+                        "clickTime",
+                        String(
+                            clickTime
+                        )
                     );
 
-                    clickRunning = false;
+                    if (
+                        clickTime <=
+                        0
+                    ) {
+                        clearInterval(
+                            clickTimer
+                        );
 
-                    const button =
-                        $("clickButton");
+                        clickRunning =
+                            false;
 
-                    if (button) {
-                        button.disabled =
-                            true;
+                        const button =
+                            $("clickButton");
+
+                        if (button) {
+                            button.disabled =
+                                true;
+                        }
                     }
-                }
-
-            }, 1000);
+                },
+                1000
+            );
     }
 
     if (clickTime <= 0) {
@@ -1345,13 +1591,15 @@ function clickRushAction() {
 
     text(
         "clickScore",
-        String(clickScore)
+        String(
+            clickScore
+        )
     );
 }
 
 
 /* =========================================================
-   MEMORY MATCH
+   MEMORY
 ========================================================= */
 
 function startMemory() {
@@ -1363,11 +1611,8 @@ function startMemory() {
     }
 
     memoryCards = [];
-
     memoryFirst = null;
-
     memoryMoves = 0;
-
     memoryLocked = false;
 
     text(
@@ -1395,14 +1640,12 @@ function startMemory() {
         )
         .forEach(
             (symbol, index) => {
-
                 memoryCards.push({
                     id: index,
                     symbol,
                     flipped: false,
                     matched: false
                 });
-
             }
         );
 
@@ -1419,31 +1662,38 @@ function renderMemory() {
 
     board.innerHTML = "";
 
-    memoryCards.forEach(card => {
+    memoryCards.forEach(
+        card => {
+            const button =
+                document.createElement(
+                    "button"
+                );
 
-        const button =
-            document.createElement(
-                "button"
+            button.type =
+                "button";
+
+            button.className =
+                "memory-card";
+
+            button.textContent =
+                card.flipped ||
+                card.matched
+                    ? card.symbol
+                    : "?";
+
+            button.addEventListener(
+                "click",
+                () =>
+                    flipMemory(
+                        card.id
+                    )
             );
 
-        button.type = "button";
-
-        button.className =
-            "memory-card";
-
-        button.textContent =
-            card.flipped ||
-            card.matched
-                ? card.symbol
-                : "?";
-
-        button.addEventListener(
-            "click",
-            () => flipMemory(card.id)
-        );
-
-        board.appendChild(button);
-    });
+            board.appendChild(
+                button
+            );
+        }
+    );
 }
 
 function flipMemory(id) {
@@ -1465,12 +1715,15 @@ function flipMemory(id) {
         return;
     }
 
-    card.flipped = true;
+    card.flipped =
+        true;
 
     renderMemory();
 
     if (!memoryFirst) {
-        memoryFirst = card;
+        memoryFirst =
+            card;
+
         return;
     }
 
@@ -1478,7 +1731,9 @@ function flipMemory(id) {
 
     text(
         "memoryMoves",
-        String(memoryMoves)
+        String(
+            memoryMoves
+        )
     );
 
     if (
@@ -1491,35 +1746,38 @@ function flipMemory(id) {
         card.matched =
             true;
 
-        memoryFirst = null;
+        memoryFirst =
+            null;
 
         renderMemory();
 
         return;
     }
 
-    memoryLocked = true;
+    memoryLocked =
+        true;
 
     const firstCard =
         memoryFirst;
 
-    setTimeout(() => {
+    setTimeout(
+        () => {
+            firstCard.flipped =
+                false;
 
-        firstCard.flipped =
-            false;
+            card.flipped =
+                false;
 
-        card.flipped =
-            false;
+            memoryFirst =
+                null;
 
-        memoryFirst =
-            null;
+            memoryLocked =
+                false;
 
-        memoryLocked =
-            false;
-
-        renderMemory();
-
-    }, 700);
+            renderMemory();
+        },
+        700
+    );
 }
 
 
@@ -1574,7 +1832,10 @@ function startSnake() {
 }
 
 function snakeKeys(event) {
-    if (currentGame !== "snake") {
+    if (
+        currentGame !==
+        "snake"
+    ) {
         return;
     }
 
@@ -1683,7 +1944,9 @@ function snakeTick() {
         return;
     }
 
-    snake.unshift(next);
+    snake.unshift(
+        next
+    );
 
     if (
         next.x === snakeFood.x &&
@@ -1693,7 +1956,9 @@ function snakeTick() {
 
         text(
             "snakeScore",
-            String(snakeScore)
+            String(
+                snakeScore
+            )
         );
 
         placeFood();
@@ -1713,7 +1978,9 @@ function drawSnake() {
     }
 
     const context =
-        canvas.getContext("2d");
+        canvas.getContext(
+            "2d"
+        );
 
     if (!context) {
         return;
@@ -1741,14 +2008,16 @@ function drawSnake() {
     context.fillStyle =
         "#6c5ce7";
 
-    snake.forEach(part => {
-        context.fillRect(
-            part.x * size,
-            part.y * size,
-            size - 1,
-            size - 1
-        );
-    });
+    snake.forEach(
+        part => {
+            context.fillRect(
+                part.x * size,
+                part.y * size,
+                size - 1,
+                size - 1
+            );
+        }
+    );
 
     context.fillStyle =
         "#ff4f81";
@@ -1767,6 +2036,15 @@ function drawSnake() {
 ========================================================= */
 
 function setupBrowser() {
+    browserHistory =
+        readJSON(
+            STORAGE.history,
+            []
+        );
+
+    browserHistoryIndex =
+        browserHistory.length - 1;
+
     $("browserGo")?.addEventListener(
         "click",
         navigateBrowser
@@ -1774,12 +2052,14 @@ function setupBrowser() {
 
     $("browserBack")?.addEventListener(
         "click",
-        () => browserHistoryMove(-1)
+        () =>
+            browserHistoryMove(-1)
     );
 
     $("browserForward")?.addEventListener(
         "click",
-        () => browserHistoryMove(1)
+        () =>
+            browserHistoryMove(1)
     );
 
     $("browserReload")?.addEventListener(
@@ -1829,26 +2109,27 @@ function setupBrowser() {
     $("browserAddress")?.addEventListener(
         "keydown",
         event => {
-            if (event.key === "Enter") {
+            if (
+                event.key ===
+                "Enter"
+            ) {
                 navigateBrowser();
             }
         }
     );
 
-    document.querySelectorAll(
-        "[data-url]"
-    ).forEach(button => {
-
-        button.addEventListener(
-            "click",
-            () => {
-                navigateTo(
-                    button.dataset.url
-                );
-            }
-        );
-
-    });
+    document
+        .querySelectorAll("[data-url]")
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    navigateTo(
+                        button.dataset.url
+                    );
+                }
+            );
+        });
 
     browserHome();
 }
@@ -1874,12 +2155,17 @@ function normalizeUrl(value) {
         input.includes(".") &&
         !input.includes(" ")
     ) {
-        return "https://" + input;
+        return (
+            "https://" +
+            input
+        );
     }
 
     return (
         "https://www.google.com/search?q=" +
-        encodeURIComponent(input)
+        encodeURIComponent(
+            input
+        )
     );
 }
 
@@ -1906,18 +2192,28 @@ function navigateTo(value) {
             url;
     }
 
-    addBrowserHistory(url);
+    addBrowserHistory(
+        url
+    );
 
-    hide($("browserHomePage"));
-    hide($("browserBlocked"));
+    hide(
+        $("browserHomePage")
+    );
 
-    show($("browserFrame"));
+    hide(
+        $("browserBlocked")
+    );
+
+    show(
+        $("browserFrame")
+    );
 
     const frame =
         $("browserFrame");
 
     if (frame) {
-        frame.src = url;
+        frame.src =
+            url;
     }
 
     text(
@@ -1927,17 +2223,25 @@ function navigateTo(value) {
 }
 
 function browserHome() {
-    browserCurrentUrl = "";
+    browserCurrentUrl =
+        "";
 
     if ($("browserAddress")) {
         $("browserAddress").value =
             "";
     }
 
-    hide($("browserFrame"));
-    hide($("browserBlocked"));
+    hide(
+        $("browserFrame")
+    );
 
-    show($("browserHomePage"));
+    hide(
+        $("browserBlocked")
+    );
+
+    show(
+        $("browserHomePage")
+    );
 
     text(
         "browserTabTitle",
@@ -1958,7 +2262,9 @@ function reloadBrowser() {
     }
 }
 
-function browserHistoryMove(direction) {
+function browserHistoryMove(
+    direction
+) {
     const newIndex =
         browserHistoryIndex +
         direction;
@@ -1987,16 +2293,24 @@ function browserHistoryMove(direction) {
             url;
     }
 
-    hide($("browserHomePage"));
-    hide($("browserBlocked"));
+    hide(
+        $("browserHomePage")
+    );
 
-    show($("browserFrame"));
+    hide(
+        $("browserBlocked")
+    );
+
+    show(
+        $("browserFrame")
+    );
 
     const frame =
         $("browserFrame");
 
     if (frame) {
-        frame.src = url;
+        frame.src =
+            url;
     }
 
     text(
@@ -2005,7 +2319,9 @@ function browserHistoryMove(direction) {
     );
 }
 
-function addBrowserHistory(url) {
+function addBrowserHistory(
+    url
+) {
     if (
         browserHistory[
             browserHistory.length - 1
@@ -2020,7 +2336,9 @@ function addBrowserHistory(url) {
             browserHistoryIndex + 1
         );
 
-    browserHistory.push(url);
+    browserHistory.push(
+        url
+    );
 
     browserHistoryIndex =
         browserHistory.length - 1;
@@ -2109,28 +2427,37 @@ function showHistory() {
         list.textContent =
             "No history yet.";
     } else {
-        history.forEach(url => {
+        history.forEach(
+            url => {
+                const button =
+                    document.createElement(
+                        "button"
+                    );
 
-            const button =
-                document.createElement(
-                    "button"
+                button.type =
+                    "button";
+
+                button.textContent =
+                    url;
+
+                button.addEventListener(
+                    "click",
+                    () => {
+                        navigateTo(
+                            url
+                        );
+
+                        hide(
+                            panel
+                        );
+                    }
                 );
 
-            button.type = "button";
-
-            button.textContent =
-                url;
-
-            button.addEventListener(
-                "click",
-                () => {
-                    navigateTo(url);
-                    hide(panel);
-                }
-            );
-
-            list.appendChild(button);
-        });
+                list.appendChild(
+                    button
+                );
+            }
+        );
     }
 
     show(panel);
@@ -2166,12 +2493,14 @@ function setupSettings() {
 
     $("darkTheme")?.addEventListener(
         "click",
-        () => setTheme("dark")
+        () =>
+            setTheme("dark")
     );
 
     $("lightTheme")?.addEventListener(
         "click",
-        () => setTheme("light")
+        () =>
+            setTheme("light")
     );
 
     $("changePassword")?.addEventListener(
@@ -2194,20 +2523,18 @@ function setupSettings() {
         logout
     );
 
-    document.querySelectorAll(
-        "[data-wallpaper]"
-    ).forEach(button => {
-
-        button.addEventListener(
-            "click",
-            () => {
-                setWallpaper(
-                    button.dataset.wallpaper
-                );
-            }
-        );
-
-    });
+    document
+        .querySelectorAll("[data-wallpaper]")
+        .forEach(button => {
+            button.addEventListener(
+                "click",
+                () => {
+                    setWallpaper(
+                        button.dataset.wallpaper
+                    );
+                }
+            );
+        });
 }
 
 function applySettings() {
@@ -2215,12 +2542,14 @@ function applySettings() {
         getSettings();
 
     setTheme(
-        settings.theme || "dark",
+        settings.theme ||
+        "dark",
         false
     );
 
     setWallpaper(
-        settings.wallpaper || "nexus",
+        settings.wallpaper ||
+        "nexus",
         false
     );
 
@@ -2248,14 +2577,19 @@ function applySettings() {
             account.email
         );
 
-        if ($("settingsUsernameInput")) {
+        if (
+            $("settingsUsernameInput")
+        ) {
             $("settingsUsernameInput").value =
                 account.username;
         }
     }
 }
 
-function setTheme(theme, save = true) {
+function setTheme(
+    theme,
+    save = true
+) {
     document.body.dataset.theme =
         theme;
 
@@ -2269,7 +2603,9 @@ function setTheme(theme, save = true) {
         settings.theme =
             theme;
 
-        saveSettings(settings);
+        saveSettings(
+            settings
+        );
     }
 }
 
@@ -2295,7 +2631,9 @@ function setWallpaper(
         settings.wallpaper =
             wallpaper;
 
-        saveSettings(settings);
+        saveSettings(
+            settings
+        );
     }
 }
 
@@ -2345,7 +2683,9 @@ function saveUsername() {
     account.username =
         username;
 
-    saveAccounts(accounts);
+    saveAccounts(
+        accounts
+    );
 
     setCurrentUsername(
         username
@@ -2413,21 +2753,15 @@ function changePassword() {
 }
 
 function logout() {
-    console.log(
-        "NEXUS: Logging out..."
-    );
-
     setCurrentUsername("");
 
     closeAllWindows();
 
-    hide($("desktop"));
+    hide(
+        $("desktop")
+    );
 
     showAuth();
-
-    console.log(
-        "NEXUS: Logged out."
-    );
 }
 
 function deleteAccount() {
@@ -2482,7 +2816,6 @@ function setupStartMenu() {
     document.addEventListener(
         "click",
         event => {
-
             const menu =
                 $("startMenu");
 
@@ -2498,7 +2831,6 @@ function setupStartMenu() {
             ) {
                 hide(menu);
             }
-
         }
     );
 }
@@ -2580,9 +2912,9 @@ if (
 ) {
     document.addEventListener(
         "DOMContentLoaded",
-        startBoot
+        startBoot,
+        { once: true }
     );
 } else {
     startBoot();
 }
-```
