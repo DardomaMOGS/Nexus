@@ -166,42 +166,90 @@ function authMessage(message) {
    BOOT SCREEN
 ========================================================= */
 
+```javascript
 function startBoot() {
     const bootScreen = $("bootScreen");
     const bootText = $("bootText");
     const bootProgress = $("bootProgress");
 
+    console.log("🚀 NEXUS BOOT STARTED");
+
+    // If the boot screen doesn't exist, start NEXUS immediately.
     if (!bootScreen) {
+        console.log("No boot screen found. Starting NEXUS...");
         initializeNexus();
         return;
     }
 
     let progress = 0;
 
+    // Update the boot screen immediately.
+    if (bootText) {
+        bootText.textContent = "Starting NEXUS...";
+    }
+
+    if (bootProgress) {
+        bootProgress.style.width = "0%";
+    }
+
     const timer = setInterval(() => {
-        progress += 10;
+        progress += 20;
 
         if (bootProgress) {
             bootProgress.style.width = `${progress}%`;
         }
 
+        if (progress < 100) {
+            if (bootText) {
+                bootText.textContent =
+                    `Starting NEXUS... ${progress}%`;
+            }
+
+            return;
+        }
+
+        clearInterval(timer);
+
         if (bootText) {
             bootText.textContent =
-                progress >= 100
-                    ? "NEXUS Ready."
-                    : "Starting NEXUS...";
+                "NEXUS Ready.";
         }
 
-        if (progress >= 100) {
-            clearInterval(timer);
+        if (bootProgress) {
+            bootProgress.style.width = "100%";
+        }
 
-            setTimeout(() => {
-                hide(bootScreen);
+        // Give the "NEXUS Ready" message a moment to appear.
+        setTimeout(() => {
+            console.log("🟢 Starting NEXUS interface...");
+
+            hide(bootScreen);
+
+            try {
                 initializeNexus();
-            }, 300);
-        }
-    }, 50);
+                console.log("✅ NEXUS STARTED SUCCESSFULLY");
+            } catch (error) {
+                console.error(
+                    "❌ NEXUS STARTUP ERROR:",
+                    error
+                );
+
+                // Don't leave the user permanently stuck
+                // on the boot screen.
+                show($("authScreen"));
+                hide($("desktop"));
+
+                if (bootText) {
+                    bootText.textContent =
+                        "NEXUS startup error. Check the browser console.";
+                }
+            }
+        }, 300);
+
+    }, 100);
 }
+```
+
 
 
 /* =========================================================
